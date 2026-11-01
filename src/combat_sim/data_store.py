@@ -94,6 +94,37 @@ def read_data_file(path):
     return data
 
 
+def with_shipped_keywords(data, shipped_path, data_path=None):
+    """
+    The app data with the keyword glossary entries of the shipped app data JSON that it lacks (by name,
+    capitals ignored), e.g. a release's new modifiers: the glossary is read-only, and the user's copy is
+    only seeded from the shipped one on first run (paths.prepare_data_dir). The data itself if there is
+    nothing to add, no shipped file, or the shipped file is the app data JSON itself.
+    """
+    if not shipped_path or not Path(shipped_path).exists() or (
+            data_path and Path(shipped_path).resolve() == Path(data_path).resolve()):
+        return data
+    try:
+        shipped = read_data_file(shipped_path).get('keywords', [])
+    except (OSError, ValueError, DataFileError):
+        return data
+    own = data.get('keywords', [])
+    names = {k.get('name', '').lower() for k in own}
+    missing = [k for k in shipped if k.get('name', '').lower() not in names]
+    if not missing:
+        return data
+    ids = {k.get('id') for k in own}
+    next_id = max([i for i in ids if isinstance(i, int)] + [0]) + 1
+    added = []
+    for record in missing:
+        record = dict(record)
+        if record.get('id') in ids or not isinstance(record.get('id'), int):
+            record['id'], next_id = next_id, next_id + 1
+        ids.add(record['id'])
+        added.append(record)
+    return dict(data, keywords=own + added)
+
+
 def check_data(data):
     if not isinstance(data, dict):
         raise DataFileError('Data JSON must be an object')

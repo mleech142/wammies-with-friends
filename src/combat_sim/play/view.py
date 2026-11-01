@@ -8,6 +8,7 @@ fields (its connection, whether Undo can be pressed). A game waiting for the oth
 """
 
 from .. import contagion
+from ..simulation import invulnerable_only
 from . import mission_state, missions, tactical
 from .game import (MANUAL_EFFECTS, MARKER_MM, OBJECTIVE_RANGE, afflictions, allocation_groups, can_fly, contagion_ranges,
                    deployment_zone, disembark_options, embark_options, grant_options, has_contagion, infiltrators,
@@ -31,6 +32,9 @@ def board(state, armies, last_event=None):
             'moves': {u['id']: [move_characteristic(p, afflicted.get(u['id'])) for p in u['parts']]
                       for u in state['units']},
             'fly': [u['id'] for u in state['units'] if can_fly(u)],
+            # Invulnerable saves only against melee or ranged attacks, per part ({'melee': 4}: Wyches), from its modifiers
+            'invulnerable_only': {u['id']: [invulnerable_only(p.get('keywords') or []) for p in u['parts']]
+                                  for u in state['units'] if any(invulnerable_only(p.get('keywords') or []) for p in u['parts'])},
             'allocation': {u['id']: allocation_groups(u) for u in state['units'] if len(allocation_groups(u)) > 1},
             'score': score(state),
             'ready': ready_units(state),

@@ -481,7 +481,7 @@
                 <button type="button" class="unit-picker-item" data-unit-id="${u.id}">
                     <span class="unit-picker-name">${escapeHtml(u.name)}</span>
                     <span class="unit-picker-faction">${escapeHtml(u.faction || '')}</span>
-                    <span class="unit-picker-stats">T${u.toughness} · ${u.save}+ · W${u.wounds}${u.invulnerable_save ? ` · ${u.invulnerable_save}++` : ''}</span>
+                    <span class="unit-picker-stats">T${u.toughness} · ${u.save}+ · W${u.wounds}${Core.invulnerableSaves(u).map(i => ` · ${i.save}++${i.against ? ` (${i.against})` : ''}`).join('')}</span>
                 </button>
             `).join('');
 

@@ -942,7 +942,7 @@ function renderUnitsTable(units) {
             <td>${u.toughness}</td>
             <td>${u.save}+</td>
             <td>${u.wounds}</td>
-            <td>${dash(u.invulnerable_save, '+')}</td>
+            <td>${esc(Core.invulnerableLabel(u)) || '-'}</td>
             <td>${dash(u.feel_no_pain, '+')}</td>
             <td>${dash(u.oc)}</td>
             <td>${dash(u.leadership, '+')}</td>

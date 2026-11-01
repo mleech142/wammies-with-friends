@@ -1197,6 +1197,26 @@
     const plus = v => (v == null ? '-' : `${v}+`);
 
     /** A unit's characteristics as datasheet boxes: [{label, value}] (M, T, SV, W, LD, OC). */
+    /**
+     * A unit's invulnerable saves to show, from its `invulnerable_save` and `invulnerable_only` (worked out by the
+     * server: {melee: 4}): [{save: 4, against: ''}, {save: 4, against: 'melee'}]. One only against melee or ranged
+     * attacks that is no better than the one against everything is left out.
+     */
+    function invulnerableSaves(stats) {
+        const all = stats && stats.invulnerable_save;
+        const found = all ? [{ save: all, against: '' }] : [];
+        for (const against of ['melee', 'ranged']) {
+            const save = stats && stats.invulnerable_only && stats.invulnerable_only[against];
+            if (save && (!all || save < all)) found.push({ save, against });
+        }
+        return found;
+    }
+
+    /** "4+", "4+ (melee)", "6+ · 4+ (melee)", or '' when it has none. */
+    function invulnerableLabel(stats) {
+        return invulnerableSaves(stats).map(i => i.against ? `${i.save}+ (${i.against})` : `${i.save}+`).join(' · ');
+    }
+
     function matchStatLine(stats) {
         const s = stats || {};
         const move = s.move == null || s.move === '' ? '-' : (/\d\+?$/.test(String(s.move)) ? `${s.move}"` : String(s.move));
@@ -1223,11 +1243,13 @@
      * weapons and, once fetched from this PC's data, abilities. `abilities[i]` is part i's {found, abilities, rules}
      * from /api/play/abilities, or undefined while it loads.
      */
-    function playUnitCard(unit, abilities = []) {
+    function playUnitCard(unit, abilities = [], invulnerableOnly = []) {
         const roles = { leader: 'Leader', support: 'Support' };
         const parts = unit.parts.map((part, i) => {
             const stats = matchStatLine(part.stats).map(s => `<span><b>${s.label}</b> ${escapeHtml(s.value)}</span>`).join('');
-            const saves = [part.stats.invulnerable_save && `<span><b>INV</b> ${escapeHtml(part.stats.invulnerable_save)}+</span>`,
+            const invulns = invulnerableSaves({ ...part.stats, invulnerable_only: invulnerableOnly[i] })
+                .map(v => `<span><b>INV</b> ${escapeHtml(v.save)}+${v.against ? ` (${v.against})` : ''}</span>`);
+            const saves = [...invulns,
                            part.stats.feel_no_pain && `<span><b>FNP</b> ${escapeHtml(part.stats.feel_no_pain)}+</span>`].filter(Boolean).join('');
             const weapons = part.weapons.map(w => {
                 const c = matchWeaponCells(w, w.type);
@@ -1285,6 +1307,6 @@
         leaderBuffSummary, withLeaderWeapons, withLeaderEntries, withLoadout, attackerEntry, defenderEntry, activeEnhancements, enhancementRefs, armyPoints, armyDetachmentPoints,
         usedWeapons, weaponPayload, rulesForFilter, ruleRowTitle, rulesSelection, woundsMarker, buildMatrixRequest,
         statTile, renderAnalysisSummary, renderGaps, renderRoleScores, renderCoverage, renderReverse,
-        createPageState, matchStatLine, matchWeaponCells, matchStratagemShown,
+        createPageState, invulnerableSaves, invulnerableLabel, matchStatLine, matchWeaponCells, matchStratagemShown,
     };
 });

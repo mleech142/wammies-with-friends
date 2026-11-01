@@ -17,6 +17,7 @@ from pathlib import Path
 
 from . import wahapedia
 from .data_store import (REFERENCE_LOCK, export_data, load_bsdata, merge_data, read_data_file, rebuild_reference_tables,
+                         with_shipped_keywords,
                          write_data_file)
 from .models import db
 from .settings import load_settings
@@ -57,6 +58,7 @@ def load(app, bsdata=False, wahapedia_too=False, data=None):
         now = current(app)
         if data is None:
             data = read_data_file(app.config['DATA_JSON'])
+        data = with_shipped_keywords(data, app.config.get('SHIPPED_DATA_JSON'), app.config['DATA_JSON'])
         if wahapedia_too:
             result, status = wahapedia.load_folder(app.config['WAHAPEDIA_DIR'])
             now = replace(now, wahapedia_result=result, wahapedia_status=status)

@@ -13,7 +13,8 @@ Modifier language (comma-separated, exact names from the Keywords tab, capitals 
            Anti-<Keyword> X+, Snap Shooting, Critical Hits X+, Critical Wounds X+,
            Hit/Wound/AP/Damage/Attacks/Strength Modifier ±X, BS/WS Modifier ±X,
            Save Modifier -X, Reroll Hits [1], Reroll Wounds [1]
-  target:  its keywords (for Anti), Feel No Pain X+, Invulnerable Save X+, Stealth,
+  target:  its keywords (for Anti), Feel No Pain X+, Invulnerable Save X+, Melee / Ranged
+           Invulnerable Save X+ (only against those attacks), Stealth,
            Toughness/Save/Damage/Hit/Wound/AP Modifier ±X
 X can be a number or dice (D3, D6+1); dice values are averaged in the analytical engine.
 
@@ -253,6 +254,17 @@ def keyword_name(entry: str) -> str:
     return re.sub(r'\s+[-+]?(\d+|D\d+)([-+]\d+)?\+?"?$', '', text, flags=re.IGNORECASE).strip()
 
 
+def invulnerable_only(keywords: list[str]) -> dict:
+    """Invulnerable saves only against melee or ranged attacks, from a target's modifiers
+    ('Melee Invulnerable Save 4+'): {'melee': 4, 'ranged': 5}, each kind only if it has one."""
+    found = {}
+    for kind in ("melee", "ranged"):
+        value = keyword_min(keywords, f"{kind.capitalize()} Invulnerable Save")
+        if value:
+            found[kind] = int(value)
+    return found
+
+
 def check_keywords(text: str, known_names, mode: str = '') -> dict:
     """
     Check comma-separated keyword text against the known keyword names.
@@ -430,6 +442,8 @@ def resolve(attacker: AttackerProfile, defender: DefenderProfile, conditions: Ba
     ap = min(0, -attacker.ap + keyword_sum(ab, "AP Modifier") + keyword_sum(target, "AP Modifier"))
     armour = defender.save - ap - keyword_sum(target, "Save Modifier") - keyword_sum(ab, "Save Modifier")
     invuln = defender.invulnerable_save or 7
+    # One only against melee or ranged attacks (Wyches' 4+ in melee, a Knight's 5+ against shooting)
+    invuln = min(invuln, invulnerable_only(target).get(attacker.weapon_type, 7))
     save_need = int(clamp(min(armour, invuln), 2, 7))
 
     # Damage

@@ -254,7 +254,9 @@ field_medic = {
     'name': 'Field Medic', 'id': 'u-medic', 'hidden': False, 'type': 'model',
     'categoryLinks': [cat_link('k-faction-star', 'Faction: Starfarers'), cat_link('k-inf', 'Infantry'),
                       cat_link('k-support', 'Support')],
-    'profiles': [unit_profile('p-medic', 'Field Medic', '6"', '4', '4+', '3', '6+', '1'),
+    # A 4+ invulnerable save only against melee attacks, as Wyches have (issue #22)
+    'profiles': [unit_profile('p-medic', 'Field Medic', '6"', '4', '4+', '3', '6+', '1', '4+*'),
+                 ability('a-medic-dodge', 'Invulnerable Save (4+*)', 'Models in this unit have a 4+ invulnerable save against melee attacks.'),
                  ability('a-medic-support', 'Support', 'This model can be attached to the following units:\n■ **^^VOID WARRIORS^^**\n■ **^^GUN CREW^^**')],
     'costs': pts(40),
     'selectionEntries': [upgrade('e-medic-pistol', 'Medic pistol', constraints=cons(1, 1), profiles=[

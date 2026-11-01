@@ -2583,7 +2583,20 @@
        },
        {
         "name": "InSv",
-        "$text": ""
+        "$text": "4+*"
+       }
+      ]
+     },
+     {
+      "name": "Invulnerable Save (4+*)",
+      "id": "a-medic-dodge",
+      "hidden": false,
+      "typeId": "pt-abil",
+      "typeName": "Abilities",
+      "characteristics": [
+       {
+        "name": "Description",
+        "$text": "Models in this unit have a 4+ invulnerable save against melee attacks."
        }
       ]
      },

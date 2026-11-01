@@ -162,7 +162,7 @@
         if (u.problems.length) chips.push(`<span class="army-unit-warning" title="${escapeHtml(u.problems.join(' '))}">!</span>`);
         const stats = u.stats ? Core.matchStatLine(u.stats) : [];
         const mini = stats.map(s => `<span><b>${s.label}</b> ${escapeHtml(s.value)}</span>`).join('') +
-            (u.stats?.invulnerable_save ? `<span class="match-mini-invuln"><b>INV</b> ${u.stats.invulnerable_save}+</span>` : '');
+            Core.invulnerableSaves(u.stats).map(i => `<span class="match-mini-invuln"><b>INV</b> ${i.save}+${i.against ? ` (${i.against})` : ''}</span>`).join('');
 
         return `<details class="match-unit" id="unit-${escapeHtml(u.uid)}" data-uid="${escapeHtml(u.uid)}" open>
             <summary class="match-unit-head">
@@ -182,7 +182,7 @@
         const boxes = Core.matchStatLine(u.stats).map(s =>
             `<div class="match-stat"><span class="match-stat-label">${s.label}</span><span class="match-stat-value">${escapeHtml(s.value)}</span></div>`).join('');
         const saves = [
-            u.stats.invulnerable_save && `<div class="match-save"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><b>${u.stats.invulnerable_save}+</b> invulnerable save</span></div>`,
+            ...Core.invulnerableSaves(u.stats).map(i => `<div class="match-save"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><b>${i.save}+</b> invulnerable save${i.against ? ` against ${i.against} attacks` : ''}</span></div>`),
             u.stats.feel_no_pain && `<div class="match-save"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i><span><b>${u.stats.feel_no_pain}+</b> Feel No Pain</span></div>`,
         ].filter(Boolean).join('');
         return `<div class="match-unit-body">

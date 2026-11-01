@@ -573,3 +573,25 @@ def test_reverse_durability_counts_my_units_leader(app_client):
                        'weapons': [{'weapon_id': rifle['id'], 'weapon_type': 'ranged', 'models': 4}]}],
         'defenders': [{'unit_id': void['id'], 'model_count': 5}], 'conditions': {}}).get_json()
     assert result['analysis']['reverse']['rows'][0]['models'] == 6  # 5 Void Warriors + the Captain
+
+
+def test_shipped_glossary_entries_the_app_data_lacks_are_added(make_client, tmp_path, monkeypatch):
+    # The user's copy is only seeded on first run: a release's new modifiers (issue #22) still reach its glossary
+    shipped = tmp_path / 'shipped.json'
+    new = {'id': 1, 'name': 'Melee Invulnerable Save', 'category': 'Core', 'applies_to': 'Unit',
+           'format': 'Melee Invulnerable Save X+', 'summary': 'Only against melee attacks.', 'sim_step': 'Save',
+           'modelled': True, 'rule_ref': ''}
+    lethal = dict(APP_DATA['keywords'][0], summary='The shipped wording.')
+    shipped.write_text(json.dumps(dict(APP_DATA, keywords=[lethal, new])), encoding='utf-8')
+    monkeypatch.setenv('SHIPPED_DATA_JSON', str(shipped))
+    client, data_file = make_client(APP_DATA)
+    keywords = {k['name']: k for k in client.get('/api/data/keywords').get_json()}
+    assert sorted(keywords) == ['Lethal Hits', 'Melee Invulnerable Save']
+    assert keywords['Lethal Hits']['summary'] == ''  # The user's own entry stays
+    assert keywords['Melee Invulnerable Save']['id'] == 2  # ID 1 is taken
+    assert client.post('/api/keywords/check', json={'text': 'Melee Invulnerable Save 4+', 'mode': 'unit'}).get_json()['unknown'] == []
+
+
+def test_no_shipped_glossary_for_a_harness_data_json(make_client):
+    client, _ = make_client(APP_DATA)  # DATA_JSON set, no SHIPPED_DATA_JSON: the repository's glossary isn't merged in
+    assert [k['name'] for k in client.get('/api/data/keywords').get_json()] == ['Lethal Hits']

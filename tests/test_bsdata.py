@@ -102,6 +102,13 @@ def test_invulnerable_save_and_feel_no_pain_from_ability_text(result):
     assert u['feel_no_pain'] == 5
 
 
+def test_invulnerable_save_only_against_melee_attacks_is_a_modifier(result):
+    # Issue #22: Wyches' "4+*" is a 4+ invulnerable save against melee attacks only, not against shooting
+    u = unit(result, 'Field Medic')
+    assert u['invulnerable_save'] is None
+    assert u['modifiers'] == ['Melee Invulnerable Save 4+']
+
+
 def test_rules_bsdata_hides_for_a_unit_on_its_own_are_left_out(result):
     # The captain's Feel No Pain 4+ is only while a bodyguard unit is attached (issue #14: Krieg Command Squad)
     u = unit(result, 'Star Captain')

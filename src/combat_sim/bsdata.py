@@ -64,7 +64,7 @@ from pathlib import Path
 from .rules_text import tidy_text, plain_text, parse_leader_buffs, parse_enhancement  # noqa: F401 (also used by importers of bsdata)
 from .simulation import check_keywords
 
-IMPORTER_VERSION = 15  # Bump when the output changes, so cached imports are redone
+IMPORTER_VERSION = 16  # Bump when the output changes, so cached imports are redone
 
 PTS = 'pts'
 SUPPORTED_BATTLESCRIBE_VERSIONS = ('2.',)  # Major version 2 (files are currently 2.03)
@@ -82,6 +82,10 @@ DEFENSIVE_TEXT = [
     (re.compile(r'^each time an attack is allocated to (?:this model|a model in this unit), subtract 1 from the '
                 r'damage characteristic of that attack\.?$', re.I),
      'Damage Modifier -1'),
+    # An invulnerable save only against melee or ranged attacks (issue #22): 'Melee Invulnerable Save 4+'
+    (re.compile(r'^(?:this model|models in this unit|this unit) ha(?:s|ve) an? (\d)\+ invulnerable save '
+                r'against (melee|ranged) attacks\.?$', re.I),
+     'only against'),
 ]
 
 
@@ -967,6 +971,7 @@ def build_unit(entry, faction_cat, report, known_keywords):
 
     # Abilities, rules and the defensive values the maths uses
     ability_lines, rules, modifiers, fnp = [], [], [], None
+    only_against = {}  # {'melee' or 'ranged': invulnerable save}
     sources = [(entry, sel)] + [(n.entry, n) for n in sel.walk() if n.entry.kind in ('model', 'upgrade') and n.entry is not entry]
     seen_abilities = set()
     for source, source_sel in sources:
@@ -979,6 +984,8 @@ def build_unit(entry, faction_cat, report, known_keywords):
                     m = pattern.match(plain_text(text))
                     if m and effect == 'fnp':
                         fnp = min(fnp or 7, int(m.group(1)))
+                    elif m and effect == 'only against':
+                        only_against[m.group(2).lower()] = int(m.group(1))
                     elif m and effect not in modifiers:
                         modifiers.append(effect)
             elif profile.get('typeName') == 'Transport' and 'Transport' not in seen_abilities:
@@ -1004,6 +1011,13 @@ def build_unit(entry, faction_cat, report, known_keywords):
             fnp = min(fnp or 7, int(m.group(1)))
         if rule == 'Stealth' and 'Stealth' not in modifiers:
             modifiers.append('Stealth')
+
+    # The datasheet's InSv is the one only against melee or ranged attacks ("4+*"): not a save against everything
+    invulnerable = _plus(stats.get('InSv'))
+    for kind, value in only_against.items():
+        modifiers.append(f'{kind.capitalize()} Invulnerable Save {value}+')
+        if invulnerable == value:
+            invulnerable = None
 
     can_lead, can_support = [], []
     for line in ability_lines:
@@ -1079,7 +1093,7 @@ def build_unit(entry, faction_cat, report, known_keywords):
         'toughness': toughness,
         'save': save,
         'wounds': wounds,
-        'invulnerable_save': _plus(stats.get('InSv')),
+        'invulnerable_save': invulnerable,
         'feel_no_pain': fnp,
         'move': (stats.get('M') or '').replace('"', '') if re.search(r'\d', stats.get('M') or '') else None,
         'oc': _int(stats.get('OC')),

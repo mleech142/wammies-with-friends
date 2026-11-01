@@ -28,7 +28,7 @@ BSData's rule and ability text uses a loose markup dialect (counts across 4,079 
 | `- `, `▪`, `■`, `•` at line start | ~1,200 / 1,039 / 663 / 2 | List items: bullets, "choose one of" options, Leader lists |
 | `a \| b` lines | 8 | One table (Chaos Space Marines battle sizes) |
 | `<ins>…</ins>` | 5 | Underline, apparently marking errata changes |
-| `†`, `*` after a value | 10 / 27 | Footnote markers, e.g. `Invulnerable Save (4+*)` |
+| `†`, `*` after a value | 10 / 27 | Footnote markers, e.g. `Invulnerable Save (4+*)`; a `4+*` invulnerable save "against melee (ranged) attacks" becomes the unit modifier `Melee (Ranged) Invulnerable Save 4+` instead of an invulnerable save against everything (26 units: Wyches, Howling Banshees, Imperial Knights, Titans, Rangers...; issue #22) |
 | Non-breaking spaces and hyphens | 6,996 / 212 | Layout leftovers, often doubled |
 
 How the app handles it: the importer tidies the spacing (`tidy_text`) but keeps the markup; everything it parses (Feel No Pain, damage reduction, Leader lists) reads the plain words (`plain_text`). Pages render the markup with `Core.formatRuleText` (escaped first, so the text can't add HTML). Reading plain text found 52 more units with unconditional "-1 Damage" (2 → 54, e.g. Bullgryn Squad, C'tan Shards, Stormraven Gunship) and 23 more Leader links (unmatched Leader targets 1,419 → 1,396). One source typo (Chaos Knights "Marked Prey": `keyword.*` then `*** Designer's Note:**`) is tidied by dropping stray markers.

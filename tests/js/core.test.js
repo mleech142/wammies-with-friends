@@ -805,6 +805,14 @@ test('playUnitCard shows the datasheet of each part, its leader marked, abilitie
     assert.match(loaded, /aren't in this PC's data/);
 });
 
+test('playUnitCard shows an invulnerable save only against melee or ranged attacks (issue #22)', () => {
+    const stats = { move: '7', toughness: 3, save: 6, wounds: 1, leadership: 7, oc: 1, invulnerable_save: null, feel_no_pain: null };
+    const unit = { name: 'Wyches', parts: [{ name: 'Wyches', role: 'bodyguard', models: 10, stats, keywords: [], enhancement: null,
+                                             warlord: false, weapons: [] }] };
+    assert.match(Core.playUnitCard(unit, [], [{ melee: 4 }]), /<b>INV<\/b> 4\+ \(melee\)/);
+    assert.doesNotMatch(Core.playUnitCard(unit), /INV/);
+});
+
 test('playTurn pivots the formation along arcs and spins single models for free', () => {
     const spots = [{ id: 'a', x: 0, y: 0, angle: 0 }, { id: 'b', x: 4, y: 0, angle: 0 }];  // Centre (2, 0)
     const half = Core.playTurn(spots, 180);
@@ -938,6 +946,14 @@ test('playMat picks a game its battle mat from its ID, the same every time, and 
 // ---------------------------------------------------------------------------
 // Match view
 // ---------------------------------------------------------------------------
+
+test('invulnerableLabel shows saves only against melee or ranged attacks (issue #22)', () => {
+    assert.equal(Core.invulnerableLabel({ invulnerable_save: 4 }), '4+');
+    assert.equal(Core.invulnerableLabel({ invulnerable_save: null, invulnerable_only: { melee: 4 } }), '4+ (melee)');
+    assert.equal(Core.invulnerableLabel({ invulnerable_save: 6, invulnerable_only: { melee: 4, ranged: 6 } }), '6+ · 4+ (melee)');
+    assert.equal(Core.invulnerableLabel({}), '');
+    assert.deepEqual(Core.invulnerableSaves({ invulnerable_only: { ranged: 5 } }), [{ save: 5, against: 'ranged' }]);
+});
 
 test('matchStatLine writes a datasheet\'s characteristics as the cards do', () => {
     const line = Core.matchStatLine({ move: '5', toughness: 7, save: 2, wounds: 4, leadership: 6, oc: 1 });

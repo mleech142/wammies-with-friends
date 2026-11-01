@@ -131,6 +131,21 @@ def test_invulnerable_save_from_modifiers():
     assert DefenderProfile(4, 3, 1, invulnerable_save=4, keywords=['Invulnerable Save 5+']).invulnerable_save == 4
 
 
+def test_invulnerable_save_only_against_melee_or_ranged_attacks():
+    # Issue #22: Wyches have a 4+ invulnerable save against melee attacks only (a 6+ save otherwise)
+    wyches = ['Melee Invulnerable Save 4+']
+    assert run(ap=3, save=6, invuln=None, target_keywords=wyches, weapon_type='melee').failed_saves == approx(2 * 3 / 6)
+    assert run(ap=3, save=6, invuln=None, target_keywords=wyches).failed_saves == approx(2)  # Shooting: no save
+    # A Knight's 5+ against ranged attacks only
+    knight = ['Ranged Invulnerable Save 5+']
+    assert run(ap=3, save=3, target_keywords=knight).failed_saves == approx(2 * 4 / 6)
+    assert run(ap=3, save=3, target_keywords=knight, weapon_type='melee').failed_saves == approx(2 * 5 / 6)  # Armour 6+
+    # The better of it and an invulnerable save against everything (a leader's)
+    both = ['Melee Invulnerable Save 4+', 'Invulnerable Save 5+']
+    assert run(ap=3, save=6, target_keywords=both).failed_saves == approx(2 * 4 / 6)
+    assert run(ap=3, save=6, target_keywords=both, weapon_type='melee').failed_saves == approx(2 * 3 / 6)
+
+
 def test_lowercase_keywords_still_count():
     target = DefenderProfile(toughness=4, save=3, wounds=1, model_count=5)
     upper = simulate_analytical(AttackerProfile('6', 3, 4, 1, '1', ['Lethal Hits']), target, BattleConditions())
@@ -146,6 +161,7 @@ AGREEMENT_CASES = [
     ('sustained D3 + reroll hits', AttackerProfile('3', 4, 4, 0, '1', ['Sustained Hits D3'], models=5), DefenderProfile(4, 4, 1, model_count=10), BattleConditions(reroll_hits='all')),
     ('anti + dev + reroll ones', AttackerProfile('D6', None, 4, 1, '1', ['Anti-Infantry 2+', 'Devastating Wounds', 'Torrent'], models=2), DefenderProfile(6, 3, 2, model_count=10, keywords=['Infantry']), BattleConditions(reroll_wounds='ones')),
     ('blast + rapid fire + melta', AttackerProfile('D3', 3, 9, 4, 'D6', ['Blast', 'Rapid Fire 1', 'Melta 2'], models=2), DefenderProfile(10, 3, 12, model_count=10), BattleConditions(half_range=True)),
+    ('melee-only invuln', AttackerProfile('4', 3, 4, 3, '1', [], models=5, weapon_type='melee'), DefenderProfile(3, 6, 1, model_count=10, keywords=['Melee Invulnerable Save 4+']), BattleConditions()),
     ('heavy + lance + fnp', AttackerProfile('2', 4, 8, 2, '2', ['Heavy', 'Lance'], models=3), DefenderProfile(7, 2, 4, invulnerable_save=4, feel_no_pain=5, model_count=5), BattleConditions(stationary=True, charged=True)),
 ]
 

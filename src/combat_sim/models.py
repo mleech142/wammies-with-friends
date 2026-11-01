@@ -22,6 +22,8 @@ from sqlalchemy import JSON, event
 import math
 from datetime import datetime
 
+from .simulation import invulnerable_only
+
 db = SQLAlchemy()
 
 BSDATA_ID_BASE = 1_000_000  # First ID given to BSData records; custom records stay below it
@@ -190,6 +192,11 @@ class Unit(db.Model):
         return list(self.keywords or []) + self.all_modifiers
 
     @property
+    def invulnerable_only(self):
+        """Its invulnerable saves only against melee or ranged attacks: {'melee': 4} for Wyches."""
+        return invulnerable_only(self.all_modifiers)
+
+    @property
     def editable(self):
         return self.faction.editable
 
@@ -236,6 +243,7 @@ class Unit(db.Model):
             'save': self.save,
             'wounds': self.wounds,
             'invulnerable_save': self.invulnerable_save,
+            'invulnerable_only': self.invulnerable_only,
             'feel_no_pain': self.feel_no_pain,
             'move': self.move,
             'oc': self.oc,

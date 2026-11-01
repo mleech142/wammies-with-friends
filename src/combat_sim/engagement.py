@@ -160,6 +160,7 @@ def unit_stats(unit, changes=None):
     invulnerable = changes.get('invulnerable_save')
     if invulnerable and (stats['invulnerable_save'] is None or invulnerable < stats['invulnerable_save']):
         stats['invulnerable_save'] = invulnerable
+    stats['invulnerable_only'] = getattr(unit, 'invulnerable_only', {})  # {'melee': 4}: only against those attacks
     return stats
 
 

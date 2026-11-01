@@ -67,3 +67,12 @@ def test_vp_against_the_caps():
     assert not standing['secondary']['round_full'] and standing['secondary']['card_cap']
     assert view.standing(vp, 3)['primary']['round'] == 0
     assert view.standing({'primary': 5, 'rounds': {1: 5}}, 1)['primary']['round'] == 5  # Before the state is JSON
+
+
+def test_invulnerable_saves_only_against_melee_or_ranged_attacks_come_from_each_parts_modifiers():
+    # Issue #22: Wyches' 4+ against melee attacks only, for the hover card and the unit panel
+    state = shooting_game()
+    squad = next(u for u in state['units'] if u['id'] == 'p2-squad')
+    squad['parts'][0]['keywords'] = ['Infantry', 'Melee Invulnerable Save 4+']
+    armies = [{'stratagems': [], 'rules': []}, {'stratagems': [], 'rules': []}]
+    assert view.board(state, armies)['invulnerable_only'] == {'p2-squad': [{'melee': 4}]}

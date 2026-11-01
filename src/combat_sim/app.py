@@ -12,7 +12,8 @@ from sqlalchemy.exc import IntegrityError
 from .models import (db, init_db, Proposal, Faction, Detachment, Enhancement, Unit, RangedWeapon, MeleeWeapon, FactionRule, Stratagem, Keyword, TargetProfile,
                      SavedScenario, SavedComparison, SavedArmy, unit_ranged_weapons, unit_melee_weapons)
 from . import __version__
-from .paths import DATA_FILE, DATABASE_FILE, BSDATA_FOLDER, BSDATA_CACHE_FILE, WAHAPEDIA_FOLDER, is_hosted, prepare_data_dir
+from .paths import (DATA_FILE, DATABASE_FILE, BSDATA_FOLDER, BSDATA_CACHE_FILE, WAHAPEDIA_FOLDER, bundle_root, is_hosted,
+                    prepare_data_dir)
 from .data_store import DataFileError, check_data
 from . import armies, army_share, bsdata_download, contagion, folder_dialog, match_view, wahapedia_download
 from .play.routes import register_play_routes
@@ -45,11 +46,15 @@ def create_app(config=None):
     # (rules and stratagems) are in WAHAPEDIA_DIR, else the wahapedia folder next to it.
     data_json = os.environ.get('DATA_JSON')
     database_url = os.environ.get('DATABASE_URL')
+    # The shipped app data, whose keyword glossary entries the user's copy lacks are added on every load (a
+    # release's new modifiers). Not for a harness's own DATA_JSON unless it names one in SHIPPED_DATA_JSON.
+    shipped = os.environ.get('SHIPPED_DATA_JSON') or (None if data_json else str(bundle_root() / 'data' / DATA_FILE))
     if not (data_json and database_url):
         folder = prepare_data_dir()
         data_json = data_json or str(folder / DATA_FILE)
         database_url = database_url or 'sqlite:///' + (folder / DATABASE_FILE).as_posix()
     app.config['DATA_JSON'] = data_json
+    app.config['SHIPPED_DATA_JSON'] = shipped
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['DOWNLOAD_DIR'] = str(Path(data_json).parent / BSDATA_FOLDER)
     app.config['DEFAULT_BSDATA_DIR'] = os.environ.get('BSDATA_DIR') or app.config['DOWNLOAD_DIR']

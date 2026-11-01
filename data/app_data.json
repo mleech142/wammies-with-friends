@@ -691,6 +691,28 @@
       "sim_step": "Wound",
       "modelled": true,
       "rule_ref": "05.02"
+    },
+    {
+      "id": 52,
+      "name": "Melee Invulnerable Save",
+      "category": "Core",
+      "applies_to": "Unit",
+      "format": "Melee Invulnerable Save X+",
+      "summary": "An invulnerable save of X+ against melee attacks only (e.g. Wyches). The better of it and any other invulnerable save is used.",
+      "sim_step": "Save",
+      "modelled": true,
+      "rule_ref": "—"
+    },
+    {
+      "id": 53,
+      "name": "Ranged Invulnerable Save",
+      "category": "Core",
+      "applies_to": "Unit",
+      "format": "Ranged Invulnerable Save X+",
+      "summary": "An invulnerable save of X+ against ranged attacks only (e.g. Imperial Knights' ion shields). The better of it and any other invulnerable save is used.",
+      "sim_step": "Save",
+      "modelled": true,
+      "rule_ref": "—"
     }
   ],
   "target_profiles": [

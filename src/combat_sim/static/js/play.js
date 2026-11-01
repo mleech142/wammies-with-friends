@@ -1365,7 +1365,7 @@
             const alive = unit.models.filter(m => m.alive && m.part === i).length;
             return `<div class="play-part">
                 <strong>${escapeHtml(part.name)}</strong>${part.role === 'leader' ? ' <small>(leader)</small>' : ''}
-                <div class="play-stats">M ${escapeHtml(s.move || '-')}" · T ${s.toughness} · Sv ${s.save}+${s.invulnerable_save ? ` · ${s.invulnerable_save}++` : ''} · W ${s.wounds}</div>
+                <div class="play-stats">M ${escapeHtml(s.move || '-')}" · T ${s.toughness} · Sv ${s.save}+${Core.invulnerableSaves({ ...s, invulnerable_only: (state.game.invulnerable_only?.[unit.id] || [])[i] }).map(v => ` · ${v.save}++${v.against ? ` (${v.against})` : ''}`).join('')} · W ${s.wounds}</div>
                 <small>${alive} of ${part.models} models · base ${escapeHtml((part.base && part.base.text) || 'unknown')}${outline.estimated ? ' (size estimated)' : ''}</small>
             </div>`;
         }).join('');
@@ -2508,7 +2508,8 @@
         const draw = () => {
             if (cardUnit !== unitId) return;
             card.classList.toggle('wide', unit.parts.length > 1);  // Its leaders beside it, not below
-            card.innerHTML = Core.playUnitCard(unit, unit.parts.map(p => abilityCache[key(p)] instanceof Promise ? undefined : abilityCache[key(p)]));
+            card.innerHTML = Core.playUnitCard(unit, unit.parts.map(p => abilityCache[key(p)] instanceof Promise ? undefined : abilityCache[key(p)]),
+                state.game.invulnerable_only?.[unit.id] || []);
             card.hidden = false;
             // Beside the pointer, kept on screen
             const box = card.getBoundingClientRect(), gap = 16;

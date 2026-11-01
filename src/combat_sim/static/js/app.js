@@ -510,7 +510,7 @@ function showUnitStats(side, unit) {
     document.getElementById(`${prefix}-t`).textContent = unit.toughness;
     document.getElementById(`${prefix}-sv`).textContent = unit.save + '+';
     document.getElementById(`${prefix}-w`).textContent = unit.wounds;
-    document.getElementById(`${prefix}-inv`).textContent = unit.invulnerable_save ? unit.invulnerable_save + '+' : '-';
+    document.getElementById(`${prefix}-inv`).textContent = Core.invulnerableLabel(unit) || '-';
     document.getElementById(`${prefix}-fnp`).textContent = unit.feel_no_pain ? unit.feel_no_pain + '+' : '-';
 }
 
