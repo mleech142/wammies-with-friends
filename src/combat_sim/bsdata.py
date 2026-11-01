@@ -64,11 +64,15 @@ from pathlib import Path
 from .rules_text import tidy_text, plain_text, parse_leader_buffs, parse_enhancement  # noqa: F401 (also used by importers of bsdata)
 from .simulation import check_keywords
 
-IMPORTER_VERSION = 14  # Bump when the output changes, so cached imports are redone
+IMPORTER_VERSION = 15  # Bump when the output changes, so cached imports are redone
 
 PTS = 'pts'
 SUPPORTED_BATTLESCRIBE_VERSIONS = ('2.',)  # Major version 2 (files are currently 2.03)
 WEAPON_TYPES = {'Ranged Weapons': 'ranged', 'Melee Weapons': 'melee'}
+# Profile types the importer reads for what they are; any other (Orders, C'tan Powers...) is a kind of ability
+OWN_PROFILE_TYPES = {'Unit', 'Abilities', 'Transport', *WEAPON_TYPES}
+# Weapon keywords some catalogues spell another way, by the spelling lowercased (issue #24: "Twin Linked")
+KEYWORD_SPELLINGS = {'twin linked': 'Twin-Linked'}
 CHILD_KEYS = ('selectionEntries', 'selectionEntryGroups', 'entryLinks')
 
 # Unconditional ability texts the maths can use, as (pattern, unit modifier or FNP)
@@ -550,7 +554,9 @@ def has_choices(tree):
         if child.get('type', 'group') == 'group' and len(child.get('children', [])) > 1:
             return True
         lows = [c['value'] for c in child.get('constraints', []) if c.get('type') == 'min' and c.get('scope') == 'parent']
-        if child.get('type', 'group') != 'group' and not any(lows) and child.get('weapons'):
+        # An optional entry that gives weapons, an ability (a Daemonic Icon, issue #19), keywords or stats
+        if child.get('type', 'group') != 'group' and not any(lows) and (
+                child.get('weapons') or child.get('abilities') or child.get('keywords') or child.get('stats')):
             return True
         if has_choices(child):
             return True
@@ -883,8 +889,9 @@ def weapon_record(profile, kind):
     chars = characteristics(profile)
     name = re.sub(r'^[➤>\s]+', '', profile.get('name', '')).strip()
     keywords = chars.get('Keywords') or ''
-    abilities = [k.strip() for k in keywords.split(',') if k.strip() and k.strip() not in ('-', '–')]
-    skill = _plus(chars.get('BS') if kind == 'ranged' else chars.get('WS'))
+    abilities = [KEYWORD_SPELLINGS.get(k.strip().lower(), k.strip())
+                 for k in keywords.split(',') if k.strip() and k.strip() not in ('-', '–')]
+    skill =_plus(chars.get('BS') if kind == 'ranged' else chars.get('WS'))
     record = {
         'bsdata_id': profile['id'],
         'name': name,
@@ -980,6 +987,14 @@ def build_unit(entry, faction_cat, report, known_keywords):
                 if capacity:
                     seen_abilities.add('Transport')
                     ability_lines.append(f'Transport: {capacity}')
+            elif profile.get('typeName') not in OWN_PROFILE_TYPES and profile['name'] not in seen_abilities:
+                # A faction's own kind of ability, e.g. a Raider's "Vanguard of the Dark City" choices (issue #23)
+                text = ability_text(profile)
+                if text:
+                    seen_abilities.add(profile['name'])
+                    ability_lines.append(f'{profile["name"]} ({profile["typeName"]}): {text}')
+        if source.kind == 'upgrade' and any(p.get('typeName') in WEAPON_TYPES for p in profiles(source, report)):
+            continue  # A weapon's rules (Pistol, Devastating Wounds) are its keywords, not the unit's (issue #21)
         for rule in rule_links(source, source_sel, sel, faction_cat):
             if rule not in rules:
                 rules.append(rule)
@@ -1449,7 +1464,7 @@ def detachments(cat, members, catalogues, report):
             if group.kind != 'group':
                 continue
             for option in group.children(report):
-                if option.kind == 'group' or option.id in seen:
+                if option.kind == 'group' or option.id in seen or _hidden_for_catalogue(option, cat):
                     continue
                 seen.add(option.id)
                 rules = [_rule_text(r) for r in option.merged('rules') if not r.get('hidden')]
@@ -1467,6 +1482,29 @@ def detachments(cat, members, catalogues, report):
                               'dispositions': [c for c in categories if c in FORCE_DISPOSITIONS],
                               'tags': [c for c in categories if c not in FORCE_DISPOSITIONS]})
     return found
+
+
+def _hidden_for_catalogue(entry, cat):
+    """
+    True if BSData hides the entry in an army of this catalogue: a "hidden" modifier whose conditions
+    all ask which catalogue the army is (scope primary-catalogue), and hold. The Aeldari Library's
+    detachments are each hidden unless, or if, the army is Drukhari (issue #20).
+    """
+    def conditions(tree):
+        found = list(tree.get('conditions', [])) + [{}] * len(tree.get('localConditionGroups', []))  # {}: not ours
+        for group in tree.get('conditionGroups', []):
+            found += conditions(group)
+        return found
+
+    for modifier in entry.merged('modifiers'):
+        if modifier.get('field') != 'hidden' or str(modifier.get('value')).lower() != 'true':
+            continue
+        checks = conditions(modifier)
+        if (checks and all(c.get('scope') == 'primary-catalogue' and c.get('type') in ('instanceOf', 'notInstanceOf')
+                        for c in checks)
+                and _conditions_hold(modifier, None, None, cat)):
+            return True
+    return False
 
 
 def _check_leaders(data, faction_id, faction, report):

@@ -13,7 +13,7 @@ from combat_sim.bsdata import BSDataError, _leader_targets, import_folder, parse
 
 FIXTURES = Path(__file__).resolve().parent / 'fixtures' / 'bsdata'
 KNOWN = ['Pistol', 'Rapid Fire', 'Hazardous', 'Heavy', 'Anti', 'Lethal Hits', 'Sustained Hits', 'Torrent',
-         'Ignores Cover', 'Assault']
+         'Ignores Cover', 'Assault', 'Twin-Linked']
 
 
 @pytest.fixture(scope='module')
@@ -131,6 +131,25 @@ def test_feel_no_pain_from_core_rule_link_and_legends_flag(result):
     assert u['feel_no_pain'] == 6
     assert u['legends'] is True
     assert 'Deep Strike' in u['abilities']
+
+
+def test_a_weapons_rules_are_not_the_units_abilities(result):
+    # Issue #21: the Laser pistol links the Pistol rule; that is its keyword, not the sergeant's ability
+    u = unit(result, 'Void Warriors')
+    lines = u['abilities'].split('\n\n')
+    assert 'Pistol' not in lines
+    assert 'Stealth' in lines  # The unit's own rule stays
+
+
+def test_a_factions_own_profile_types_are_abilities(result):
+    # Issue #23: like the Raider's "Vanguard of the Dark City" choices
+    assert 'Stride Protocol (Walker Protocols): This model can Advance 6".' in unit(result, 'Star Walker [Legends]')['abilities']
+
+
+def test_weapon_keywords_spelled_another_way_take_the_usual_spelling(result):
+    # Issue #24: "Twin Linked" (no hyphen) is Twin-Linked, for the hover text and the maths
+    flamer = next(w for w in result.data['ranged_weapons'] if w['name'] == 'Walker flamer')
+    assert flamer['abilities'] == ['Ignores Cover', 'Torrent', 'Twin-Linked']
 
 
 def test_stealth_and_damage_reduction_become_unit_modifiers(result):
@@ -270,7 +289,7 @@ def test_weapon_profile_fields(result):
 def test_torrent_weapon_has_no_skill_and_empty_keywords_are_dropped(result):
     flamer = next(w for w in result.data['ranged_weapons'] if w['name'] == 'Walker flamer')
     assert flamer['ballistic_skill'] is None
-    assert flamer['abilities'] == ['Ignores Cover', 'Torrent']
+    assert flamer['abilities'] == ['Ignores Cover', 'Torrent', 'Twin-Linked']
     feet = next(w for w in result.data['melee_weapons'] if w['name'] == 'Armoured feet')
     assert feet['abilities'] == []  # Keywords "-"
 
@@ -375,7 +394,8 @@ def test_catalogue_from_another_game_system(scratch):
 def test_detachments_of_the_faction_but_not_of_allies(result):
     star = faction(result, 'Starfarers')['id']
     names = {d['name']: d for d in result.data['detachments'] if d['faction_id'] == star}
-    assert sorted(names) == ['Star Armada', 'Star Bastion', 'Star Citadel', 'Void Vanguard']  # Not "Allied Task Force"
+    # Not "Allied Task Force", nor "Exile Host" (BSData hides it in a Starfarers army, issue #20)
+    assert sorted(names) == ['Star Armada', 'Star Bastion', 'Star Citadel', 'Void Vanguard']
     assert names['Void Vanguard']['bsdata_id'] == 'd-vanguard'
     # Detachment Points, and categories split into force dispositions and Unique Tags ("3DP Detachment" is neither)
     assert (names['Void Vanguard']['dp'], names['Void Vanguard']['dispositions'], names['Void Vanguard']['tags']) == \

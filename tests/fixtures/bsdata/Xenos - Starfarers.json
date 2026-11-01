@@ -99,6 +99,15 @@
       "type": "max",
       "value": 1
      }
+    ],
+    "infoLinks": [
+     {
+      "name": "Pistol",
+      "id": "il-laser-pistol",
+      "hidden": false,
+      "targetId": "r-pistol",
+      "type": "rule"
+     }
     ]
    },
    {
@@ -1113,6 +1122,19 @@
         "typeId": "nr-base-size"
        }
       ]
+     },
+     {
+      "name": "Stride Protocol",
+      "id": "p-walker-stride",
+      "hidden": false,
+      "typeId": "pt-protocols",
+      "typeName": "Walker Protocols",
+      "characteristics": [
+       {
+        "name": "Description",
+        "$text": "This model can Advance 6\"."
+       }
+      ]
      }
     ],
     "infoLinks": [
@@ -1185,7 +1207,7 @@
          },
          {
           "name": "Keywords",
-          "$text": "Ignores Cover, Torrent"
+          "$text": "Ignores Cover, Torrent, Twin Linked"
          }
         ]
        }
@@ -1460,6 +1482,44 @@
         ]
        }
       ]
+     },
+     {
+      "name": "Pack Icon",
+      "id": "e-pack-icon",
+      "hidden": false,
+      "type": "upgrade",
+      "profiles": [
+       {
+        "name": "Pack Icon",
+        "id": "a-pack-icon",
+        "hidden": false,
+        "typeId": "pt-abil",
+        "typeName": "Abilities",
+        "characteristics": [
+         {
+          "name": "Description",
+          "$text": "Add 1 to Charge rolls made for the bearer's unit."
+         }
+        ]
+       }
+      ],
+      "constraints": [
+       {
+        "id": "c-33",
+        "field": "selections",
+        "scope": "parent",
+        "shared": true,
+        "type": "max",
+        "value": 1
+       }
+      ],
+      "costs": [
+       {
+        "name": "pts",
+        "typeId": "51b2-306e-1021-d207",
+        "value": 0
+       }
+      ]
      }
     ],
     "selectionEntryGroups": [
@@ -1469,7 +1529,7 @@
       "hidden": false,
       "constraints": [
        {
-        "id": "c-33",
+        "id": "c-34",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -1477,7 +1537,7 @@
         "value": 3
        },
        {
-        "id": "c-34",
+        "id": "c-35",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -1539,7 +1599,7 @@
           ],
           "constraints": [
            {
-            "id": "c-35",
+            "id": "c-36",
             "field": "selections",
             "scope": "parent",
             "shared": true,
@@ -1547,7 +1607,7 @@
             "value": 1
            },
            {
-            "id": "c-36",
+            "id": "c-37",
             "field": "selections",
             "scope": "parent",
             "shared": true,
@@ -1781,7 +1841,7 @@
       "hidden": false,
       "constraints": [
        {
-        "id": "c-37",
+        "id": "c-38",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -1877,7 +1937,7 @@
       "hidden": false,
       "constraints": [
        {
-        "id": "c-38",
+        "id": "c-39",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -1885,7 +1945,7 @@
         "value": 2
        },
        {
-        "id": "c-39",
+        "id": "c-40",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -1901,7 +1961,7 @@
         "type": "model",
         "constraints": [
          {
-          "id": "c-40",
+          "id": "c-41",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -1956,7 +2016,7 @@
           ],
           "constraints": [
            {
-            "id": "c-41",
+            "id": "c-42",
             "field": "selections",
             "scope": "parent",
             "shared": true,
@@ -1964,7 +2024,7 @@
             "value": 1
            },
            {
-            "id": "c-42",
+            "id": "c-43",
             "field": "selections",
             "scope": "parent",
             "shared": true,
@@ -1996,7 +2056,7 @@
       "hidden": false,
       "constraints": [
        {
-        "id": "c-54",
+        "id": "c-55",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -2004,7 +2064,7 @@
         "value": 1
        },
        {
-        "id": "c-55",
+        "id": "c-56",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -2021,7 +2081,7 @@
         "profiles": [],
         "constraints": [
          {
-          "id": "c-56",
+          "id": "c-57",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -2056,6 +2116,23 @@
           "primary": false,
           "targetId": "k-cat-purge-the-foe"
          }
+        ],
+        "modifiers": [
+         {
+          "field": "hidden",
+          "type": "set",
+          "value": true,
+          "conditions": [
+           {
+            "childId": "cat-star",
+            "field": "selections",
+            "scope": "primary-catalogue",
+            "shared": true,
+            "type": "notInstanceOf",
+            "value": 1
+           }
+          ]
+         }
         ]
        },
        {
@@ -2066,7 +2143,7 @@
         "profiles": [],
         "constraints": [
          {
-          "id": "c-57",
+          "id": "c-58",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -2117,7 +2194,7 @@
         "profiles": [],
         "constraints": [
          {
-          "id": "c-58",
+          "id": "c-59",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -2168,7 +2245,7 @@
         "profiles": [],
         "constraints": [
          {
-          "id": "c-59",
+          "id": "c-60",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -2208,6 +2285,68 @@
           "id": "cl-k-cat-3dp-detachment",
           "primary": false,
           "targetId": "k-cat-3dp-detachment"
+         }
+        ]
+       },
+       {
+        "name": "Exile Host",
+        "id": "d-exiles",
+        "hidden": false,
+        "type": "upgrade",
+        "profiles": [],
+        "constraints": [
+         {
+          "id": "c-61",
+          "field": "selections",
+          "scope": "parent",
+          "shared": true,
+          "type": "max",
+          "value": 1
+         }
+        ],
+        "costs": [
+         {
+          "name": "pts",
+          "typeId": "51b2-306e-1021-d207",
+          "value": 0
+         },
+         {
+          "name": "Detachment Points",
+          "typeId": "82ae-1066-5107-6ae0",
+          "value": 1
+         }
+        ],
+        "rules": [
+         {
+          "name": "Cast Out",
+          "id": "d-exiles-rule",
+          "hidden": false,
+          "description": "Only for armies that are not Starfarers."
+         }
+        ],
+        "categoryLinks": [
+         {
+          "name": "Disruption",
+          "id": "cl-k-cat-disruption",
+          "primary": false,
+          "targetId": "k-cat-disruption"
+         }
+        ],
+        "modifiers": [
+         {
+          "field": "hidden",
+          "type": "set",
+          "value": true,
+          "conditions": [
+           {
+            "childId": "cat-star",
+            "field": "selections",
+            "scope": "primary-catalogue",
+            "shared": true,
+            "type": "instanceOf",
+            "value": 1
+           }
+          ]
          }
         ]
        }
@@ -2613,7 +2752,7 @@
       "type": "model",
       "constraints": [
        {
-        "id": "c-43",
+        "id": "c-44",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -2621,7 +2760,7 @@
         "value": 3
        },
        {
-        "id": "c-44",
+        "id": "c-45",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -2676,7 +2815,7 @@
         ],
         "constraints": [
          {
-          "id": "c-45",
+          "id": "c-46",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -2684,7 +2823,7 @@
           "value": 1
          },
          {
-          "id": "c-46",
+          "id": "c-47",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -2702,7 +2841,7 @@
         "hidden": false,
         "constraints": [
          {
-          "id": "c-47",
+          "id": "c-48",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -2710,7 +2849,7 @@
           "value": 1
          },
          {
-          "id": "c-48",
+          "id": "c-49",
           "field": "selections",
           "scope": "parent",
           "shared": true,
@@ -2770,7 +2909,7 @@
           ],
           "constraints": [
            {
-            "id": "c-49",
+            "id": "c-50",
             "field": "selections",
             "scope": "unit",
             "shared": true,
@@ -2900,7 +3039,7 @@
       ],
       "constraints": [
        {
-        "id": "c-50",
+        "id": "c-51",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -2908,7 +3047,7 @@
         "value": 1
        },
        {
-        "id": "c-51",
+        "id": "c-52",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -2925,7 +3064,7 @@
       "hidden": false,
       "constraints": [
        {
-        "id": "c-52",
+        "id": "c-53",
         "field": "selections",
         "scope": "parent",
         "shared": true,
@@ -2933,7 +3072,7 @@
         "value": 1
        },
        {
-        "id": "c-53",
+        "id": "c-54",
         "field": "selections",
         "scope": "parent",
         "shared": true,

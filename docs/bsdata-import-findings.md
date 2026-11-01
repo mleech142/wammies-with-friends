@@ -37,7 +37,7 @@ How the app handles it: the importer tidies the spacing (`tidy_text`) but keeps 
 
 - 12 detachments have no rule text in BSData (their rule is probably written elsewhere, e.g. as a modifier); they are still listed.
 - Titanicus Traitoris, Adeptus Titanicus and Unaligned Forces have no detachments.
-- Detachments are taken from the faction's own catalogue and those it takes units from; Agents of the Imperium detachments no longer appear in every Imperium army, and Chaos Daemons' only in Chaos Daemons. Factions can still list detachments BSData hides with conditions (e.g. Aeldari and Drukhari both list all 24 shared ones).
+- Detachments are taken from the faction's own catalogue and those it takes units from; Agents of the Imperium detachments no longer appear in every Imperium army, and Chaos Daemons' only in Chaos Daemons. Detachments BSData hides by the army's catalogue ("primary-catalogue" conditions) are left out of the factions they're hidden in: Aeldari and Drukhari split the Aeldari Library's 24 (15 and 9), and each Space Marine chapter gets the core detachments and its own (issue #20).
 
 ## Unknown weapon keywords (top)
 
@@ -46,10 +46,9 @@ How the app handles it: the importer tidies the spacing (`tidy_text`) but keeps 
 | 48 | Conversion |
 | 37 + 25 + 24 + 24 + 12 + … | Conditional keywords: "Devastating Wounds: non-Monster/Vehicle", "Lethal Hits: non-Monster/Vehicle", "Sustained Hits 2: non-Monster/Vehicles", "Devastating Wounds: INFANTRY", "Devastating Wounds: PSYKER", in varying capitals |
 | 24 | Defensive Array |
-| 4 | Twin Linked (no hyphen) |
 | 2 each | Reverberating Summons, Impaled |
 
-The conditional form "Keyword: target keywords" is the big one. Supporting it in `resolve()` (the keyword applies only if the target has, or lacks, the listed keywords) would clear most of the list; "Twin Linked" just needs normalising.
+The conditional form "Keyword: target keywords" is the big one. Supporting it in `resolve()` (the keyword applies only if the target has, or lacks, the listed keywords) would clear most of the list. "Twin Linked" (no hyphen, 18 in the Aeldari Library) is now read as Twin-Linked (`bsdata.KEYWORD_SPELLINGS`, issue #24).
 
 ## Leader targets most often unmatched
 

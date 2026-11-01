@@ -68,6 +68,10 @@
    {
     "name": "Abilities",
     "id": "pt-abil"
+   },
+   {
+    "name": "Walker Protocols",
+    "id": "pt-protocols"
    }
   ],
   "sharedRules": [
@@ -90,6 +94,11 @@
     "name": "Deep Strike",
     "id": "r-ds",
     "description": "Deep Strike"
+   },
+   {
+    "name": "Pistol",
+    "id": "r-pistol",
+    "description": "Pistol"
    }
   ],
   "categoryEntries": [

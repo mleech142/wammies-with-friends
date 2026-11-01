@@ -37,6 +37,7 @@ def test_only_units_with_choices_keep_a_tree(imported):
     assert unit(imported, 'Void Warriors')['wargear'] is not None
     assert unit(imported, 'Star Captain')['wargear'] is not None  # An optional pistol
     assert unit(imported, 'Scout Drone')['wargear'] is None  # Nothing to choose
+    assert unit(imported, 'Beast Pack')['wargear'] is not None  # An optional icon with an ability (issue #19)
 
 
 def test_defaults_match_the_importers_points_and_loadout(imported):

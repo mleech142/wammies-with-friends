@@ -12,6 +12,7 @@ OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().paren
 GS = 'gs-test'
 PTS = '51b2-306e-1021-d207'
 UNIT_T, RANGED_T, MELEE_T, ABIL_T = 'pt-unit', 'pt-ranged', 'pt-melee', 'pt-abil'
+PROTOCOL_T = 'pt-protocols'  # A faction's own kind of ability, like the Raider's "Vanguard of the Dark City"
 DP = '82ae-1066-5107-6ae0'  # The game system's "Detachment Points" cost type
 ENH = 'f759-1bc4-cb3a-f0d2'  # The game system's "Enhancements" cost type
 # The Unit profile's characteristics: options change them by these IDs (a shield's +1 W)
@@ -116,9 +117,11 @@ write('Test System', {'gameSystem': {
                   {'name': 'Detachment Points', 'id': DP, 'defaultCostLimit': -1},
                   {'name': 'Enhancements', 'id': ENH, 'defaultCostLimit': -1}],
     'profileTypes': [{'name': n, 'id': i} | ({'characteristicTypes': UNIT_STATS} if i == UNIT_T else {}) for n, i in
-                     [('Unit', UNIT_T), ('Ranged Weapons', RANGED_T), ('Melee Weapons', MELEE_T), ('Abilities', ABIL_T)]],
+                     [('Unit', UNIT_T), ('Ranged Weapons', RANGED_T), ('Melee Weapons', MELEE_T), ('Abilities', ABIL_T),
+                      ('Walker Protocols', PROTOCOL_T)]],
     'sharedRules': [{'name': n, 'id': i, 'description': n} for n, i in
-                    [('Feel No Pain', 'r-fnp'), ('Stealth', 'r-stealth'), ('Leader', 'r-leader'), ('Deep Strike', 'r-ds')]],
+                    [('Feel No Pain', 'r-fnp'), ('Stealth', 'r-stealth'), ('Leader', 'r-leader'), ('Deep Strike', 'r-ds'),
+                     ('Pistol', 'r-pistol')]],
     'categoryEntries': [{'name': n, 'id': i} for n, i in
                         [('Infantry', 'k-inf'), ('Vehicle', 'k-veh'), ('Character', 'k-char'), ('Battleline', 'k-bl'),
                          ('Epic Hero', 'k-epic'), ('Support', 'k-support'), ('Sun God', 'k-god-sun'),
@@ -128,7 +131,8 @@ write('Test System', {'gameSystem': {
 # --- Starfarers: the faction under test ----------------------------------------
 
 laser_pistol = upgrade('e-laser-pistol', 'Laser pistol', constraints=cons(1, 1), profiles=[
-    weapon('p-laser-pistol', 'Laser pistol', 'ranged', '12"', '1', '3+', '4', '-1', '1', 'Pistol')])
+    weapon('p-laser-pistol', 'Laser pistol', 'ranged', '12"', '1', '3+', '4', '-1', '1', 'Pistol')],
+    infoLinks=[rule_link('il-laser-pistol', 'Pistol', 'r-pistol')])  # The weapon's rule, not the unit's (issue #21)
 laser_rifle = upgrade('e-laser-rifle', 'Laser rifle', constraints=cons(1, 1), profiles=[
     weapon('p-rifle-std', '➤ Laser rifle - standard', 'ranged', '24"', '2', '3+', '4', '0', '1', 'Rapid Fire 1'),
     weapon('p-rifle-over', '➤ Laser rifle - overcharge', 'ranged', '24"', '2', '3+', '7', '-2', '2', 'Hazardous')])
@@ -287,13 +291,15 @@ star_captain = {
 star_walker = {
     'name': 'Star Walker [Legends]', 'id': 'u-walker', 'hidden': False, 'type': 'model',
     'categoryLinks': [cat_link('k-faction-star', 'Faction: Starfarers'), cat_link('k-veh', 'Vehicle')],
-    'profiles': [unit_profile('p-walker', 'Star Walker', '8"', '9', '3+', '10', '7+', '3', base='Hull')],
+    'profiles': [unit_profile('p-walker', 'Star Walker', '8"', '9', '3+', '10', '7+', '3', base='Hull'),
+                 {'name': 'Stride Protocol', 'id': 'p-walker-stride', 'hidden': False, 'typeId': PROTOCOL_T,
+                  'typeName': 'Walker Protocols', 'characteristics': [{'name': 'Description', '$text': 'This model can Advance 6".'}]}],
     'infoLinks': [rule_link('il-walker-fnp', 'Feel No Pain', 'r-fnp', append='6+'),
                   rule_link('il-walker-ds', 'Deep Strike', 'r-ds')],
     'costs': pts(120),
     'selectionEntries': [
         upgrade('e-flamer', 'Walker flamer', constraints=cons(1, 1), profiles=[
-            weapon('p-flamer', 'Walker flamer', 'ranged', '12"', 'D6', 'N/A', '5', '-1', '1', 'Ignores Cover, Torrent')]),
+            weapon('p-flamer', 'Walker flamer', 'ranged', '12"', 'D6', 'N/A', '5', '-1', '1', 'Ignores Cover, Torrent, Twin Linked')]),
         upgrade('e-vortex', 'Vortex charge', constraints=cons(1, 1), profiles=[
             weapon('p-vortex', 'Vortex charge', 'ranged', '6"', '1', '2+', '*', '*', '*', None)]),
         upgrade('e-feet', 'Armoured feet', constraints=cons(1, 1), profiles=[
@@ -312,6 +318,9 @@ beast_pack = {
         model('m-beastmaster', 'Beast Master', constraints=cons(1, 1),
               profiles=[unit_profile('p-beastmaster', 'Beast Master', '6"', '3', '5+', '1', '7+', '1', base='32mm')],
               links=[link('l-bm-ccw', 'Close combat weapon', 'e-ccw')]),
+        # Optional, with only an ability, like a Daemon unit's Instrument of Chaos (issue #19)
+        upgrade('e-pack-icon', 'Pack Icon', constraints=cons(None, 1), costs=0,
+                profiles=[ability('a-pack-icon', 'Pack Icon', "Add 1 to Charge rolls made for the bearer's unit.")]),
     ],
     'selectionEntryGroups': [group('g-beasts', 'Beasts', constraints=cons(3, 3), default='m-beast', children=[
         model('m-beast', 'Beast', profiles=[unit_profile('p-beast', 'Beast', '10"', '5', '6+', '2', '8+', '0', base='75x42mm Oval')],
@@ -412,7 +421,20 @@ star_detachments = detachment_entry('e-star-det', 'g-star-det', [
     ('d-citadel', 'Star Citadel', 'Walls', 'Units in cover get +1 to their saves.', 1, 'Take and Hold',
      'Fortress Detachment'),  # Shares a Unique Tag with Star Bastion: never both
     ('d-armada', 'Star Armada', 'Fleet', 'The whole fleet strikes.', 3, 'Priority Assets', '3DP Detachment'),
+    ('d-exiles', 'Exile Host', 'Cast Out', 'Only for armies that are not Starfarers.', 1, 'Disruption'),
 ])
+
+
+def hidden_by_catalogue(test, catalogue):
+    """BSData's "hidden if the army's catalogue is (instanceOf) / isn't (notInstanceOf) this one" (issue #20)."""
+    return [{'field': 'hidden', 'type': 'set', 'value': True, 'conditions': [
+        {'childId': catalogue, 'field': 'selections', 'scope': 'primary-catalogue', 'shared': True, 'type': test, 'value': 1}]}]
+
+
+# Like the Aeldari Library's detachments: each hidden in the armies it isn't for
+_det_options = {o['id']: o for o in star_detachments['selectionEntryGroups'][0]['selectionEntries']}
+_det_options['d-vanguard']['modifiers'] = hidden_by_catalogue('notInstanceOf', 'cat-star')  # Shown for Starfarers
+_det_options['d-exiles']['modifiers'] = hidden_by_catalogue('instanceOf', 'cat-star')  # Hidden for Starfarers
 
 write('Xenos - Starfarers', {'catalogue': {
     'name': 'Xenos - Starfarers', 'id': 'cat-star', 'battleScribeVersion': 2.03, 'revision': 3,
