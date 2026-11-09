@@ -285,6 +285,7 @@ def test_the_shipped_compose_file_is_safe_as_it_stands():
     assert '"127.0.0.1:5000:5000"' in compose  # this computer only
     assert 'COMBAT_SIM_SECURE_COOKIES: "1"' in compose
     assert 'COMBAT_SIM_BEHIND_PROXY: "1"' in compose  # the throttle tells visitors apart behind Docker
+    assert 'max-size: "10m"' in compose  # its log doesn't grow forever
 
 
 # --- Analytics -------------------------------------------------------------------------------
@@ -315,3 +316,81 @@ def test_reverse_durability_uses_my_own_target_rules(make_client, monkeypatch):
         return client.post('/api/matrix/simulate', json=request).get_json()['analysis']['reverse']['rows'][0]['total']
 
     assert reverse(attacker_rules={'rule_ids': [1]}) < reverse()  # Hold the Line: my Guardsmen are tougher
+
+
+# --- The November 2026 review of the copy on its own server -------------------------------------------------------
+
+from combat_sim import simulation  # noqa: E402
+from combat_sim.app import MAX_REQUEST_BYTES  # noqa: E402
+
+BOLTER = {'name': 'Bolter', 'type': 'ranged', 'attacks': '2', 'skill': 3, 'strength': 4, 'ap': 0, 'damage': '1',
+          'abilities': []}
+
+
+def simulate_request(models=10, model_count=10, iterations=1000, method='monte_carlo'):
+    return {'attacker': {'weapons': [dict(BOLTER, models=models)]},
+            'defender': {'toughness': 4, 'save': 3, 'wounds': 2, 'model_count': model_count, 'keywords': []},
+            'conditions': {}, 'method': method, 'iterations': iterations}
+
+
+def test_a_huge_request_is_refused_before_it_is_read(hosted):
+    """Anyone can reach the login form: a request too big to be a login is refused unread, as JSON."""
+    client, _ = hosted
+    answer = client.post('/api/auth/login', data=b'{' + b' ' * MAX_REQUEST_BYTES + b'}',
+                         content_type='application/json')
+    assert answer.status_code == 413
+    assert 'error' in answer.get_json()
+
+
+def test_no_other_site_can_show_the_pages_in_a_frame(hosted):
+    client, _ = hosted
+    headers = client.get('/welcome').headers
+    assert headers['X-Frame-Options'] == 'DENY'
+    assert "frame-ancestors 'none'" in headers['Content-Security-Policy']
+    assert headers['X-Content-Type-Options'] == 'nosniff'
+    assert headers['Referrer-Policy'] == 'same-origin'
+
+
+def test_bad_input_to_any_api_is_a_400_saying_what_was_wrong(make_client):
+    client, _ = make_client(APP_DATA)
+    body = simulate_request(method='analytical')
+    body['defender']['toughness'] = 'tough'
+    answer = client.post('/api/simulate', json=body)
+    assert answer.status_code == 400
+    assert 'tough' in answer.get_json()['error']
+    del body['defender']['toughness']
+    assert "'toughness' is missing" in client.post('/api/simulate', json=body).get_json()['error']
+
+
+def test_api_errors_stay_json(make_client):
+    client, _ = make_client(APP_DATA)
+    answer = client.get('/api/no-such-thing')
+    assert answer.status_code == 404 and 'error' in answer.get_json()
+    assert client.get('/no-such-page').status_code == 404  # pages keep their own error page
+
+
+def test_model_counts_stop_at_the_pages_largest(make_client):
+    """A made-up model count can't make Monte Carlo roll for a billion models."""
+    client, _ = make_client(APP_DATA)
+    result = client.post('/api/simulate', json=simulate_request(models=10**9, model_count=10**9, iterations=100)).get_json()
+    assert result['weapons'][0]['models'] == 99
+
+
+def test_monte_carlo_runs_fewer_trials_when_the_attacks_would_hold_the_app_up(make_client):
+    client, _ = make_client(APP_DATA)
+    asked = client.post('/api/simulate', json=simulate_request(models=10, iterations=1000)).get_json()
+    assert asked['iterations'] == 1000  # an ordinary run is untouched
+    big = client.post('/api/simulate', json=simulate_request(models=99, iterations=100000)).get_json()
+    assert big['iterations'] * 99 * 2 <= simulation.ROLL_BUDGET  # 99 models with 2 attacks each
+    assert big['iterations'] >= simulation.MIN_TRIALS
+
+
+def test_the_trial_budget():
+    rifle = simulation.AttackerProfile(attacks='2', skill=3, strength=4, ap=0, damage='1', abilities=[], models=10)
+    target = simulation.DefenderProfile(toughness=4, save=3, wounds=1, model_count=10)
+    conditions = simulation.BattleConditions()
+    assert simulation.affordable_trials(500, [rifle], [target], conditions, 10000) == 500
+    assert simulation.affordable_trials(10**6, [rifle], [target], conditions, 10000) == 10000  # the route's own cap
+    assert simulation.affordable_trials(-5, [rifle], [target], conditions, 10000) == 1
+    assert simulation.affordable_trials(10000, [rifle] * 100, [target] * 100, conditions, 100000) == \
+        simulation.ROLL_BUDGET // 2000  # 100 weapons x 20 attacks a trial

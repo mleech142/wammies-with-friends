@@ -84,7 +84,8 @@ def main(argv=None):
         app.run(host=host, port=port, debug=True, use_reloader=False)
     else:
         from waitress import serve
-        serve(app, host=host, port=port, threads=8)
+        from combat_sim.app import MAX_REQUEST_BYTES
+        serve(app, host=host, port=port, threads=8, max_request_body_size=MAX_REQUEST_BYTES)
     return 0
 
 

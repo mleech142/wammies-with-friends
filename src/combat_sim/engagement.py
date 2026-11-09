@@ -164,6 +164,14 @@ def unit_stats(unit, changes=None):
     return stats
 
 
+MAX_MODELS = 99  # Most models a request can name (the pages' number boxes stop there): Monte Carlo rolls for each one
+
+
+def clamp_models(value):
+    """A model count from a request: 1 to MAX_MODELS."""
+    return max(1, min(MAX_MODELS, int(value or 1)))
+
+
 def weapon_attack(weapon_type, weapon_id, models=1, modifiers=()):
     """(the library weapon, its AttackerProfile with `modifiers`), or (None, None) if it no longer exists."""
     model = RangedWeapon if weapon_type == 'ranged' else MeleeWeapon
@@ -174,7 +182,7 @@ def weapon_attack(weapon_type, weapon_id, models=1, modifiers=()):
     return weapon, AttackerProfile(attacks=weapon.attacks, skill=skill, strength=weapon.strength,
                                    ap=weapon.armor_penetration, damage=weapon.damage,
                                    abilities=list(weapon.abilities or []) + list(modifiers),
-                                   models=max(1, int(models or 1)), weapon_type=weapon_type)
+                                   models=clamp_models(models), weapon_type=weapon_type)
 
 
 def unit_target(unit, model_count, modifiers=(), changes=None):
@@ -182,7 +190,7 @@ def unit_target(unit, model_count, modifiers=(), changes=None):
     stats = unit_stats(unit, changes)
     return DefenderProfile(toughness=stats['toughness'], save=stats['save'], wounds=stats['wounds'],
                            invulnerable_save=stats['invulnerable_save'], feel_no_pain=stats['feel_no_pain'],
-                           keywords=unit.target_keywords + list(modifiers), model_count=model_count)
+                           keywords=unit.target_keywords + list(modifiers), model_count=clamp_models(model_count))
 
 
 def leader_target(leader, modifiers=(), changes=None):

@@ -14,6 +14,7 @@ import re
 import uuid
 
 from flask import Response, current_app, jsonify, render_template, request
+from sqlalchemy.orm import defer
 
 from .. import __version__, access, armies, mail
 from ..access import host_only
@@ -202,7 +203,9 @@ def register_play_routes(app):
 
     @app.route('/api/play/games')
     def api_list_games():
-        games = access.listed(SavedGame, SavedGame.query.order_by(SavedGame.updated_at.desc(), SavedGame.id.desc()))
+        # Without each game's moves and battlefield, the bulk of a saved game, which the list doesn't show
+        query = SavedGame.query.options(defer(SavedGame.events), defer(SavedGame.battlefield))
+        games = access.listed(SavedGame, query.order_by(SavedGame.updated_at.desc(), SavedGame.id.desc()))
         return jsonify([{'id': g.id, 'name': g.name, 'players': [a['name'] if a else 'joining online' for a in g.armies],
                          'seat': connect(g).seat(), 'connection': kind_of(g),
                          'updated_at': (g.updated_at or g.created_at).isoformat()} for g in games])

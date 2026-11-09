@@ -158,6 +158,10 @@ In rough priority order:
 2. **Move the Data page script out of the template.** `data.html` is about 1,350 lines, most of it inline JavaScript; a `static/js/data.js` would match the other pages and make it testable.
 3. **Add a browser smoke test** (e.g. Playwright) for the main flows once a headless browser is reliably available; the Edge-based harnesses used during development were not kept.
 4. **Split `style.css`** (about 2,700 lines) per page or component.
+5. **Split `play/game.py` into a package behind the same interface** (about 3,900 lines; November 2026 review). Its four calls (`new_game`, `resolve_action`, `apply_event`, `replay`) are a deep interface; the sections inside (setup, movement, shooting, reactions, charges, fight, transports, reserves, terrain) would each be a module of the package. `play/session.py` uses the private `_apply` (apply an event in place, for cached states): make that part of the interface. `play/view.py` imports about 20 of the engine's names; a small "what can this unit do now" call would keep them inside.
+6. **Hosted mode makes 1 more pressing:** with routes split by area, each feature's checks (sizes, who may do it) sit with its routes.
+
+Fixed in the same review: request size limit, safety headers, JSON answers for every API error, model counts capped at 99 and a Monte Carlo roll budget (`simulation.affordable_trials`: one request's Python holds up every other request), the game list without each game's moves, and capped Docker logs and nightly backups for a self-hosted copy (`scripts/backup.sh`).
 
 ### Duplicated logic (resolved)
 

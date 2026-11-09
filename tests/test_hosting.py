@@ -100,9 +100,9 @@ def test_hosted_mode_listens_everywhere_on_the_exact_port(run_module, monkeypatc
     monkeypatch.setattr(run_module, 'pick_port', lambda *a, **k: pytest.fail('hosted mode must not pick a port'))
     monkeypatch.setattr(run_module.webbrowser, 'open', lambda url: pytest.fail('hosted mode opens no browser'))
     monkeypatch.setitem(sys.modules, 'waitress', type(sys)('waitress'))
-    sys.modules['waitress'].serve = lambda app, host, port, threads: served.update(host=host, port=port)
+    sys.modules['waitress'].serve = lambda app, host, port, threads, **options: served.update(host=host, port=port, **options)
     assert run_module.main(['--hosted', '--port', '5123']) == 0
-    assert served == {'host': '0.0.0.0', 'port': 5123}
+    assert served == {'host': '0.0.0.0', 'port': 5123, 'max_request_body_size': 16 * 1024 * 1024}  # waitress refuses bigger
 
 
 def test_the_docker_image_holds_no_game_data():

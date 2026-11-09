@@ -651,6 +651,19 @@ def _attached_result(part, damage_per, bodyguard_kills, leader_kills, leader_dam
 # Monte Carlo engine (rolls the same rolls with dice)
 # ---------------------------------------------------------------------------
 
+ROLL_BUDGET = 500_000  # Attacks one request may roll in all: the server runs one request's Python at a time
+MIN_TRIALS = 100  # Fewest trials a budgeted run comes down to
+
+
+def affordable_trials(requested, attackers, defenders, conditions, most):
+    """How many Monte Carlo trials to run: `requested` (1 to `most`), or fewer if rolling every attack of
+    `attackers` (against their `defenders`) that many times would pass ROLL_BUDGET."""
+    trials = max(1, min(most, int(requested)))
+    per_trial = sum(simulate_analytical(a, d, conditions).attacks_made for a, d in zip(attackers, defenders))
+    if per_trial * trials <= ROLL_BUDGET:
+        return trials
+    return max(min(trials, MIN_TRIALS), int(ROLL_BUDGET // per_trial))
+
 def _roll_d6(need: int, crit_on: int, reroll: str) -> tuple[bool, bool]:
     """Roll one D6 against `need` (or a critical on `crit_on`+), re-rolling failures per `reroll`."""
     roll = random.randint(1, 6)

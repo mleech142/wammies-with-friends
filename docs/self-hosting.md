@@ -71,6 +71,21 @@ Everything the app writes is in the `/data` volume: the app data JSON, the datab
 `settings.json`, `secret_key` (signs logins: keep it private), and the BSData and Wahapedia downloads. Back up that
 volume.
 
+**Backups:** [`scripts/backup.sh`](../scripts/backup.sh) saves the database (a consistent copy, taken while the app
+runs), the app data JSON, `settings.json` and `secret_key` as `/var/backups/wammies-with-friends/wammies-<date>.tar.gz`,
+keeping 14 days (`COMPOSE_DIR`, `BACKUP_DIR` and `KEEP` change where and how long). Run it nightly from root's cron:
+
+```bash
+curl -fsSL -o /usr/local/bin/wammies-backup https://raw.githubusercontent.com/mleech142/wammies-with-friends/master/scripts/backup.sh
+chmod +x /usr/local/bin/wammies-backup
+echo '30 3 * * * root /usr/local/bin/wammies-backup > /dev/null' > /etc/cron.d/wammies-backup
+```
+
+Those copies are on the same server, so copy one off it now and then (`scp root@<server>:/var/backups/wammies-with-friends/*.tar.gz .`),
+or turn on your provider's backups too. **Restoring:** `docker compose stop`, copy the files from a backup into the
+volume (`docker compose cp <file> combat-sim:/data/`, then remove `combat_sim.db-wal` and `combat_sim.db-shm` there),
+and `docker compose start`.
+
 **Updating:** `docker compose pull && docker compose up -d`. Each release publishes `:<version>` and `:latest`. As
 with the desktop builds, a newer release's shipped app data doesn't replace your copy.
 
@@ -134,4 +149,16 @@ address with nothing opened to the internet:
 The app serves plain HTTP. On a home network or Tailscale that's enough. To reach it over the internet, put a
 reverse proxy in front for HTTPS, for example [Caddy](https://caddyserver.com) (`reverse_proxy combat-sim:5000`;
 the proxy must pass the `Host` header on, as Caddy does), and set `COMBAT_SIM_SECURE_COOKIES=1`. Without HTTPS,
-passwords cross the network readable.
+passwords cross the network readable. With Caddy on the same server (it gets the HTTPS certificate itself), the whole `Caddyfile` is:
+
+```
+your.domain.example {
+    request_body {
+        max_size 20MB  # the app refuses anything over 16 MB anyway; this stops it at the door
+    }
+    header Strict-Transport-Security "max-age=31536000"  # browsers only ever use HTTPS for it
+    reverse_proxy 127.0.0.1:5000
+}
+```
+
+`compose.yaml` sets `COMBAT_SIM_BEHIND_PROXY`, so the login throttle counts each visitor's own address.

@@ -16,6 +16,10 @@ services:
       COMBAT_SIM_BEHIND_PROXY: "1"  # visitors come through that proxy: the login throttle counts the address it forwards
       # RELAY_URL: https://your-relay.example  # your own relay for online games (default: the project's)
     restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"  # the log is kept to 3 files of 10 MB, not left to grow forever
+        max-file: "3"
 
 volumes:
   combat-sim-data:

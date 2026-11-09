@@ -863,7 +863,8 @@ function displayResults(result) {
     const extra = document.getElementById('res-mc-extra');
     if (extra) {
         extra.textContent = result.summary.wipe_probability != null
-            ? `Monte Carlo (${result.iterations} runs, all weapons rolled together): ` +
+            ? `Monte Carlo (${result.iterations} runs, all weapons rolled together` +
+              `${result.iterations < state.simulation.iterations ? '; fewer than asked, as this many attacks would hold the app up' : ''}): ` +
               `${result.summary.kill_probability}% chance to kill at least one model, ${result.summary.wipe_probability}% to wipe the unit`
             : '';
     }

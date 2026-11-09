@@ -9,6 +9,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from flask import Flask, render_template, request, jsonify, redirect
 from sqlalchemy.exc import IntegrityError
+from werkzeug.exceptions import HTTPException
 from .models import (db, init_db, Proposal, Faction, Detachment, Enhancement, Unit, RangedWeapon, MeleeWeapon, FactionRule, Stratagem, Keyword, TargetProfile,
                      SavedScenario, SavedComparison, SavedArmy, unit_ranged_weapons, unit_melee_weapons)
 from . import __version__
@@ -23,13 +24,14 @@ from . import app_data_edits as edits
 from .access import desktop_only, host_only
 from .app_data_edits import WEAPON_MODELS, edit_route, text_list
 from .engagement import (afflictions, attack_modifiers, enhancement_points, leader_target, load_enhancements, load_leader,
-                         selected_rules, sources_for, stat_changes, target_modifiers, unit_target, weapon_attack)
+                         selected_rules, sources_for, stat_changes, target_modifiers, unit_target, weapon_attack,
+                         clamp_models, MAX_MODELS)
 from .accounts import register_account_routes, secret_key
 from .wargear import default_used
 from .settings import settings_path, load_settings, update_settings
 from .simulation import (
     simulate, simulate_analytical, simulate_monte_carlo_combined, simulate_attached_analytical,
-    simulate_monte_carlo_attached, keyword_name, check_keywords,
+    simulate_monte_carlo_attached, keyword_name, check_keywords, affordable_trials,
     AttackerProfile, DefenderProfile, BattleConditions
 )
 
@@ -63,6 +65,7 @@ def create_app(config=None):
     app.config['SETTINGS_JSON'] = str(settings_path(data_json))
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['MAX_CONTENT_LENGTH'] = MAX_REQUEST_BYTES  # Bigger requests are refused (413) before they're read
     # Hosted mode (docs/self-hosting.md): other people's browsers reach this copy, so what only makes sense on
     # your own computer is refused (the folder dialog, BSData folders by path, the relay's address)
     app.config['HOSTED'] = is_hosted()
@@ -72,6 +75,23 @@ def create_app(config=None):
     # New on every start. Pages tag saved page state with it, so state survives
     # switching tabs but is discarded after the app is restarted.
     app.config['BOOT_ID'] = uuid.uuid4().hex
+
+    @app.after_request
+    def safety_headers(response):
+        """No other site may show these pages in a frame (and trick a click on them), and browsers take each answer
+        as the type it says it is."""
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('Content-Security-Policy', "frame-ancestors 'none'")
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('Referrer-Policy', 'same-origin')  # join links never leave in a Referer
+        return response
+
+    @app.errorhandler(HTTPException)
+    def api_http_error(err):
+        """API answers stay JSON when they fail (not found, too large, wrong method): the pages show 'error'."""
+        if not request.path.startswith('/api/') or (err.code or 0) < 400:  # redirects stay redirects
+            return err
+        return jsonify({'error': err.description or err.name}), err.code
 
     @app.context_processor
     def inject_page_globals():
@@ -131,7 +151,8 @@ def weighted_average(values, weights):
 
 
 COVERAGE_TOUGHNESS = [3, 4, 5, 6, 8, 9, 10, 12]
-MAX_UNIT_SIZE = 99  # Largest model count the pages' number boxes allow
+MAX_UNIT_SIZE = MAX_MODELS  # Largest model count the pages' number boxes allow
+MAX_REQUEST_BYTES = 16 * 1024 * 1024  # Largest request (an app data JSON or game file is far smaller)
 COVERAGE_SAVES = [2, 3, 4, 5, 6]
 
 
@@ -310,7 +331,6 @@ def register_routes(app):
         target_rules = selected_rules(data.get('target_rules') or rules_from_keys(defender_data.get('rules')))
         conditions = conditions_from_request(data.get('conditions', {}))
         method = data.get('method', 'analytical')
-        iterations = min(int(data.get('iterations', 1000)), 100000)
 
         # One-off target modifiers for this defender (never saved to the datasheet)
         extra_modifiers = text_list(defender_data.get('extra_modifiers'))
@@ -332,7 +352,7 @@ def register_routes(app):
                 invulnerable_save=defender_data.get('invulnerable_save'),
                 feel_no_pain=defender_data.get('feel_no_pain'),
                 keywords=list(defender_data.get('keywords', [])) + extra_modifiers + list(extra_keywords),
-                model_count=int(defender_data.get('model_count', 1))
+                model_count=clamp_models(defender_data.get('model_count', 1))
             )
 
         profiles, targets, leader_targets, rows = [], [], [], []
@@ -355,7 +375,7 @@ def register_routes(app):
                 damage=str(w['damage']),
                 abilities=list(w.get('abilities', [])) + attacker_modifiers,
                 weapon_type=w_type,
-                models=max(1, int(w.get('models') or 1)),
+                models=clamp_models(w.get('models')),
             )
             target = target_profile(weapon_target_modifiers)
             profiles.append(profile)
@@ -399,6 +419,8 @@ def register_routes(app):
                            bodyguards_killed=r.bodyguards_killed, leader_killed=r.leader_killed,
                            leader_damage=r.leader_damage)
 
+        if method == 'monte_carlo':
+            iterations = affordable_trials(data.get('iterations', 1000), profiles, targets, conditions, 100000)
         if method == 'monte_carlo' and attached:
             result = simulate_monte_carlo_attached(profiles, base_target, leader_base, conditions, iterations,
                                                    bodyguard_targets=targets, leader_targets=leader_targets)
@@ -711,12 +733,15 @@ def register_routes(app):
         return jsonify({'message': 'Setup skipped'})
 
     def bad_data_request(err):
-        """A Data-tab write with a field missing or of the wrong kind: 400, not a crash."""
-        if not request.path.startswith('/api/data/'):
+        """An API request with a field missing or of the wrong kind: 400 with what was wrong, not a crash. Logged, in
+        case it was the app's own mistake."""
+        if not request.path.startswith('/api/'):
             raise err
         db.session.rollback()
-        detail = f"'{err.args[0]}' is missing" if isinstance(err, KeyError) and err.args else str(err)
-        return jsonify({'error': f'That change has a field missing or wrong: {detail}.'}), 400
+        app.logger.warning('Bad request to %s', request.path, exc_info=err)
+        detail = f"'{err.args[0]}' is missing" if isinstance(err, KeyError) and err.args else str(err)[:200]
+        what = 'That change' if request.path.startswith('/api/data/') else 'That request'
+        return jsonify({'error': f'{what} has a field missing or wrong: {detail}.'}), 400
 
     for kind in (KeyError, ValueError, TypeError):
         app.register_error_handler(kind, bad_data_request)
@@ -1417,8 +1442,7 @@ def register_routes(app):
         unit = load_defender(data)
         if unit is None:
             return jsonify({'error': 'Defender not found'}), 404
-        model_count = max(1, int(data.get('model_count') or (unit.models if isinstance(unit, TargetProfile) else 1)))
-        iterations = min(int(data.get('iterations') or 1000), 10000)
+        model_count = clamp_models(data.get('model_count') or (unit.models if isinstance(unit, TargetProfile) else 1))
         attacker_rules = selected_rules(data.get('attacker_rules'))
         defender_rules = selected_rules(data.get('defender_rules'))
         extra_modifiers = text_list(data.get('extra_modifiers')) if isinstance(unit, Unit) else []
@@ -1450,6 +1474,7 @@ def register_routes(app):
             return jsonify({'error': 'No weapons found'}), 400
 
         conditions = conditions_from_request(data.get('conditions', {}))
+        iterations = affordable_trials(data.get('iterations') or 1000, profiles, targets, conditions, 10000)
         if defender_leader is not None:  # Attached unit: bodyguard models first, then the leader
             result = simulate_monte_carlo_attached(
                 profiles, unit_target(unit, model_count, extra_modifiers, changes),
