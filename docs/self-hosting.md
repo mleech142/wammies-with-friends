@@ -103,6 +103,7 @@ Settings:
 | `COMBAT_SIM_HOSTED` | `1` for hosted mode (`--hosted` sets it). |
 | `RELAY_URL` | The relay for online games (default: the project's, [relay.md](relay.md)). |
 | `COMBAT_SIM_SECURE_COOKIES` | `1` (as `compose.yaml` sets it) to send logins only over HTTPS; browsers also allow them on `http://localhost`. Leave it out only for plain HTTP on a trusted network. |
+| `COMBAT_SIM_BEHIND_PROXY` | `1` (as `compose.yaml` sets it) when every visitor comes through one proxy on this computer (Tailscale serve, Caddy): the login throttle then counts the address the proxy forwards, so one stranger's wrong passwords don't lock everyone else out. Leave it out when people reach the app directly: they could make up that address. |
 
 ## With Tailscale (recommended)
 

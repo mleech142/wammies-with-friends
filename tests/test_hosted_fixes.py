@@ -108,6 +108,40 @@ def test_wrong_passwords_from_one_device_dont_lock_out_another(host):
                         headers={'X-Forwarded-For': '100.64.0.5'}).status_code == 200
 
 
+def lock_out(client, environ, forwarded):
+    for _ in range(accounts.LOGIN_TRIES):
+        client.post('/api/auth/login', json={'name': 'Hosty', 'password': 'nope-nope'},
+                    environ_base=environ, headers={'X-Forwarded-For': forwarded})
+
+
+def log_in_as_host(client, environ, forwarded):
+    return client.post('/api/auth/login', json={'name': 'Hosty', 'password': HOST['password']},
+                       environ_base=environ, headers={'X-Forwarded-For': forwarded}).status_code
+
+
+def test_behind_docker_the_forwarded_address_tells_visitors_apart(host):
+    """In Docker the proxy arrives from Docker's network, not 127.0.0.1: everyone would be one device."""
+    host.application.config['BEHIND_PROXY'] = True
+    docker = {'REMOTE_ADDR': '172.18.0.1'}
+    lock_out(host.application.test_client(), docker, '203.0.113.7')
+    assert log_in_as_host(host.application.test_client(), docker, '203.0.113.7') == 429
+    assert log_in_as_host(host.application.test_client(), docker, '198.51.100.2') == 200
+
+
+def test_a_made_up_forwarded_address_doesnt_dodge_the_throttle(host):
+    """The proxy adds the visitor's address last; anything before it is the visitor's own and can be made up."""
+    local = {'REMOTE_ADDR': '127.0.0.1'}
+    lock_out(host.application.test_client(), local, '1.1.1.1, 203.0.113.7')
+    assert log_in_as_host(host.application.test_client(), local, '9.9.9.9, 203.0.113.7') == 429
+
+
+def test_without_a_proxy_a_forwarded_address_is_ignored(host):
+    """Not behind a proxy, a visitor's own X-Forwarded-For says nothing about who they are."""
+    lan = {'REMOTE_ADDR': '10.0.0.9'}
+    lock_out(host.application.test_client(), lan, '203.0.113.7')
+    assert log_in_as_host(host.application.test_client(), lan, '198.51.100.2') == 429
+
+
 def test_look_alike_paths_arent_open(host):
     stranger = host.application.test_client()
     assert stranger.get('/loginx').status_code == 302  # to the login page, not a 404 left open
@@ -250,6 +284,7 @@ def test_the_shipped_compose_file_is_safe_as_it_stands():
     compose = (ROOT / 'compose.yaml').read_text(encoding='utf-8')
     assert '"127.0.0.1:5000:5000"' in compose  # this computer only
     assert 'COMBAT_SIM_SECURE_COOKIES: "1"' in compose
+    assert 'COMBAT_SIM_BEHIND_PROXY: "1"' in compose  # the throttle tells visitors apart behind Docker
 
 
 # --- Analytics -------------------------------------------------------------------------------

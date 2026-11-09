@@ -13,6 +13,7 @@ services:
       - combat-sim-data:/data  # app data JSON, database, settings, BSData and Wahapedia downloads
     environment:
       COMBAT_SIM_SECURE_COOKIES: "1"  # logins only over HTTPS (browsers also allow them on http://localhost)
+      COMBAT_SIM_BEHIND_PROXY: "1"  # visitors come through that proxy: the login throttle counts the address it forwards
       # RELAY_URL: https://your-relay.example  # your own relay for online games (default: the project's)
     restart: unless-stopped
 

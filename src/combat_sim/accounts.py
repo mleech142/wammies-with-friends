@@ -21,7 +21,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from flask import g, jsonify, redirect, render_template, request, session
+from flask import current_app, g, jsonify, redirect, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import mail
@@ -45,9 +45,13 @@ _welcome_lock = threading.Lock()  # one host, even if two people send the Welcom
 
 def device():
     """Who is logging in, for the login throttle: their address, or behind this computer's own proxy (Tailscale
-    serve, Caddy) the address it forwarded. Counting per name alone would let anyone keep the host locked out."""
-    if request.remote_addr in ('127.0.0.1', '::1') and request.access_route:
-        return request.access_route[0]
+    serve, Caddy) the address it forwarded. Counting per name alone would let anyone keep the host locked out.
+
+    A proxy on this computer reaches the app from 127.0.0.1, or, in Docker, from Docker's own network
+    (`COMBAT_SIM_BEHIND_PROXY`, set by compose.yaml, which takes connections from this computer only). The last
+    forwarded address is the one that proxy added: the earlier ones come from the visitor and can be made up."""
+    if (current_app.config.get('BEHIND_PROXY') or request.remote_addr in ('127.0.0.1', '::1')) and request.access_route:
+        return request.access_route[-1]
     return request.remote_addr or ''
 
 
@@ -151,6 +155,7 @@ def register_account_routes(app):
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_NAME'] = 'combat_sim_session'
     app.config['SESSION_COOKIE_SECURE'] = os.environ.get('COMBAT_SIM_SECURE_COOKIES', '').strip() in ('1', 'true', 'yes')
+    app.config['BEHIND_PROXY'] = os.environ.get('COMBAT_SIM_BEHIND_PROXY', '').strip() in ('1', 'true', 'yes')
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
     with app.app_context():
         app.config['SETUP_CODE'] = None if User.query.count() else new_setup_code()  # run.py prints it
