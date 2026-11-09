@@ -25,8 +25,8 @@ with tarfile.open('/tmp/backup.tar.gz', 'w:gz') as tar:
             tar.add(f'/data/{name}', name)
 os.remove('/tmp/backup.db')
 PY
-docker compose cp combat-sim:/tmp/backup.tar.gz "$BACKUP_DIR/$file"
-docker compose exec -T combat-sim rm -f /tmp/backup.tar.gz
+docker compose cp combat-sim:/tmp/backup.tar.gz "$BACKUP_DIR/$file" < /dev/null  # never the caller's input
+docker compose exec -T combat-sim rm -f /tmp/backup.tar.gz < /dev/null
 chmod 600 "$BACKUP_DIR/$file"
 find "$BACKUP_DIR" -name 'wammies-*.tar.gz' -mtime +"$KEEP" -delete
 echo "Saved $BACKUP_DIR/$file"
