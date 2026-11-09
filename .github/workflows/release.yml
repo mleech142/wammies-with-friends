@@ -56,7 +56,7 @@ jobs:
           else
             label="v$version-test"
           fi
-          echo "zip=40kCombatSimulator-$label-${{ matrix.platform }}.zip" >> "$GITHUB_OUTPUT"
+          echo "zip=WammiesWithFriends-$label-${{ matrix.platform }}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Test
         run: python -m pytest tests -q
@@ -67,12 +67,12 @@ jobs:
       - name: Zip (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
-        run: Compress-Archive -Path dist/40kCombatSimulator -DestinationPath "${{ steps.name.outputs.zip }}"
+        run: Compress-Archive -Path dist/WammiesWithFriends -DestinationPath "${{ steps.name.outputs.zip }}"
 
       - name: Zip (Linux)
         if: matrix.platform == 'linux'
         # zip keeps the executable's permissions, which unzip restores
-        run: cd dist && zip -qr "../${{ steps.name.outputs.zip }}" 40kCombatSimulator
+        run: cd dist && zip -qr "../${{ steps.name.outputs.zip }}" WammiesWithFriends
 
       - uses: actions/upload-artifact@v4
         with:

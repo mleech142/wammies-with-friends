@@ -1,4 +1,4 @@
-# 40K Combat Simulator
+# Wammies With Friends
 
 The language of the simulator, Analytics and Play mode: games of Warhammer 40,000 (11th edition) between friends,
 worked out by the app.

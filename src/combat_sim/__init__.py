@@ -1,5 +1,5 @@
 """
-40K Combat Simulator
+Wammies With Friends
 A Warhammer 40,000 11th Edition combat simulation tool.
 """
 

@@ -1,5 +1,5 @@
 """
-Flask application for 40K Combat Simulator.
+Flask application for Wammies With Friends.
 """
 
 import os

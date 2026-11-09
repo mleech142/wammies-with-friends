@@ -1,6 +1,6 @@
 # Releasing
 
-Users download a zipped build for Windows or Linux from GitHub Releases and run `40kCombatSimulator` (`.exe` on Windows); no Python needed.
+Users download a zipped build for Windows or Linux from GitHub Releases and run `WammiesWithFriends` (`.exe` on Windows); no Python needed.
 
 ## Publish a release
 
@@ -12,7 +12,7 @@ Users download a zipped build for Windows or Linux from GitHub Releases and run 
    git push origin master v1.1.0
    ```
 
-3. The **Release** workflow (`.github/workflows/release.yml`) builds on Windows and on Linux (Ubuntu 22.04) side by side: each checks the tag matches `__version__`, runs the full test suite, builds with PyInstaller and zips the result (`40kCombatSimulator-v1.1.0-windows.zip`, `…-linux.zip`). When both succeed, it creates the GitHub release with both zips and the notes from `docs/release-notes/<tag>.md` (or generated from the commits). Alongside, it builds the Docker image (`Dockerfile`, for amd64 and arm64) and pushes it to `ghcr.io/mleech142/40k-combat-simulator` as `:<version>` and `:latest` ([self-hosting.md](self-hosting.md)); the release is created only after that. The first push makes the package private: make it public once in the package's settings on GitHub (Package settings → Change visibility). If any step fails, no release is created; fix, delete the tag (`git tag -d v1.1.0 && git push origin :v1.1.0`) and tag again.
+3. The **Release** workflow (`.github/workflows/release.yml`) builds on Windows and on Linux (Ubuntu 22.04) side by side: each checks the tag matches `__version__`, runs the full test suite, builds with PyInstaller and zips the result (`WammiesWithFriends-v1.1.0-windows.zip`, `…-linux.zip`). When both succeed, it creates the GitHub release with both zips and the notes from `docs/release-notes/<tag>.md` (or generated from the commits). Alongside, it builds the Docker image (`Dockerfile`, for amd64 and arm64) and pushes it to `ghcr.io/mleech142/wammies-with-friends` as `:<version>` and `:latest` ([self-hosting.md](self-hosting.md)); the release is created only after that. The first push makes the package private: make it public once in the package's settings on GitHub (Package settings → Change visibility). If any step fails, no release is created; fix, delete the tag (`git tag -d v1.1.0 && git push origin :v1.1.0`) and tag again.
 
 **Trial build:** Actions → Release → *Run workflow* (on any branch) builds and tests both zips and keeps them as workflow artifacts (`…-vX.Y.Z-test-…`), and builds the Docker image, without publishing a release or the image.
 
@@ -25,14 +25,14 @@ pip install -r requirements-dev.txt
 pyinstaller --noconfirm --clean combat_sim.spec
 ```
 
-The app is in `dist/40kCombatSimulator/` (about 66 MB). PyInstaller builds for the system it runs on: build on Windows for the Windows zip, on Linux for the Linux one. To try a build without touching your own data, point it at a scratch folder first: PowerShell `$env:APPDATA = "C:\temp\appdata"; .\dist\40kCombatSimulator\40kCombatSimulator.exe`; Linux `XDG_DATA_HOME=/tmp/appdata ./dist/40kCombatSimulator/40kCombatSimulator`.
+The app is in `dist/WammiesWithFriends/` (about 66 MB). PyInstaller builds for the system it runs on: build on Windows for the Windows zip, on Linux for the Linux one. To try a build without touching your own data, point it at a scratch folder first: PowerShell `$env:APPDATA = "C:\temp\appdata"; .\dist\WammiesWithFriends\WammiesWithFriends.exe`; Linux `XDG_DATA_HOME=/tmp/appdata ./dist/WammiesWithFriends/WammiesWithFriends`.
 
 ## How the build works
 
 - `combat_sim.spec` bundles `run.py`, the `combat_sim` package, its `templates/` and `static/` folders, and `data/app_data.json` (never the BSData catalogues: users download those). Anything new the app reads from disk must be added to its `datas`.
 - Pages must not load anything from the internet (Plotly and Font Awesome are in `static/vendor`), so the exe works offline.
 - The exe runs `run.py`: waitress on `127.0.0.1`, port 5000 or the next free port, browser opened automatically, console window shows the address and closing it stops the app.
-- `src/combat_sim/paths.py` keeps user data in `%APPDATA%\40K Combat Simulator\`. The shipped app data JSON only seeds that folder on first run; a newer release's app data does **not** replace a user's existing copy, except that keyword glossary entries their copy lacks are added on every start (`data_store.with_shipped_keywords`). Users can pick up new shipped app data with **Data → Import JSON**, or by deleting their copy before starting the app.
+- `src/combat_sim/paths.py` keeps user data in `%APPDATA%\Wammies With Friends\`. The shipped app data JSON only seeds that folder on first run; a newer release's app data does **not** replace a user's existing copy, except that keyword glossary entries their copy lacks are added on every start (`data_store.with_shipped_keywords`). Users can pick up new shipped app data with **Data → Import JSON**, or by deleting their copy before starting the app.
 - The BSData catalogues are never in the build: each user downloads them on the Setup page (GitHub API and zipball, `bsdata_download.py`) into their data folder. The exe needs internet access only for that.
 - tkinter stays in the build for the Setup page's folder dialog.
 

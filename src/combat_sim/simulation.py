@@ -1,5 +1,5 @@
 """
-Core simulation engine for 40K Combat Simulator.
+Core simulation engine for Wammies With Friends.
 
 Follows the maths of 40KCombatSimulator_v2.xlsx (Sim-Shooting / Sim-Fighting):
 the weapon's keywords and modifier text, plus the target's keywords and modifiers,

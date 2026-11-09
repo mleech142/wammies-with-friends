@@ -1,5 +1,5 @@
 /**
- * 40K Combat Simulator - Frontend Application
+ * Wammies With Friends - Frontend Application
  */
 
 /**

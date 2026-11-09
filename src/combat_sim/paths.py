@@ -17,6 +17,9 @@ COMBAT_SIM_DATA instead, seeded the same way.
 
 Version 1 kept everything in `40k_data.json`; on the first start of version 2 that file and
 the database (whose saved scenarios refer to its IDs) are moved into `archive-v1`.
+
+Before 2.9 the app was called 40K Combat Simulator and so was its per-user folder; the first start of
+2.9 renames that folder, and the paths into it saved in `settings.json` (the BSData folder).
 """
 
 import os
@@ -24,7 +27,8 @@ import shutil
 import sys
 from pathlib import Path
 
-APP_FOLDER = '40K Combat Simulator'
+APP_FOLDER = 'Wammies With Friends'
+OLD_APP_FOLDER = '40K Combat Simulator'  # Before 2.9
 DATA_FILE = 'app_data.json'
 DATABASE_FILE = 'combat_sim.db'
 BSDATA_FOLDER = 'bsdata'
@@ -73,6 +77,8 @@ def data_dir():
 def prepare_data_dir():
     """Create the data folder and, on first run, seed it with the shipped data JSON. Returns the folder."""
     folder = data_dir()
+    if is_frozen() and not os.environ.get(DATA_ENV):
+        folder = move_old_folder(folder)
     folder.mkdir(parents=True, exist_ok=True)
     archive_v1(folder)
     data_file = folder / DATA_FILE
@@ -80,6 +86,34 @@ def prepare_data_dir():
     if not data_file.exists() and shipped.exists() and shipped.resolve() != data_file.resolve():
         shutil.copyfile(shipped, data_file)
     return folder
+
+
+def move_old_folder(folder):
+    """Rename the per-user folder from before 2.9 to `folder` (once) and point the settings' saved paths into it
+    at the new one. Returns the folder to use: the old one if it can't be moved now (another copy still running)."""
+    old = folder.with_name(OLD_APP_FOLDER)
+    if folder.exists() or not old.is_dir():
+        return folder
+    try:
+        old.rename(folder)
+    except OSError:
+        return old
+    from .settings import SETTINGS_FILE, load_settings, save_settings  # here: settings pulls in the database models
+    path = folder / SETTINGS_FILE
+    if path.exists():
+        save_settings(path, _moved(load_settings(path), str(old), str(folder)))
+    return folder
+
+
+def _moved(value, old, new):
+    """`value` with every path inside folder `old` pointing inside `new` instead."""
+    if isinstance(value, dict):
+        return {key: _moved(item, old, new) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_moved(item, old, new) for item in value]
+    if isinstance(value, str) and (value == old or value.startswith(old + os.sep) or value.startswith(old + '/')):
+        return new + value[len(old):]
+    return value
 
 
 def archive_v1(folder):

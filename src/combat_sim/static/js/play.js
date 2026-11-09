@@ -1525,7 +1525,7 @@
         if (game) $('file-btn').href = `/api/play/games/${game.id}/file`;
         const notice = Core.playSeatNotice(game);
         $('seat-bar').hidden = !notice;
-        document.title = `${notice && notice.mine && Core.playOnline(game) ? '● Your move · ' : ''}Play - 40K Combat Simulator`;
+        document.title = `${notice && notice.mine && Core.playOnline(game) ? '● Your move · ' : ''}Play - Wammies With Friends`;
         scheduleSync();
         if (!notice) return;
         $('seat-bar').classList.toggle('play-seat-mine', notice.mine);

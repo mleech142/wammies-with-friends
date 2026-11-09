@@ -1,8 +1,8 @@
 @echo off
-title 40K Combat Simulator
+title Wammies With Friends
 
 echo ============================================
-echo    40K Combat Simulator - Launcher
+echo    Wammies With Friends - Launcher
 echo ============================================
 echo.
 
@@ -42,7 +42,7 @@ if not exist "data\bsdata\*.json" (
 
 :: Start the application
 echo.
-echo Starting 40K Combat Simulator...
+echo Starting Wammies With Friends...
 echo.
 python run.py
 

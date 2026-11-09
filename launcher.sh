@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "============================================"
-echo "   40K Combat Simulator - Launcher"
+echo "   Wammies With Friends - Launcher"
 echo "============================================"
 echo
 
@@ -49,6 +49,6 @@ fi
 
 # Start the application
 echo
-echo "Starting 40K Combat Simulator..."
+echo "Starting Wammies With Friends..."
 echo
 python run.py

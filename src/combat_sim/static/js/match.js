@@ -96,7 +96,7 @@
 
     function renderHeader() {
         const v = state.view;
-        document.title = `${v.name} - Match view - 40K Combat Simulator`;
+        document.title = `${v.name} - Match view - Wammies With Friends`;
         $('match-name').textContent = v.name;
         const points = Core.armyPoints(v.points, v.points_limit);
         const warlord = v.units.find(u => u.warlord);

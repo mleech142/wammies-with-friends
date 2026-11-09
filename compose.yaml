@@ -5,7 +5,7 @@
 # Your own settings (mail server, PUBLIC_URL) go in compose.override.yaml, which git ignores.
 services:
   combat-sim:
-    image: ghcr.io/mleech142/40k-combat-simulator:latest
+    image: ghcr.io/mleech142/wammies-with-friends:latest
     # build: .   # instead of the image, to build from this repository
     ports:
       - "127.0.0.1:5000:5000"  # this computer only: Tailscale serve (or Caddy) brings everyone else in over HTTPS

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-40K Combat Simulator - Entry Point
+Wammies With Friends - Entry Point
 
     python run.py            # serves the app with waitress and opens the browser
     python run.py --debug    # Flask's development server with the debugger (never ship this)
@@ -43,7 +43,7 @@ def pick_port(host=HOST, preferred=PREFERRED_PORT):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='40K Combat Simulator')
+    parser = argparse.ArgumentParser(description='Wammies With Friends')
     parser.add_argument('--debug', action='store_true', help="Flask's development server with the debugger")
     parser.add_argument('--port', type=int, default=PREFERRED_PORT, help='port to try first')
     parser.add_argument('--no-browser', action='store_true', help="don't open the browser")
@@ -64,7 +64,7 @@ def main(argv=None):
     url = f'http://{"127.0.0.1" if host == "0.0.0.0" else host}:{port}'
 
     print('\n' + '=' * 60)
-    print(f'40K Combat Simulator v{__version__}')
+    print(f'Wammies With Friends v{__version__}')
     print('=' * 60)
     print(f"\nData file: {app.config['DATA_JSON']}")
     from combat_sim import reference

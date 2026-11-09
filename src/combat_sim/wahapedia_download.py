@@ -19,7 +19,7 @@ from .wahapedia import FILES, WahapediaError, import_folder
 BASE_URL = 'https://wahapedia.ru/wh40k11ed/'
 TIMEOUT = 60  # seconds per request
 MAX_FILE_BYTES = 50 * 1024 * 1024
-USER_AGENT = '40k-combat-simulator'
+USER_AGENT = 'wammies-with-friends'
 
 
 class DownloadError(Exception):

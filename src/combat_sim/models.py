@@ -1,5 +1,5 @@
 """
-Database models for 40K Combat Simulator.
+Database models for Wammies With Friends.
 
 Schema designed for Warhammer 40K 11th Edition rules.
 

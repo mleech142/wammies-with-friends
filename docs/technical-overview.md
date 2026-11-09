@@ -26,7 +26,7 @@ pip install -r requirements.txt
 python run.py              # --debug for Flask's debugger while developing (never in a release)
 ```
 
-The browser opens <http://127.0.0.1:5000> (or the next free port; the console says which). The app only listens on this computer. From source it reads and writes `data/` in the repository; the exe uses `%APPDATA%\40K Combat Simulator\` instead (`paths.py`).
+The browser opens <http://127.0.0.1:5000> (or the next free port; the console says which). The app only listens on this computer. From source it reads and writes `data/` in the repository; the exe uses `%APPDATA%\Wammies With Friends\` instead (`paths.py`).
 
 Shortcuts: `launcher.bat` (Windows) or `./launcher.sh` (Linux/Mac) create a virtual environment, install the requirements and start the app. On Debian/Ubuntu you may need `sudo apt install python3-venv` first, and `python3-tk` for the Setup page's Browse button (optional: you can type a folder path instead).
 
@@ -97,7 +97,7 @@ The full module map, invariants and maintainability notes are in [architecture.m
 ## Project structure
 
 ```text
-40k-combat-simulator/
+wammies-with-friends/
 ├── src/combat_sim/          # The app (modules above), templates/ and static/
 ├── data/                    # app_data.json (committed); downloads, cache and database (local only)
 ├── tests/                   # pytest suite, fixtures/ (made-up game data), js/ (Node tests)

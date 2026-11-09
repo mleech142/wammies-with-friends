@@ -22,7 +22,7 @@ REPO = 'BSData/wh40k-11e'
 API = f'https://api.github.com/repos/{REPO}'
 TIMEOUT = 60  # seconds per request
 MAX_ZIP_BYTES = 200 * 1024 * 1024
-USER_AGENT = '40k-combat-simulator'
+USER_AGENT = 'wammies-with-friends'
 
 
 class DownloadError(Exception):

@@ -1,6 +1,6 @@
 # Play mode design
 
-A planned expansion: friends play full games of 40k against each other on a top-down board inside the Combat Simulator. Games can be played live or asynchronously, chess-app style: you finish your move and the app tells your opponent it's their turn. This document records what has been decided and why, so later work can build on it without reopening settled questions.
+A planned expansion: friends play full games of 40k against each other on a top-down board inside Wammies With Friends. Games can be played live or asynchronously, chess-app style: you finish your move and the app tells your opponent it's their turn. This document records what has been decided and why, so later work can build on it without reopening settled questions.
 
 Status (October 2026): **in progress and released as experimental** (2.3.0 onward, shown only when "Show Play in the menu" is ticked on the Setup page). Built: hot-seat games, the 11th edition missions and terrain, battle mats, and online games through the relay. Being tested now; what's left is in [Roadmap](#roadmap) (**Next**), from the owner's testing list ([testing-list.md](testing-list.md)).
 

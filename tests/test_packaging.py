@@ -49,6 +49,44 @@ def test_frozen_never_overwrites_the_users_data(frozen):
     assert json.loads((user / paths.DATA_FILE).read_text(encoding='utf-8')) == {'edited': True}
 
 
+def test_the_folder_from_before_the_rename_is_moved_with_its_settings(frozen):
+    bundle, user = frozen
+    old = user.with_name(paths.OLD_APP_FOLDER)
+    (old / 'bsdata').mkdir(parents=True)
+    (old / paths.DATA_FILE).write_text('{"mine": true}', encoding='utf-8')
+    (old / 'settings.json').write_text(json.dumps({
+        'bsdata_dir': str(old / 'bsdata'), 'download': {'folder': str(old / 'bsdata'), 'files': 46},
+        'elsewhere': str(old.parent / 'other' / 'bsdata')}), encoding='utf-8')
+    assert paths.prepare_data_dir() == user
+    assert not old.exists()
+    assert json.loads((user / paths.DATA_FILE).read_text(encoding='utf-8')) == {'mine': True}  # not the shipped one
+    settings = json.loads((user / 'settings.json').read_text(encoding='utf-8'))
+    assert settings['bsdata_dir'] == str(user / 'bsdata')
+    assert settings['download'] == {'folder': str(user / 'bsdata'), 'files': 46}
+    assert settings['elsewhere'] == str(old.parent / 'other' / 'bsdata')  # outside the old folder: unchanged
+
+
+def test_the_old_folder_is_left_alone_once_the_new_one_exists(frozen):
+    bundle, user = frozen
+    old = user.with_name(paths.OLD_APP_FOLDER)
+    old.mkdir()
+    user.mkdir()
+    assert paths.prepare_data_dir() == user
+    assert old.exists()
+
+
+def test_an_old_folder_that_cant_be_moved_is_used_as_it_is(frozen, monkeypatch):
+    bundle, user = frozen
+    old = user.with_name(paths.OLD_APP_FOLDER)
+    old.mkdir()
+    (old / paths.DATA_FILE).write_text('{"mine": true}', encoding='utf-8')
+    def locked(self, target):
+        raise PermissionError('in use')
+    monkeypatch.setattr(type(old), 'rename', locked)
+    assert paths.prepare_data_dir() == old
+    assert json.loads((old / paths.DATA_FILE).read_text(encoding='utf-8')) == {'mine': True}
+
+
 def test_version_1_data_and_database_are_archived_once(frozen):
     bundle, user = frozen
     user.mkdir()

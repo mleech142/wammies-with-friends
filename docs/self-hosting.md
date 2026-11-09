@@ -13,7 +13,7 @@ docker compose up -d        # with compose.yaml from this repository
 or
 
 ```bash
-docker run -d -p 127.0.0.1:5000:5000 -e COMBAT_SIM_SECURE_COOKIES=1 -v combat-sim-data:/data --restart unless-stopped ghcr.io/mleech142/40k-combat-simulator:latest
+docker run -d -p 127.0.0.1:5000:5000 -e COMBAT_SIM_SECURE_COOKIES=1 -v combat-sim-data:/data --restart unless-stopped ghcr.io/mleech142/wammies-with-friends:latest
 ```
 
 As shipped it listens on **this computer only** (`127.0.0.1`), with logins sent only over HTTPS: everyone else

@@ -1,5 +1,5 @@
 # PyInstaller build for the Windows release:  pyinstaller combat_sim.spec
-# Output: dist/40kCombatSimulator/ (one folder; zip it for a release). See docs/releasing.md.
+# Output: dist/WammiesWithFriends/ (one folder; zip it for a release). See docs/releasing.md.
 
 a = Analysis(
     ['run.py'],
@@ -17,7 +17,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='40kCombatSimulator',
+    name='WammiesWithFriends',
     console=True,  # the console window shows the address and closing it stops the app
 )
-coll = COLLECT(exe, a.binaries, a.datas, name='40kCombatSimulator')
+coll = COLLECT(exe, a.binaries, a.datas, name='WammiesWithFriends')

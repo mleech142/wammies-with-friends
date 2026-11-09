@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="app-boot-id" content="{{ boot_id }}">
     {% if who.shared %}<meta name="app-hosted" content="1">{% endif %}
-    <title>{% block title %}40K Combat Simulator{% endblock %}</title>
+    <title>{% block title %}Wammies With Friends{% endblock %}</title>
     <script src="{{ url_for('static', filename='vendor/plotly-2.27.0.min.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome-free-7.3.1/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome-free-7.3.1/css/solid.min.css') }}">
@@ -16,7 +16,7 @@
 <body>
     <header class="header">
         <a href="/" class="header-brand">
-            <h1><i class="fa-solid fa-dice-d6" aria-hidden="true"></i> 40K Combat Simulator</h1>
+            <h1><i class="fa-solid fa-dice-d6" aria-hidden="true"></i> Wammies With Friends</h1>
         </a>
         <nav class="header-nav">
             {% if not who.shared or user %}
