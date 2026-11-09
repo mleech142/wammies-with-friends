@@ -117,17 +117,24 @@ A single-process Flask app serving four server-rendered pages, each driven by va
 | `test_simulation.py` / `test_app_data.py` (attached units) | Bodyguard-then-leader sequencing in both engines (no overflow, worked overflow example, weapon order, leader dies last), Monte Carlo vs analytical on damage and bodyguards, attached defenders in the Simulator, matrix, cell detail and reverse durability |
 | `test_setup.py` | The Setup page: choosing a folder (validation, keeping the last good one), Download latest with GitHub faked, safe zip installs, re-import, skipping setup, settings, footer version |
 | `test_app_data.py` | BSData in the app: merged factions, read-only BSData records, stable IDs across re-imports and a missing folder, rules and added modifiers saved by BSData ID, Legends filter, import cache and status, broken folder |
+| `test_hosted_fixes.py` | A self-hosted copy: the login throttle per visitor behind a proxy, the setup code, request size limit, safety headers, JSON API errors, model caps and the Monte Carlo budget, the shipped `compose.yaml` |
+| `test_access.py` | Who may do what (`access.py`): route labels, owners and sharing rules, proposals |
+| `test_play_interface.py` | The rules engine's interface: other modules use only what `play/game.py`'s `__all__` lists |
+| `test_packaging.py` | The packaged app: where data lives, first-run seeding, moving the folder from before the 2.9 rename, the run.py port fallback, bundled icons |
 | `js/core.test.js` (Node) | Every `core.js` helper: formatting and escaping, keyword hint HTML, copy labels, points lookup, unit-size scaling, Simulator payloads, rules filtering and selection, the Analytics request builder, the Army Analysis HTML, page-state persistence |
 
-Line coverage (`python -m coverage run --source=src/combat_sim,scripts -m pytest tests && python -m coverage report`), October 2026:
+Line coverage (`python -m coverage run --source=src/combat_sim,scripts -m pytest tests && python -m coverage report`), November 2026:
 
 | Module | Coverage |
 | --- | --- |
-| `app.py` | 97% |
-| `models.py` | 96% |
-| `simulation.py` | 96% |
-| `data_store.py` | 94% |
-| **Total** | **95%** |
+| `app.py` | 98% |
+| `routes/` (all areas) | 98% |
+| `play/game.py` | 94% |
+| `play/` (all) | 92% |
+| `models.py` | 97% |
+| `simulation.py` | 97% |
+| `data_store.py` | 97% |
+| **Total** | **91%** |
 
 **Not covered by automated tests:** the DOM and event-handling code in `app.js`, `analytics.js` and the Data page's inline script (rendering tables, wiring inputs, calling the API). Its logic is in `core.js` and the server, both tested; what remains is checked by using the pages.
 
