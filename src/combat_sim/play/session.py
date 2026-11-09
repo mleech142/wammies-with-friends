@@ -32,7 +32,7 @@ from ..models import SavedGame, db
 from . import game_file, relay_client
 from .connections import connect
 from .dice import Dice
-from .game import ActionError, _apply, apply_event, redo_history, replay, resolve_action
+from .game import ActionError, apply_event, apply_in_place, redo_history, replay, resolve_action
 from .seats import actor, check_seat, waiting_on
 
 CACHE_SIZE = 32
@@ -139,7 +139,7 @@ class GameSession:
             elif count < len(events) and last == _hash(events[count - 1] if count else None):
                 state = copy.deepcopy(cached_state)
                 for event in copy.deepcopy(events[count:]):
-                    _apply(state, event)
+                    apply_in_place(state, event)
         if state is None:
             state = _replay(saved)
         if current_app.config.get('PLAY_STATE_CHECK'):

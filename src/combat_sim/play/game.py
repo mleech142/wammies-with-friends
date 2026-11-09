@@ -25,6 +25,20 @@ from .geometry import footprint as footprint_shape
 from .geometry import (BOARD_DEPTH, BOARD_WIDTH, MM_PER_INCH, Shape, base_distance, base_shape, between, bounds, can_see, farther_than, hull_shape,
                        overlaps)
 
+# The engine's interface: what the rest of the app may use (tests/test_play_interface.py checks it). mission_state.py
+# and tactical.py are part of the engine and use its private helpers too; nothing else does.
+__all__ = [
+    # Playing a game: actions become events, a game's events replay to its state
+    'ActionError', 'new_game', 'resolve_action', 'apply_event', 'apply_in_place', 'replay', 'redo_history',
+    'MODEL_FIELDS', 'PHASES',
+    # What the board shows and offers now (play/view.py, play/routes.py, play/seats.py)
+    'MANUAL_EFFECTS', 'MARKER_MM', 'OBJECTIVE_RANGE', 'afflictions', 'allocation_groups', 'can_fly', 'charge_options',
+    'contagion_ranges', 'deployment_zone', 'disembark_options', 'embark_options', 'fight_options', 'grant_options',
+    'has_contagion', 'infiltrators', 'ingress_rules', 'measure', 'move_characteristic', 'mover', 'objective_control',
+    'objectives_in_range', 'outline', 'ready_units', 'rerollable', 'score', 'scouts', 'shooting_options',
+    'stratagem_targets', 'terrain_areas', 'unit_by_id', 'usable_now', 'window_options',
+]
+
 STATE_VERSION = 1
 ENGAGEMENT_RANGE = 2  # Inches, measured base to base (11th edition; height is ignored on a flat board)
 COHERENCY_RANGE = 2  # Each model within this of at least one other model in its unit...
@@ -280,11 +294,13 @@ def _resolve(state, action, dice, handler):
 
 def apply_event(state, event):
     """The state after an event: its results applied, no dice rolled."""
-    return _apply(copy.deepcopy(state), event)
+    return apply_in_place(copy.deepcopy(state), event)
 
 
-def _apply(state, event):
-    """Apply an event's results to `state` itself (copying what it takes from the event) and return it."""
+def apply_in_place(state, event):
+    """Apply an event's results to `state` itself and return it: for a state the caller owns and may change (a copy
+    it made, as play/session.py's cache does when it replays only the new moves). What it takes from the event is
+    copied, so the event can be reused."""
     for unit in state['units']:
         unit.update(copy.deepcopy(event.get('units', {}).get(unit['id'], {})))
         for model in unit['models']:
@@ -2020,7 +2036,7 @@ def replay(armies, events, battlefield=None, setup=False, twist=None):
     # Applied in place (copying the whole state for every event made long games slow), from a copy of the
     # events so the state never shares their objects
     for event in copy.deepcopy(events):
-        _apply(state, event)
+        apply_in_place(state, event)
     return state
 
 
