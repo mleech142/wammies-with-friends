@@ -6,7 +6,7 @@ download inside a request held one of the server's few request threads for that 
 `of(app).submit(kind, work)` starts `work(job)` and answers its `Job` at once; `work` reports what it is doing in
 `job.step`, returns when done, and raises `JobError(message, status)` for an answer the page should show. A kind
 runs one job at a time unless `single=False`: submitting it again while one runs answers the running one (two
-downloads never race). `of(app).get(id)` reads a job; the Setup page polls `/api/jobs/<id>` (app.py).
+downloads never race). `of(app).get(id)` reads a job; the Setup page polls `/api/jobs/<id>` (routes/setup.py).
 
 Two adapters, chosen by `app.config['JOBS']`:
 

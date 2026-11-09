@@ -70,7 +70,7 @@ BSData records keep stable database IDs across re-imports (the `stable_ids` tabl
  Wahapedia *.csv ─► wahapedia.py ─────┼─► data_store.merge_data ─► SQLite (reference tables)
  data/app_data.json ──────────────────┘                                │
                                                                        ▼
- Browser pages ──fetch──► Flask routes (app.py) ──► simulation.py (resolve → analytical / Monte Carlo)
+ Browser pages ──fetch──► Flask routes (routes/) ──► simulation.py (resolve → analytical / Monte Carlo)
                                    │
                                    ├─► armies.py   (army lists: pricing and checks)
                                    ├─► wargear.py  (wargear choices on BSData's option trees)
@@ -79,7 +79,8 @@ BSData records keep stable database IDs across re-imports (the `stable_ids` tabl
 
 | Module | Does |
 | --- | --- |
-| `app.py` | App factory and every route (pages and JSON API) |
+| `app.py` | App factory: config, data loading, error handlers |
+| `routes/` | Every route (pages and JSON API), one module per area |
 | `simulation.py` | The combat engine: `resolve()` turns a weapon and target into rolls; analytical and Monte Carlo engines, attached units |
 | `bsdata.py` | BSData importer: units, points, loadouts, leaders, detachments, enhancements, frozen wargear trees |
 | `wahapedia.py` | Wahapedia importer and matching to BSData factions and detachments |

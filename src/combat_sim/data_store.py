@@ -407,7 +407,7 @@ def _remap_tree_weapons(tree, weapon_ids):
 # Tables
 # ---------------------------------------------------------------------------
 
-# Held while the reference tables are rebuilt and while app data is saved (app.py), so a save never exports
+# Held while the reference tables are rebuilt and while app data is saved (app_data_edits.py), so a save never exports
 # half-rebuilt tables and two rebuilds never interleave. Reentrant: a rebuild can save, a save can rebuild.
 REFERENCE_LOCK = threading.RLock()
 

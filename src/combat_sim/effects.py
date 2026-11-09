@@ -3,7 +3,7 @@ Which effect rows apply to an attack: leader buffs, enhancement buffs and datash
 ({'applies_to': 'Attacker'|'Target', 'phase': 'Shooting'|'Fighting'|'Both', 'modifier', 'scope', 'when'}).
 A row with 'when' applies only to attacks that meet that condition (contagion.AFFLICTED: the target is
 Afflicted); callers pass the conditions an attack meets, so a row whose condition nobody checks never applies.
-Shared by the Simulator's routes (app.py) and Play mode's game state, so both read them the same way.
+Shared by the Simulator's routes (routes/simulator.py) and Play mode's game state, so both read them the same way.
 """
 
 # Phases a rule must have to apply to a weapon of each type

@@ -6,7 +6,7 @@ While an enemy unit is within Contagion Range of a Death Guard model from the ar
 Afflicted for a while (Plague Marines' Infused with the Blessings of Nurgle), and some attacks are better
 against Afflicted units (effect rows with 'when': AFFLICTED; effects.applies).
 
-The rule's text stays in BSData; its effects are written here, so the Simulator, Analytics (app.py) and
+The rule's text stays in BSData; its effects are written here, so the Simulator, Analytics (routes/) and
 Play mode read them the same way. An affliction is None (not Afflicted), NO_PLAGUE (Afflicted, no Plague
 chosen) or a key of PLAGUES.
 """

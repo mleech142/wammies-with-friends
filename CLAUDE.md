@@ -55,7 +55,7 @@ The v2 workbook `40KCombatSimulator_v2.xlsx` is frozen; it is now only the simul
 - `/setup` - Choose, download or re-import the BSData folder; download Wahapedia's rules and stratagems; import notes. Downloads and re-imports run as jobs (`jobs.py`: `of(app).submit(kind, work)`, one of a kind at a time; the route answers 202 with the job, the page polls `/api/jobs/<id>`), as do "your move" emails; long new work goes there, never in the request. Tests run jobs inline (`app.config['JOBS'] = 'inline'`, set by `make_client`). `/` redirects here until BSData loads or setup is skipped
 - `/data` - BSData import status; factions (with rules and stratagems), units and weapons (BSData read-only, custom editable); read-only Keywords and Target Profiles
 
-API routes in `app.py` under `register_routes()`. `static/js/app.js` is loaded on every page (shared `PageState`, `KeywordHints`). `/api/units` and `/api/data/units` leave Legends units out unless `?legends=1`.
+API routes are in `src/combat_sim/routes/`, one module per area (simulator, catalogue, analytics, army_lists, saved, data_tab, setup), each with `register(app)`: plain routes, not blueprints, so endpoint names stay as `access.py` labels them; `app.py` only has `create_app()`. `static/js/app.js` is loaded on every page (shared `PageState`, `KeywordHints`). `/api/units` and `/api/data/units` leave Legends units out unless `?legends=1`.
 
 ## Testing
 
