@@ -35,6 +35,7 @@
         board.addEventListener('pointerdown', pointerDown);
         board.addEventListener('pointermove', pointerMove);
         board.addEventListener('pointerup', pointerUp);
+        board.addEventListener('pointercancel', cancelDrag);
         editor.footprints = await fetch('/api/play/footprints').then(r => r.json()).catch(() => ({}));
         await loadList();
         draw();
@@ -292,6 +293,7 @@
 
     function pointerDown(event) {
         if (!editor.data || editor.source === 'builtin') return;
+        if (editor.drag) return;  // A second finger while one drags: ignored
         const terrain = event.target.closest('[data-terrain]');
         const objective = event.target.closest('[data-objective]');
         if (!terrain && !objective) {
@@ -301,14 +303,15 @@
         }
         const index = Number((terrain || objective).dataset[terrain ? 'terrain' : 'objective']);
         const item = terrain ? editor.data.terrain[index] : editor.data.objectives[index];
-        editor.drag = { kind: terrain ? 'terrain' : 'objective', index, start: point(event), origin: { x: item.x, y: item.y } };
+        editor.drag = { kind: terrain ? 'terrain' : 'objective', index, start: point(event), origin: { x: item.x, y: item.y },
+            pointer: event.pointerId };
         if (terrain) editor.selected = index;
         $('bf-board').setPointerCapture(event.pointerId);
     }
 
     function pointerMove(event) {
         const drag = editor.drag;
-        if (!drag) return;
+        if (!drag || event.pointerId !== drag.pointer) return;
         const p = point(event);
         const item = drag.kind === 'terrain' ? editor.data.terrain[drag.index] : editor.data.objectives[drag.index];
         item.x = Math.min(W, Math.max(0, Core.playSnap(drag.origin.x + p.x - drag.start.x, SNAP)));
@@ -317,8 +320,18 @@
         draw();
     }
 
-    function pointerUp() {
-        if (!editor.drag) return;
+    function pointerUp(event) {
+        if (!editor.drag || event.pointerId !== editor.drag.pointer) return;
+        editor.drag = null;
+        render();
+    }
+
+    /** The browser took the pointer back (a scroll, a call): the piece goes back where it was. */
+    function cancelDrag(event) {
+        const drag = editor.drag;
+        if (!drag || event.pointerId !== drag.pointer) return;
+        const item = drag.kind === 'terrain' ? editor.data.terrain[drag.index] : editor.data.objectives[drag.index];
+        Object.assign(item, drag.origin);
         editor.drag = null;
         render();
     }

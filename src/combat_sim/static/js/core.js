@@ -481,7 +481,12 @@
     /** Tooltip of a rule/stratagem in a tick list: whether it changes the maths, and any conditions left to the player. */
     function ruleRowTitle(entry) {
         const title = entry.has_effect ? 'Changes the calculations' : 'No effect on the calculations (listed for reference)';
-        return entry.conditions?.length ? `${title}. Tick it only when: ${entry.conditions.join('; ')}` : title;
+        return entry.conditions?.length ? `${title}. ${ruleConditions(entry)}` : title;
+    }
+
+    /** When to tick a rule (its conditions), for the ⓘ beside it: '' when it has none. */
+    function ruleConditions(entry) {
+        return entry.conditions?.length ? `Tick it only when: ${entry.conditions.join('; ')}` : '';
     }
 
     /**
@@ -579,6 +584,26 @@
     // -------------------------------------------------------------------------
     // Army Analysis panel (HTML from the server's analysis)
     // -------------------------------------------------------------------------
+
+    /**
+     * Labels for a table row's cells when the table shows as cards on a phone: each cell gets its column's heading.
+     * A row with a cell spanning columns (a detail row) gets none (null); an empty heading gives an empty label.
+     */
+    function cellLabels(headings, spans) {
+        if (spans.some(span => span > 1)) return null;
+        return spans.map((_, i) => (headings[i] || '').trim());
+    }
+
+    /**
+     * A small ⓘ button that explains something: its text shows on hover with a mouse (title) and in a pop-over when
+     * tapped (app.js InfoPopover), since phones can't hover. Empty text: no button.
+     */
+    function infoButton(text, label = 'More about this') {
+        if (!text) return '';
+        const safe = escapeHtml(text);
+        return `<button type="button" class="info-btn" data-info="${safe}" title="${safe}" aria-label="${escapeHtml(label)}" aria-expanded="false">`
+            + '<i class="fa-solid fa-circle-info" aria-hidden="true"></i></button>';
+    }
 
     function statTile(value, label, note = '') {
         return `<div class="analysis-stat">
@@ -1190,6 +1215,44 @@
         return { x: cx - view.w / 2, y: cy - view.h / 2, w: view.w, h: view.h };
     }
 
+    /**
+     * Play on a touch screen: the view after a two-finger pinch. `start` and `now` are the two fingers ({a, b}, each
+     * {x, y} in pixels from the board's top left) when the pinch began and now; `view` is the view it began with and
+     * `box` the board's size in pixels ({width, height}; the view is drawn centred, as SVG's default "meet" does).
+     * Fingers apart zoom in about their midpoint, and the midpoint moving pans; the board stays in view (playPan).
+     */
+    function playPinch(view, start, now, box, board) {
+        const mid = f => ({ x: (f.a.x + f.b.x) / 2, y: (f.a.y + f.b.y) / 2 });
+        const apart = f => Math.hypot(f.a.x - f.b.x, f.a.y - f.b.y);
+        const perPixel = v => Math.max(v.w / box.width, v.h / box.height);
+        const toBoard = (v, p) => {
+            const s = perPixel(v);
+            return { x: v.x + (p.x - (box.width - v.w / s) / 2) * s, y: v.y + (p.y - (box.height - v.h / s) / 2) * s };
+        };
+        const m0 = mid(start), m1 = mid(now);
+        const factor = apart(now) > 0 && apart(start) > 0 ? apart(start) / apart(now) : 1;
+        const pivot = toBoard(view, m0);
+        const zoomed = playZoom(view, factor, pivot.x, pivot.y);
+        const s = perPixel(zoomed);
+        return playPan(zoomed, -(m1.x - m0.x) * s, -(m1.y - m0.y) * s, board);
+    }
+
+    /**
+     * The id of the item ({id, x, y, r}: a centre and radius, in pixels) nearest the point (px, py) whose edge is
+     * within `reach` pixels of it, or null: what a finger meant to touch when it landed just off a small model.
+     */
+    function nearestWithin(items, px, py, reach) {
+        let best = null, bestGap = Infinity;
+        for (const item of items) {
+            const gap = Math.max(0, Math.hypot(item.x - px, item.y - py) - item.r);
+            if (gap <= reach && gap < bestGap) {
+                best = item.id;
+                bestGap = gap;
+            }
+        }
+        return best;
+    }
+
     // -------------------------------------------------------------------------
     // Match view (Armies page): datasheets and stratagems as the table needs them
     // -------------------------------------------------------------------------
@@ -1299,14 +1362,14 @@
 
     return {
         safeNextPath,
-        playFormation, playPivot, playTurn, playFit, playMoveLabel, playPath, playPathLength, playRouteBends, playZoom, playPan, playUnitCard, playUnitTags, playLineVp, playLogTurns, playDieFace, playResult, playMarker, playVpLine, playSetupPrompt, playSeatNotice, playWaitingNotice, playOnline, playInviteText, playInviteCode, PLAY_MATS, PLAY_MAT_STRENGTH, playMat, playRollOff, playPhaseTrack, playDiceGroups, playLuck, playAttackSummary, playShotLines, playCentre, playBounds, playInside, playFootprintPoints, playBattlefieldGroups, playSnap,
+        playFormation, playPivot, playTurn, playFit, playMoveLabel, playPath, playPathLength, playRouteBends, playZoom, playPan, playPinch, nearestWithin, playUnitCard, playUnitTags, playLineVp, playLogTurns, playDieFace, playResult, playMarker, playVpLine, playSetupPrompt, playSeatNotice, playWaitingNotice, playOnline, playInviteText, playInviteCode, PLAY_MATS, PLAY_MAT_STRENGTH, playMat, playRollOff, playPhaseTrack, playDiceGroups, playLuck, playAttackSummary, playShotLines, playCentre, playBounds, playInside, playFootprintPoints, playBattlefieldGroups, playSnap,
         escapeHtml, truncate, formatMetricValue, getHeatColor, keywordHintHtml,
         copyLabel, defenderLabel, weaponVisible, pointsFor, pointsLabel, scaleUnitSize,
         simulatorWeapons, matchupWeaponEntry, matchupWeapons, detachmentOptionsHtml, detachmentKeys, detachmentSummary,
         detachmentPickerHtml, findSavedUnit, formatRuleLine, formatRuleText,
         leaderBuffSummary, withLeaderWeapons, withLeaderEntries, withLoadout, attackerEntry, defenderEntry, activeEnhancements, enhancementRefs, armyPoints, armyDetachmentPoints,
-        usedWeapons, weaponPayload, rulesForFilter, ruleRowTitle, rulesSelection, woundsMarker, buildMatrixRequest,
-        statTile, renderAnalysisSummary, renderGaps, renderRoleScores, renderCoverage, renderReverse,
+        usedWeapons, weaponPayload, rulesForFilter, ruleRowTitle, ruleConditions, rulesSelection, woundsMarker, buildMatrixRequest,
+        statTile, infoButton, cellLabels, renderAnalysisSummary, renderGaps, renderRoleScores, renderCoverage, renderReverse,
         createPageState, invulnerableSaves, invulnerableLabel, matchStatLine, matchWeaponCells, matchStratagemShown,
     };
 });

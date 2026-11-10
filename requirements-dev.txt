@@ -3,3 +3,5 @@
 pytest>=8.0
 coverage>=7.0
 pyinstaller>=6.0
+# Pages at phone size in a real browser (tests/test_phone.py); then: playwright install chromium
+playwright>=1.48

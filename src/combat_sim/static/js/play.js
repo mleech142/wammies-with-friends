@@ -21,6 +21,12 @@
     const STEP_NAMES = { pile_in: 'Pile in', fight: 'Fight', consolidate: 'Consolidate' };
     const SHORT_MOVE = 3;  // Pile-in and consolidation moves, as the server sends them in errors
     const SKIES = 2;  // Inches off a move or charge when a Fly unit takes to the skies (game.SKIES)
+    const PHONE = window.matchMedia('(max-width: 600px)');  // Armies and log as tabs, the unit in a sheet (play.css)
+    // Touch screens (docs/phone-plan.md, step g): a finger must move this far (px) before a tap becomes a drag; held
+    // still this long (ms) on a model it shows the unit's card; it picks a model whose edge is this near (px)
+    const TOUCH = window.matchMedia('(pointer: coarse)');
+    const TAP_SLOP = 8, PRESS_MS = 500, FINGER_REACH = 22;
+    const touches = new Map();  // pointerId -> {x, y}: the fingers on the board now
     const OPEN = 'open';  // New-game form: this army is the other player's, chosen when they join online
 
     const state = {
@@ -68,14 +74,35 @@
         $('measure-btn').addEventListener('click', () => toggleMeasure());
         $('phase-btn').addEventListener('click', nextPhase);
         $('correct-btn').addEventListener('click', () => { state.correcting = !state.correcting; renderCorrection(); });
+        document.querySelectorAll('[data-phone-tab]').forEach(b => b.addEventListener('click', () => {
+            state.phoneTab = b.dataset.phoneTab;
+            renderHud();
+        }));
+        $('sheet-close').addEventListener('click', () => { if (state.selected) select(state.selected); });
+        PHONE.addEventListener('change', () => { if (state.game) renderDetail(); });
         const board = $('play-board');
         board.addEventListener('wheel', zoom, { passive: false });
         board.addEventListener('pointerdown', pointerDown);
         board.addEventListener('pointermove', pointerMove);
         board.addEventListener('pointerup', pointerUp);
+        board.addEventListener('pointercancel', cancelPointer);
         board.addEventListener('contextmenu', e => e.preventDefault());  // Right-drag pans
         board.addEventListener('pointerover', hoverModel);
-        board.addEventListener('pointerout', e => { if (!e.relatedTarget || !e.relatedTarget.closest('[data-model]')) hideCard(); });
+        board.addEventListener('pointerout', e => {
+            if (e.pointerType === 'touch') return;  // A lifted finger: a held card stays until the next tap
+            if (!e.relatedTarget || !e.relatedTarget.closest('[data-model]')) hideCard();
+        });
+        document.addEventListener('pointerdown', e => { if (!e.target.closest('#play-card, #play-board')) hideCard(); });
+        $('zoom-in-btn').addEventListener('click', () => zoomBy(1 / 1.4));
+        $('zoom-out-btn').addEventListener('click', () => zoomBy(1.4));
+        $('one-btn').addEventListener('click', () => {
+            state.oneModel = !state.oneModel;
+            state.picked = null;
+            $('one-btn').classList.toggle('active', state.oneModel);
+            $('one-btn').setAttribute('aria-pressed', String(state.oneModel));
+            message(state.oneModel ? 'One model at a time: drag a model to move it alone.' : '');
+            if (state.game) renderDetail();
+        });
         board.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });  // No auto-scroll on middle-drag
         document.addEventListener('battlefields-changed', e => fillBattlefields(e.detail));
         document.addEventListener('keydown', e => {
@@ -1025,6 +1052,7 @@
         });
         $('hud-score').innerHTML = game ? `${game.score[0]}<span>–</span>${game.score[1]}` : '';
         $('hud-score').title = game ? (game.mission ? 'Victory points' : 'Kill points') : '';
+        renderPhoneTabs(acting);
         $('hud-pips').innerHTML = game ? [1, 2, 3, 4, 5].map(r =>
             `<span class="play-pip ${r < turn.round || turn.phase === 'ended' ? 'done' : r === turn.round && playing ? 'now' : ''}"></span>`).join('') : '';
     }
@@ -1215,6 +1243,18 @@
         return false;
     }
 
+    /** Phones: which of the armies or the log shows under the board (the acting player's army until one is picked). */
+    function renderPhoneTabs(acting) {
+        const game = state.game;
+        const tab = state.phoneTab ?? String(acting ?? 0);
+        $('tab-games').dataset.phoneTab = tab;
+        [0, 1].forEach(i => { $(`phone-tab-${i}`).textContent = game ? game.state.players[i].name : `Player ${i + 1}`; });
+        document.querySelectorAll('[data-phone-tab]').forEach(b => {
+            b.classList.toggle('active', b.dataset.phoneTab === tab);
+            b.setAttribute('aria-pressed', String(b.dataset.phoneTab === tab));
+        });
+    }
+
     function select(unitId) {
         if (state.placing && state.placing.unitId !== unitId) {
             return message(`Press OK or Cancel for ${unitById(state.placing.unitId).name} first.`, true);
@@ -1259,10 +1299,18 @@
         const unit = state.selected && unitById(state.selected);
         if (!unit) {
             $('unit-detail').innerHTML = '';
+            state.sheetFor = null;
             return;
         }
-        const home = $(`army-detail-${unit.player}`);
+        const home = PHONE.matches ? $('unit-sheet-body') : $(`army-detail-${unit.player}`);  // Phones: the sheet
         if ($('unit-detail').parentNode !== home) home.appendChild($('unit-detail'));
+        if (PHONE.matches && state.sheetFor !== unit.id) {
+            // The sheet covers the bottom of the screen: bring the board into view above it (also when the unit was
+            // picked from the list below, the board scrolled away)
+            state.sheetFor = unit.id;
+            const board = $('play-board').getBoundingClientRect();
+            if (board.top < 0 || board.bottom > innerHeight * 0.6) window.scrollBy({ top: board.top - 8, behavior: 'smooth' });
+        }
         const turn = state.game.state.turn;
         let controls = '';
         const reserve = unit.status && unit.status.reserve;
@@ -1326,9 +1374,13 @@
                 [15, 'rotate-left', 'anticlockwise'], [-15, 'rotate-right', 'clockwise'], [-45, 'rotate-right', 'clockwise']].map(([deg, icon, way]) =>
                 `<button class="btn-small" data-turn="${deg}" title="Turn the unit ${Math.abs(deg)}° ${way} (Q / E: 15°)">
                     <i class="fa-solid fa-${icon}" aria-hidden="true"></i> ${Math.abs(deg)}°</button>`).join('')}
-            </div><p class="play-hint">Drag the unit to make the ${MOVE_MODES.find(m => m[0] === state.moveMode)[1]};
-                Shift-drag moves one model. Turning the unit costs each model the distance its centre travels round the turn;
-                Shift + mouse wheel over a model spins it on the spot, which is free.
+            </div>${state.oneModel && state.picked && state.picked.unitId === unit.id ? `<div class="play-move-modes">
+                <span class="play-turn-label">Spin model</span>${[[15, 'rotate-left', 'anticlockwise'], [-15, 'rotate-right', 'clockwise']].map(([deg, icon, way]) =>
+                `<button class="btn-small" data-spin="${deg}" title="Spin the model you last touched 15° ${way}, on the spot (free)">
+                    <i class="fa-solid fa-${icon}" aria-hidden="true"></i> 15°</button>`).join('')}</div>` : ''}<p class="play-hint">Drag the unit to make the ${MOVE_MODES.find(m => m[0] === state.moveMode)[1]};
+                ${TOUCH.matches ? 'with One model on (the person button above the board), a drag moves just that model.'
+                    : 'Shift-drag moves one model.'} Turning the unit costs each model the distance its centre travels round the turn;
+                ${TOUCH.matches ? 'Spin model (with One model on) turns the model you last touched on the spot' : 'Shift + mouse wheel over a model spins it on the spot'}, which is free.
                 Climbing Dense terrain over 2" high (twice its height) counts against the move, unless the unit is Infantry,
                 Beasts, Swarm or Mobile, or takes to the skies.
                 ${state.waypoint ? 'Waypoint: the next drag carries on from where it stands, and the whole path counts.'
@@ -1393,6 +1445,9 @@
         $('unit-detail').querySelectorAll('[data-scout-setup]').forEach(b => b.addEventListener('click', () => startArriving(unit, 'scout', unit.player)));
         $('unit-detail').querySelectorAll('[data-arrive]').forEach(b => b.addEventListener('click', () => startArriving(unit, 'ingress', unit.player)));
         $('unit-detail').querySelectorAll('[data-turn]').forEach(b => b.addEventListener('click', () => turnUnit(unit, Number(b.dataset.turn))));
+        $('unit-detail').querySelectorAll('[data-spin]').forEach(b => b.addEventListener('click', () => {
+            if (state.picked && canTurn(unit)) spinModel(unit, state.picked.modelId, Number(b.dataset.spin));
+        }));
         $('unit-detail').querySelectorAll('[data-skies]').forEach(b => b.addEventListener('click', () => {
             state.skies = !state.skies;
             message(state.skies ? `${unit.name} takes to the skies: 2" less, over all terrain and models.` : '');
@@ -2475,6 +2530,7 @@
     let cardTimer = null, cardUnit = null;
 
     function hoverModel(event) {
+        if (event.pointerType === 'touch') return;  // Touch: press and hold instead (pointerDown)
         const target = event.target.closest('[data-model]');
         if (!target || state.drag || state.pan || state.measure) return;
         const unitId = target.dataset.unit;
@@ -2869,28 +2925,119 @@
     function pointerDown(event) {
         if (!state.game) return;
         hideCard();
-        const target = event.target.closest('[data-model]');
+        const finger = event.pointerType === 'touch';
+        if (finger) {
+            touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            if (touches.size === 2) return startPinch();
+            if (touches.size > 2) return;
+        }
+        let target = event.target.closest('[data-model]');
+        if (!target && finger && !state.measure) target = modelNear(event.clientX, event.clientY);  // Just off a small base
         if (state.measure && event.button === 0) return measureClick(event);
         if (event.button === 1 || event.button === 2 || (event.button === 0 && !target)) {
             // Pan: left-drag on empty board, or middle- or right-drag anywhere. A left click without dragging still places.
             if (!state.view) fitView();
             state.pan = { x: event.clientX, y: event.clientY, view: Object.assign({}, state.view), click: event.button === 0,
-                point: boardPoint(event), moved: false };
+                point: boardPoint(event), moved: false, slop: finger ? TAP_SLOP : 4 };
             $('play-board').setPointerCapture(event.pointerId);
             return;
         }
         if (event.button !== 0) return;
         if (state.turning) return flushTurn();  // Send the turn before anything else moves
         const unit = unitById(target.dataset.unit);
-        const modelIds = event.shiftKey ? [target.dataset.model] : unit.models.filter(m => m.alive && m.position).map(m => m.id);
-        state.drag = { unitId: unit.id, modelIds, start: boardPoint(event), dx: 0, dy: 0, trail: [{ x: 0, y: 0 }] };
+        const one = event.shiftKey || state.oneModel;  // Shift, or the One model switch on a touch screen
+        if (state.oneModel && !(state.picked && state.picked.modelId === target.dataset.model)) {
+            state.picked = { unitId: unit.id, modelId: target.dataset.model };  // The model the Spin buttons turn
+            if (state.selected === unit.id) renderDetail();
+        }
+        const modelIds = one ? [target.dataset.model] : unit.models.filter(m => m.alive && m.position).map(m => m.id);
+        state.drag = { unitId: unit.id, modelIds, start: boardPoint(event), dx: 0, dy: 0, trail: [{ x: 0, y: 0 }],
+            client: { x: event.clientX, y: event.clientY }, live: !finger };  // A finger's drag waits for TAP_SLOP
         $('play-board').setPointerCapture(event.pointerId);
+        if (finger) {  // Held still: the unit's card instead of a move
+            const at = { x: event.clientX, y: event.clientY }, unitId = unit.id;
+            state.press = setTimeout(() => longPress(unitId, at), PRESS_MS);
+        }
+    }
+
+    // --- Touch: two fingers pinch and pan, a held finger shows the card, a finger near a small model picks it ---
+
+    function fingersOnBoard() {
+        const box = $('play-board').getBoundingClientRect();
+        const [a, b] = [...touches.values()];
+        return { a: { x: a.x - box.left, y: a.y - box.top }, b: { x: b.x - box.left, y: b.y - box.top } };
+    }
+
+    function startPinch() {
+        clearTimeout(state.press);
+        state.press = null;
+        if (state.drag) {  // A second finger: whatever the first began is dropped, not sent
+            state.drag = null;
+            showReadout(null, null);
+            drawBoard();
+        }
+        state.pan = null;
+        $('play-board').classList.remove('panning');
+        if (!state.view) fitView();
+        state.pinch = { view: Object.assign({}, state.view), start: fingersOnBoard() };
+    }
+
+    function pinchTo() {
+        const svg = $('play-board'), box = svg.getBoundingClientRect();
+        state.view = Core.playPinch(state.pinch.view, state.pinch.start, fingersOnBoard(), { width: box.width, height: box.height },
+            state.game.board);
+        svg.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.w} ${state.view.h}`);
+    }
+
+    function longPress(unitId, at) {
+        state.press = null;
+        if (!state.drag || state.drag.live) return;
+        state.drag = null;
+        state.pressed = true;  // The finger's lift does nothing else
+        showCard(unitId, at);
+    }
+
+    /** The model a finger at (x, y) on the screen meant: on it, or the nearest whose base is within FINGER_REACH. */
+    function modelNear(x, y) {
+        const board = $('play-board');
+        const items = [...board.querySelectorAll('.play-model[data-model]')].map(el => {
+            const r = el.getBoundingClientRect();
+            return { id: el.dataset.model, x: r.left + r.width / 2, y: r.top + r.height / 2, r: Math.min(r.width, r.height) / 2 };
+        });
+        const id = Core.nearestWithin(items, x, y, FINGER_REACH);
+        return id ? board.querySelector(`.play-model[data-model="${CSS.escape(id)}"]`) : null;
+    }
+
+    /** A pointer the browser took back (a scroll, a call coming in): whatever it was doing is dropped. */
+    function cancelPointer(event) {
+        touches.delete(event.pointerId);
+        clearTimeout(state.press);
+        state.press = null;
+        if (touches.size < 2) state.pinch = null;
+        if (state.drag) {
+            state.drag = null;
+            showReadout(null, null);
+            drawBoard();
+        }
+        if (state.pan) {
+            state.pan = null;
+            $('play-board').classList.remove('panning');
+        }
+    }
+
+    /** Zoom buttons: about the middle of what is in view. */
+    function zoomBy(factor) {
+        if (!state.game) return;
+        if (!state.view) fitView();
+        const v = state.view;
+        state.view = Core.playZoom(v, factor, v.x + v.w / 2, v.y + v.h / 2);
+        $('play-board').setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.w} ${state.view.h}`);
     }
 
     function panTo(event) {
         const pan = state.pan;
         const px = event.clientX - pan.x, py = event.clientY - pan.y;
-        if (!pan.moved && Math.hypot(px, py) < 4) return;  // Not yet: it may be a click
+        if (!pan.moved && Math.hypot(px, py) < (pan.slop || 4)) return;  // Not yet: it may be a click
         pan.moved = true;
         const svg = $('play-board'), box = svg.getBoundingClientRect();
         const scale = Math.max(pan.view.w / box.width, pan.view.h / box.height);  // SVG units per pixel
@@ -2900,6 +3047,16 @@
     }
 
     function pointerMove(event) {
+        if (event.pointerType === 'touch' && touches.has(event.pointerId)) {
+            touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            if (state.pinch) return touches.size >= 2 ? pinchTo() : undefined;
+        }
+        if (state.drag && !state.drag.live) {  // A finger: still a tap (or a press) until it has moved TAP_SLOP
+            if (Math.hypot(event.clientX - state.drag.client.x, event.clientY - state.drag.client.y) < TAP_SLOP) return;
+            state.drag.live = true;
+            clearTimeout(state.press);
+            state.press = null;
+        }
         if (state.pan) return panTo(event);
         if (state.measure && !state.measure.fixed && state.measure.from) return measureTo(measureEnd(event));
         if (!state.drag) return;
@@ -2960,7 +3117,20 @@
         return bends.map(b => ({ x: round(model.position.x + b.x), y: round(model.position.y + b.y) }));
     }
 
-    async function pointerUp() {
+    async function pointerUp(event) {
+        clearTimeout(state.press);
+        state.press = null;
+        if (event && event.pointerType === 'touch') {
+            touches.delete(event.pointerId);
+            if (state.pinch) {
+                if (touches.size < 2) state.pinch = null;
+                return;
+            }
+        }
+        if (state.pressed) {  // The card was shown: nothing else
+            state.pressed = false;
+            return;
+        }
         if (state.pan) {
             const pan = state.pan;
             state.pan = null;

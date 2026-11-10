@@ -119,6 +119,8 @@ but the pages need work to be usable:
 - The Play board: touch for pan, zoom and dragging units, long-press instead of hover for the unit card, and the
   side panels as drawers. Large; the design already asked for touch-ready controls.
 
+*Plan written, agreed and built (November 2026):* [phone-plan.md](phone-plan.md).
+
 ## 6. Order (agreed)
 
 1. **Docker self-hosting with named players** (sections 2A and 3), with the host approving players' edits to the

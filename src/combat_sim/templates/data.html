@@ -32,7 +32,7 @@
             <h3>Core Stratagems</h3>
             <button class="btn btn-secondary" onclick="showStratagemModal(null)">+ Add Core Stratagem</button>
         </div>
-        <table class="data-table" id="core-stratagems-table">
+        <table class="data-table cards-on-phone" data-auto-labels id="core-stratagems-table">
             <thead>
                 <tr><th>Stratagem</th><th>CP</th><th>Applies To</th><th>Phase</th><th>Modifier</th><th>Notes</th><th>Actions</th></tr>
             </thead>
@@ -45,7 +45,7 @@
             <h3>Factions</h3>
             <button class="btn btn-primary" onclick="showAddFactionModal()">+ Add Faction</button>
         </div>
-        <table class="data-table" id="factions-table">
+        <table class="data-table cards-on-phone" data-auto-labels id="factions-table">
             <thead>
                 <tr><th></th><th>Name</th><th>Units</th><th>Rules</th><th>Stratagems</th><th>Actions</th></tr>
             </thead>
@@ -64,6 +64,7 @@
         <label class="filter-check"><input type="checkbox" id="filter-legends" onchange="loadUnits()"> Show Legends</label>
         <button class="btn btn-primary" onclick="showAddUnitModal()">+ Add Unit</button>
     </div>
+    <div class="table-scroll sticky-first">
     <table class="data-table" id="units-table">
         <thead>
             <tr>
@@ -73,6 +74,7 @@
         </thead>
         <tbody></tbody>
     </table>
+    </div>
 </div>
 
 <!-- Weapons Tab -->
@@ -89,6 +91,7 @@
         <input type="text" id="filter-weapon" class="filter-input" placeholder="Search weapons..." oninput="filterWeapons()">
         <button class="btn btn-primary" onclick="showAddWeaponModal()">+ Add Weapon</button>
     </div>
+    <div class="table-scroll sticky-first">
     <table class="data-table" id="weapons-table">
         <thead>
             <tr>
@@ -98,6 +101,7 @@
         </thead>
         <tbody></tbody>
     </table>
+    </div>
 </div>
 
 <!-- Target Profiles Tab (read-only, from the workbook) -->
@@ -106,18 +110,22 @@
     <section class="data-section">
         <div class="data-section-header"><h3>Generic opponent profiles</h3></div>
         <p class="weapon-picker-hint">Used by Analytics' <em>Generic profiles</em> mode. Weight sets how much each profile counts in the averages.</p>
+        <div class="table-scroll sticky-first">
         <table class="data-table" id="generic-profiles-table">
             <thead><tr><th>Profile</th><th>Models</th><th>T</th><th>W</th><th>Sv</th><th>Inv</th><th>FNP</th><th>Keywords</th><th>Weight</th><th>Used by default</th></tr></thead>
             <tbody></tbody>
         </table>
+        </div>
     </section>
     <section class="data-section">
         <div class="data-section-header"><h3>Role benchmarks</h3></div>
         <p class="weapon-picker-hint">Used for role scores: the % of each benchmark unit an army destroys in one turn.</p>
+        <div class="table-scroll sticky-first">
         <table class="data-table" id="role-profiles-table">
             <thead><tr><th>Role</th><th>Models</th><th>T</th><th>W</th><th>Sv</th><th>Inv</th><th>FNP</th><th>Keywords</th></tr></thead>
             <tbody></tbody>
         </table>
+        </div>
     </section>
 </div>
 
@@ -697,7 +705,7 @@ async function loadFactionDetail(factionId) {
             <h4>Faction Rules</h4>
             <button class="btn-small" onclick="showRuleModal(${factionId})">+ Add Rule</button>
         </div>
-        <table class="data-table data-table-compact">
+        <table class="data-table data-table-compact cards-on-phone" data-auto-labels>
             <thead><tr><th>Rule</th><th>Detachment</th><th>Applies To</th><th>Phase</th><th>Modifier</th><th>Actions</th></tr></thead>
             <tbody>${rules.length ? rules.map(r => `
                 <tr>
@@ -714,7 +722,7 @@ async function loadFactionDetail(factionId) {
             <h4>Faction Stratagems</h4>
             <button class="btn-small" onclick="showStratagemModal(${factionId})">+ Add Stratagem</button>
         </div>
-        <table class="data-table data-table-compact">
+        <table class="data-table data-table-compact cards-on-phone" data-auto-labels>
             <thead><tr><th>Stratagem</th><th>CP</th><th>Applies To</th><th>Phase</th><th>Modifier</th><th>Notes</th><th>Actions</th></tr></thead>
             <tbody></tbody>
         </table>

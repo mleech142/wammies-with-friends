@@ -4703,3 +4703,465 @@ h4 .fa-solid,
     font-size: 0.8rem;
     opacity: 0.8;
 }
+
+/* =========================================================================
+   Phones and touch (docs/phone-plan.md). Shared by every page: the header's menu, finger-sized controls on touch
+   screens, page headers that wrap, full-screen pop-ups, sideways-scrolling tables and tables as cards on
+   phones, and the tap-for-info pop-over. Pages add their own phone rules beside their other styles.
+   Breakpoints: 900px (tablet: columns stack) and 600px (phone); touch (pointer: coarse) sizes controls, not width.
+   ========================================================================= */
+
+.header {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+}
+
+.header-nav {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+.nav-toggle {
+    display: none;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 1.15rem;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+}
+
+code {
+    overflow-wrap: anywhere;
+}
+
+/* A grid's columns shrink to the screen; a wide table inside scrolls in its own box instead of widening the page */
+.matchups-page > *,
+.combat-grid > *,
+.results-detail > *,
+.results-summary > * {
+    min-width: 0;
+}
+
+/* Tables that scroll sideways on their own (number grids), the first column kept in view */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+.table-scroll.sticky-first th:first-child,
+.table-scroll.sticky-first td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bg-secondary);
+}
+
+/* The ⓘ explanation button (Core.infoButton) and its pop-over (app.js InfoPopover) */
+.info-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 0.2rem;
+    font-size: 0.85em;
+    line-height: 1;
+    vertical-align: baseline;
+}
+
+.info-btn:hover,
+.info-btn[aria-expanded="true"] {
+    color: var(--accent);
+}
+
+.info-popover {
+    position: absolute;
+    z-index: 2000;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--accent-dim);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 900px) {
+    .header {
+        padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
+        position: relative;
+    }
+
+    .header h1 {
+        font-size: 1.2rem;
+    }
+
+    .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* The links: a panel under the header, opened by the menu button */
+    .header-nav {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1500;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .header-nav.open {
+        display: flex;
+    }
+
+    .header-nav .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        min-height: 48px;
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+    }
+
+    .header-nav .version {
+        padding: 0.5rem 0.75rem 0;
+    }
+
+    .main-content {
+        padding: 1rem max(1rem, env(safe-area-inset-right)) 1rem max(1rem, env(safe-area-inset-left));
+    }
+
+    .footer {
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
+        padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    }
+}
+
+@media (max-width: 600px) {
+    /* A page's title, then its buttons in a row of their own */
+    .page-header {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .page-header .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .page-header .header-actions > .btn {
+        flex: 1 1 auto;
+    }
+
+    /* Simulator: smaller result tiles, the weapon names kept readable while the stats scroll */
+    .results-summary {
+        gap: 0.5rem;
+    }
+
+    .result-card {
+        padding: 0.75rem 0.4rem;
+    }
+
+    .result-value {
+        font-size: 1.8rem;
+    }
+
+    .weapon-table th,
+    .weapon-table td {
+        padding: 0.4rem 0.3rem;
+    }
+
+    .weapon-table .weapon-row-name {
+        min-width: 7.5rem;
+        text-align: left;
+    }
+
+    /* Pop-ups take the whole screen; their header stays at the top */
+    .modal {
+        align-items: stretch;
+    }
+
+    .modal-content,
+    .modal-content.modal-large,
+    .modal-content.modal-xlarge {
+        width: 100%;
+        max-width: none;
+        max-height: none;
+        height: 100%;
+        border-radius: 0;
+        border: none;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--bg-secondary);
+    }
+
+    .modal.show > div.modal-content {  /* As specific as the desktop's padding rule (.modal > div:not(...)), so it wins */
+        display: flex;
+        flex-direction: column;
+        padding: 0 0.75rem;
+    }
+
+    .modal-content > .modal-header,
+    .modal-content > .modal-actions {
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+    }
+
+    .modal-content > .modal-header {
+        padding: 0.5rem 0.75rem 0.5rem 1rem;
+    }
+
+    /* Its buttons stay at the bottom of the screen, sharing the width */
+    .modal-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        margin-top: auto;
+        flex-wrap: wrap;
+        padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+    }
+
+    .modal-actions > .btn {
+        flex: 1 1 auto;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .wargear-body {
+        max-height: none;
+        padding: 1rem 0.25rem;
+    }
+
+    .wargear-count {
+        flex: 0 0 5rem;
+    }
+
+    .filter-input:not([type="number"]),
+    .filter-select {
+        width: 100%;
+        max-width: none;
+    }
+
+    /* A list table as cards: each row a card, each cell a "label: value" line from its data-label. Only the table's
+       own rows: a table inside one of its cells keeps its own layout (or is cards itself) */
+    table.cards-on-phone,
+    table.cards-on-phone > tbody,
+    table.cards-on-phone > tbody > tr,
+    table.cards-on-phone > tbody > tr > td {
+        display: block;
+        width: 100%;
+    }
+
+    table.cards-on-phone > thead {
+        display: none;
+    }
+
+    table.cards-on-phone > tbody > tr {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 0.6rem;
+        padding: 0.4rem 0.6rem;
+        background: var(--bg-secondary);
+    }
+
+    table.cards-on-phone > tbody > tr > td {
+        border: none;
+        padding: 0.2rem 0;
+        text-align: left;
+    }
+
+    table.cards-on-phone > tbody > tr > td:empty,
+    table.cards-on-phone > tbody > tr > td.cell-empty {
+        display: none;
+    }
+
+    /* A row's expand button (the Data tab's factions) sits at the card's top right */
+    table.cards-on-phone > tbody > tr {
+        position: relative;
+    }
+
+    table.cards-on-phone > tbody > tr > td.col-expand {
+        position: absolute;
+        top: 0.2rem;
+        right: 0.2rem;
+        width: auto;
+        padding: 0;
+    }
+
+    table.cards-on-phone > tbody > tr > td.col-expand + td {
+        padding-right: 3rem;
+    }
+
+    /* Tables scrolling sideways: columns at their natural width, long text wrapping at a readable width */
+    .table-scroll > table {
+        width: max-content;
+        min-width: 100%;
+    }
+
+    .table-scroll > table th,
+    .table-scroll > table td {
+        max-width: 16rem;
+    }
+
+    /* Analytics: the conditions as label / dropdown pairs, two columns */
+    .conditions-inline {
+        gap: 0.75rem;
+    }
+
+    .condition-rerolls,
+    .metric-selector {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.4rem 0.6rem;
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .condition-rerolls select,
+    .metric-selector select {
+        width: 100%;
+    }
+
+    /* Analytics' matrix as a list: the attacker picked above, each defender a row with its value */
+    .matrix-toolbar {
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .matrix-attacker-pick {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.4rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .matrix-table.matrix-list {
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .matrix-table.matrix-list th {
+        width: 65%;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .matrix-table.matrix-list td {
+        font-size: 0.95rem;
+    }
+
+    /* A cell's detail takes the whole screen */
+    .matchups-detail-panel {
+        top: 0;
+        width: 100%;
+        border-radius: 0;
+        border: none;
+        z-index: 1600;
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    /* Forms in pop-ups: the screen's width for the fields */
+    .modal.show form {
+        padding: 1rem 0.25rem;
+    }
+
+    table.cards-on-phone > tbody > tr > td[data-label]::before {
+        content: attr(data-label);
+        display: inline-block;
+        min-width: 6.5rem;
+        margin-right: 0.5rem;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+    }
+
+    /* A detail row inside a card list (a faction's rules and stratagems): no card of its own */
+    table.cards-on-phone > tbody > tr:has(> td[colspan]) {
+        border: none;
+        background: none;
+        padding: 0;
+    }
+
+    /* The Data tab: tabs, toolbars and section headings wrap or scroll instead of widening the page */
+    .data-tabs {
+        width: auto;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .data-tab {
+        flex: 0 0 auto;
+    }
+
+    .data-toolbar,
+    .data-section-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}
+
+/* Touch screens: every control big enough for a finger, and fields at 16px so iOS doesn't zoom into them */
+@media (pointer: coarse) {
+    button,
+    .btn,
+    .btn-small,
+    .btn-option,
+    .toggle-btn,
+    [role="button"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    a.btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    select,
+    textarea,
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+        min-height: 44px;
+        font-size: max(16px, 1em) !important;  /* A floor, over every page's smaller field text */
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 24px !important;  /* A floor, over every page's smaller ticks */
+        height: 24px !important;
+        flex-shrink: 0;
+        font-size: 16px;
+    }
+
+    .info-btn {
+        min-width: 44px;
+        min-height: 44px;
+        margin: -12px -8px;
+        font-size: 1rem;
+    }
+}

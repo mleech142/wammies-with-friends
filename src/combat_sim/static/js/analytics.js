@@ -15,6 +15,9 @@
     const DEFAULT_DEFENDER_MODELS = 5;
 
     // State
+    const PHONE_WIDTH = window.matchMedia('(max-width: 600px)');  // The matrix as a list there (matrixListHtml)
+    PHONE_WIDTH.addEventListener('change', () => { if (state.results) renderMatrix(); });
+
     const state = {
         // [{unit_id, unit_name, faction, weapons: [{weapon_id, weapon_type, name, range, attacks,
         //   skill, strength, ap, damage, abilities, models, include, leader}], leaders, leader_id, leader_name,
@@ -27,6 +30,8 @@
         currentMetric: 'avg_damage',
         weaponTypeFilter: 'both',  // 'ranged', 'melee', or 'both'
         showWeapons: false,
+        matrixView: 'list',  // On a phone: 'list' (one attacker at a time) or 'grid' (the whole matrix)
+        matrixAttacker: 0,  // The attacker the phone list shows (-1: the army's total)
         analysisTab: 'summary',
         defenderMode: 'real',  // 'real' (defender table) or 'generic' (benchmark profiles)
         genericProfiles: [],  // read-only, from /api/data/target-profiles
@@ -326,7 +331,7 @@
                 <label class="rule-row${e.has_effect ? '' : ' rule-no-effect'}"
                        title="${escapeHtml(Core.ruleRowTitle(e))}">
                     <input type="checkbox" data-key="${e.key}" ${panel.ticked.has(e.key) ? 'checked' : ''}>
-                    <span class="rule-name">${escapeHtml(e.name)}</span>
+                    <span class="rule-name">${escapeHtml(e.name)}${Core.infoButton(Core.ruleConditions(e), 'When to tick it')}</span>
                     ${e.detachment ? `<span class="rule-detachment">${escapeHtml(e.detachment)}</span>` : ''}
                     <span class="rule-kind">${RULE_KIND_LABEL[e.kind]}</span>
                     <span class="rule-phase">${escapeHtml(e.phase)}</span>
@@ -862,11 +867,19 @@
                     </td>`;
         };
 
+        const phone = PHONE_WIDTH.matches;
         let html = `<div class="matrix-toolbar">
+            ${phone ? `<div class="toggle-bar matrix-view-toggle">
+                <button class="toggle-btn ${state.matrixView === 'list' ? 'active' : ''}" data-view="list">List</button>
+                <button class="toggle-btn ${state.matrixView === 'grid' ? 'active' : ''}" data-view="grid">Grid</button>
+            </div>` : ''}
             <label class="toggle-inline">
                 <input type="checkbox" id="matrix-show-weapons" ${state.showWeapons ? 'checked' : ''}> Show weapons
             </label>
         </div>`;
+        if (phone && state.matrixView === 'list') {
+            html += matrixListHtml(cellHtml);
+        } else {
         html += '<div class="matrix-scroll"><table class="matrix-table">';
 
         // Header row
@@ -902,6 +915,7 @@
             html += '</tr>';
         }
         html += '</tbody></table></div>';
+        }
 
         elements.matrixContainer.innerHTML = html;
 
@@ -909,6 +923,20 @@
             state.showWeapons = e.target.checked;
             renderMatrix();
         });
+        elements.matrixContainer.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => {
+            state.matrixView = btn.dataset.view;
+            renderMatrix();
+        }));
+        const pick = document.getElementById('matrix-attacker');
+        if (pick) {
+            const choose = a => { state.matrixAttacker = a; renderMatrix(); };
+            pick.addEventListener('change', () => choose(parseInt(pick.value)));
+            elements.matrixContainer.querySelectorAll('[data-step]').forEach(btn => btn.addEventListener('click', () => {
+                const options = [...pick.options].map(o => parseInt(o.value));
+                const at = options.indexOf(parseInt(pick.value)) + parseInt(btn.dataset.step);
+                choose(options[(at + options.length) % options.length]);
+            }));
+        }
 
         elements.matrixContainer.querySelectorAll('.matrix-cell').forEach(cell => {
             cell.addEventListener('click', () => {
@@ -919,6 +947,39 @@
 
 
 
+
+    /**
+     * The matrix on a phone: one attacker (or the army's total) at a time, picked above, with each defender a row
+     * (and, with Show weapons, the attacker's weapons under it). Its cells are the grid's own, so a tap opens the
+     * same detail.
+     */
+    function matrixListHtml(cellHtml) {
+        const { matrix, weapon_matrix: weaponMatrix, attackers, defenders, total } = state.results;
+        if (state.matrixAttacker >= attackers.length || (state.matrixAttacker < 0 && !total)) state.matrixAttacker = 0;
+        const a = state.matrixAttacker;
+        const options = attackers.map((atk, i) => `<option value="${i}" ${i === a ? 'selected' : ''}>${escapeHtml(atk.label)}</option>`).join('')
+            + (total ? `<option value="-1" ${a < 0 ? 'selected' : ''}>${escapeHtml(total.label)}</option>` : '');
+        const label = a < 0 ? total.label : attackers[a].label;
+        let html = `<div class="matrix-attacker-pick">
+            <button type="button" class="btn-small" data-step="-1" aria-label="Previous attacker"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+            <select id="matrix-attacker" class="filter-select" aria-label="Attacker">${options}</select>
+            <button type="button" class="btn-small" data-step="1" aria-label="Next attacker"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+        </div>
+        <table class="matrix-table matrix-list"><tbody>`;
+        defenders.forEach((def, d) => {
+            const weight = def.weight != null ? `<span class="matrix-weight">weight ${def.weight}</span>` : '';
+            const cell = a < 0 ? cellHtml(total.cells[d], 'total', -1, -1, d, label) : cellHtml(matrix[a][d], 'unit', a, -1, d, label);
+            html += `<tr class="matrix-unit-row"><th class="matrix-row-header">${escapeHtml(def.label)}${weight}</th>${cell}</tr>`;
+            if (a >= 0 && state.showWeapons && weaponMatrix) {
+                attackers[a].weapons.forEach((w, wi) => {
+                    const wLabel = `${w.label}${w.models > 1 ? ` ×${w.models}` : ''}`;
+                    html += `<tr class="matrix-weapon-row"><th class="matrix-row-header">↳ ${escapeHtml(wLabel)}</th>`
+                        + cellHtml(weaponMatrix[a][wi][d], 'weapon', a, wi, d, `${label} - ${wLabel}`) + '</tr>';
+                });
+            }
+        });
+        return html + '</tbody></table>';
+    }
 
     function renderSummary() {
         if (!state.results || !state.results.summary) {

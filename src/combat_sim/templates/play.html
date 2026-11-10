@@ -45,6 +45,9 @@
                     <a class="play-icon-btn" id="file-btn" hidden title="Save game file" aria-label="Save game file"><i class="fa-solid fa-file-export" aria-hidden="true"></i></a>
                     <button class="play-icon-btn" id="undo-btn" disabled title="Undo" aria-label="Undo"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></button>
                     <button class="play-icon-btn" id="measure-btn" title="Measure (click two points or models)" aria-label="Measure"><i class="fa-solid fa-ruler" aria-hidden="true"></i></button>
+                    <button class="play-icon-btn touch-only" id="one-btn" aria-pressed="false" title="Move one model at a time" aria-label="Move one model at a time"><i class="fa-solid fa-user" aria-hidden="true"></i></button>
+                    <button class="play-icon-btn touch-only" id="zoom-in-btn" title="Zoom in" aria-label="Zoom in"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button>
+                    <button class="play-icon-btn touch-only" id="zoom-out-btn" title="Zoom out" aria-label="Zoom out"><i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i></button>
                     <button class="play-icon-btn" id="fit-btn" title="Fit board" aria-label="Fit board"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i></button>
                 </span>
             </div>
@@ -62,6 +65,12 @@
             <div class="play-working" role="status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Working…</div>
             <button class="play-go" id="phase-btn" hidden><span>Next phase</span> <i class="fa-solid fa-forward-step" aria-hidden="true"></i></button>
         </div>
+        {# Phones: the armies and the log as tabs under the board (docs/phone-plan.md, step f) #}
+        <div class="toggle-bar play-phone-tabs" id="phone-tabs" aria-label="Armies and battle log">
+            <button class="toggle-btn" data-phone-tab="0" id="phone-tab-0">Player 1</button>
+            <button class="toggle-btn" data-phone-tab="1" id="phone-tab-1">Player 2</button>
+            <button class="toggle-btn" data-phone-tab="log"><i class="fa-solid fa-dice" aria-hidden="true"></i> Log</button>
+        </div>
         <div class="play-log">
             <h3><i class="fa-solid fa-dice" aria-hidden="true"></i> Battle log</h3>
             <div id="dice-log"><p class="empty-message">No dice rolled yet</p></div>
@@ -69,6 +78,12 @@
     </section>
 
     {{ army_panel(1) }}
+
+    {# Phones: the selected unit's details and actions, over the bottom of the screen #}
+    <section class="play-sheet" id="unit-sheet" aria-label="Selected unit">
+        <button class="play-sheet-close" id="sheet-close" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        <div id="unit-sheet-body"></div>
+    </section>
 </div>
 
 

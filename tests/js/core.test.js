@@ -17,6 +17,16 @@ test('escapeHtml escapes markup and quotes, and tolerates null', () => {
     assert.equal(Core.escapeHtml(3), '3');
 });
 
+test('infoButton explains with a tappable button, its text escaped, and nothing without text', () => {
+    const html = Core.infoButton('Tick it only when: <b>charging</b>', 'Conditions');
+    assert.match(html, /^<button type="button" class="info-btn"/);
+    assert.match(html, /data-info="Tick it only when: &lt;b&gt;charging&lt;\/b&gt;"/);
+    assert.match(html, /title="Tick it only when: &lt;b&gt;charging&lt;\/b&gt;"/);
+    assert.match(html, /aria-label="Conditions"/);
+    assert.equal(Core.infoButton(''), '');
+    assert.equal(Core.infoButton(null), '');
+});
+
 test('truncate shortens long text with an ellipsis', () => {
     assert.equal(Core.truncate('Plague Marines', 20), 'Plague Marines');
     assert.equal(Core.truncate('Deathshroud Terminators', 10), 'Deathsh...');
@@ -354,6 +364,19 @@ test('ruleRowTitle says whether a rule counts and what it is conditional on', ()
         'Changes the calculations. Tick it only when: If your unit is on an objective; that targets a Monster');
 });
 
+test('cellLabels gives each cell its column heading, and none to a detail row', () => {
+    assert.deepEqual(Core.cellLabels(['', ' Name ', 'CP'], [1, 1, 1]), ['', 'Name', 'CP']);
+    assert.deepEqual(Core.cellLabels(['Name'], [1, 1]), ['Name', '']);
+    assert.equal(Core.cellLabels(['', 'Name', 'CP'], [6]), null);
+});
+
+test('ruleConditions says when to tick a rule, or nothing', () => {
+    assert.equal(Core.ruleConditions({conditions: ['If your unit is on an objective', 'that targets a Monster']}),
+        'Tick it only when: If your unit is on an objective; that targets a Monster');
+    assert.equal(Core.ruleConditions({conditions: []}), '');
+    assert.equal(Core.ruleConditions({}), '');
+});
+
 test('rulesForFilter keeps the phases a weapon type can use', () => {
     const keys = filter => Core.rulesForFilter(rules, filter).map(e => e.key);
     assert.deepEqual(keys('ranged'), ['rule:1', 'stratagem:3']);
@@ -568,6 +591,33 @@ test('playMoveLabel shows how far a model has been dragged against how far it ma
     assert.deepEqual(Core.playMoveLabel(3, 4, 6), { text: '5.0" of 6"', over: false });
     assert.deepEqual(Core.playMoveLabel(0, 6.04, 6), { text: '6.0" of 6"', over: true });
     assert.deepEqual(Core.playMoveLabel(0, 0, 10), { text: '0.0" of 10"', over: false });
+});
+
+test('playPinch zooms about the fingers\' midpoint and pans as it moves', () => {
+    const board = { width: 60, depth: 44 };
+    const view = { x: 0, y: 0, w: 60, h: 44 };
+    const box = { width: 600, height: 440 };  // 10 pixels an inch
+    const start = { a: { x: 250, y: 220 }, b: { x: 350, y: 220 } };  // Around the centre, 100 px apart
+    // Twice as far apart: half the width, the centre kept
+    assert.deepEqual(Core.playPinch(view, start, { a: { x: 200, y: 220 }, b: { x: 400, y: 220 } }, box, board),
+        { x: 15, y: 11, w: 30, h: 22 });
+    // Same distance, moved 100 px left: the view moves 10" right (the board follows the fingers)
+    assert.deepEqual(Core.playPinch(view, start, { a: { x: 150, y: 220 }, b: { x: 250, y: 220 } }, box, board),
+        { x: 10, y: 0, w: 60, h: 44 });
+    // Fingers that haven't moved: the same view
+    assert.deepEqual(Core.playPinch(view, start, start, box, board), view);
+    // A wider box than the board (centred, as SVG draws it): the pivot is still the point under the fingers
+    const wide = Core.playPinch(view, { a: { x: 450, y: 220 }, b: { x: 550, y: 220 } },
+        { a: { x: 400, y: 220 }, b: { x: 600, y: 220 } }, { width: 1000, height: 440 }, board);
+    assert.deepEqual(wide, { x: 15, y: 11, w: 30, h: 22 });
+});
+
+test('nearestWithin picks the model a finger landed nearest, if close enough', () => {
+    const models = [{ id: 'a', x: 100, y: 100, r: 5 }, { id: 'b', x: 130, y: 100, r: 5 }];
+    assert.equal(Core.nearestWithin(models, 100, 100, 20), 'a');  // On it
+    assert.equal(Core.nearestWithin(models, 121, 100, 20), 'b');  // Nearer b's edge
+    assert.equal(Core.nearestWithin(models, 100, 140, 20), null);  // Too far from both
+    assert.equal(Core.nearestWithin([], 0, 0, 20), null);
 });
 
 test('playZoom zooms about the pointer and keeps the view between 10" and the board plus a margin', () => {

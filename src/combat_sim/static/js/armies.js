@@ -255,13 +255,13 @@
                ${u.wargear_summary ? `<span class="army-wargear-summary">${escapeHtml(u.wargear_summary)}</span>` : ''}`
             : '';
         return `<tr class="${u.problems.length ? 'army-unit-problem' : ''} ${u.attached_to ? 'army-unit-attached' : ''}">
-            <td class="col-check">${warlord}</td>
-            <td>${escapeHtml(labels.get(u.uid))}${state.army.warlord === u.uid ? ' <span class="army-warlord-tag">Warlord</span>' : ''}${u.problems.length ? ` <span class="army-unit-warning" title="${escapeHtml(u.problems.join(' '))}">!</span>` : ''}
+            <td class="col-check"${warlord ? ' data-label="Warlord"' : ''}>${warlord}</td>
+            <td class="army-unit-name">${escapeHtml(labels.get(u.uid))}${state.army.warlord === u.uid ? ' <span class="army-warlord-tag">Warlord</span>' : ''}${u.problems.length ? ` <span class="army-unit-warning" title="${escapeHtml(u.problems.join(' '))}">!</span>${Core.infoButton(u.problems.join(' '), 'What to fix')}` : ''}
                 <div class="army-wargear">${wargear}</div></td>
-            <td>${sizes}</td>
-            <td title="${u.enhancement_points ? `Unit ${u.unit_points} + enhancement ${u.enhancement_points}` : ''}">${u.points ?? '-'}</td>
-            <td>${joins}</td>
-            <td>${enhancement}</td>
+            <td data-label="Size">${sizes}</td>
+            <td data-label="Points" title="${u.enhancement_points ? `Unit ${u.unit_points} + enhancement ${u.enhancement_points}` : ''}">${u.points ?? '-'}</td>
+            <td${joins ? ' data-label="Joins"' : ''}>${joins}</td>
+            <td${enhancement ? ' data-label="Enhancement"' : ''}>${enhancement}</td>
             <td class="col-remove">
                 <button class="btn-small army-copy-unit" data-uid="${escapeHtml(u.uid)}" title="Add another">+1</button>
                 <button class="btn-remove army-remove-unit" data-uid="${escapeHtml(u.uid)}" title="Remove"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>

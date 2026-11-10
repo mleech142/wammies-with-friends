@@ -378,3 +378,64 @@
 @keyframes play-pick { 50% { outline-color: transparent; } }
 @media (prefers-reduced-motion: reduce) { .play-die.pickable { animation: none; } }
 .play-log-redo { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem; display: flex; gap: 0.4rem; align-items: center; }
+
+/* Phones (docs/phone-plan.md, step f): the board on top, then the armies and the battle log as tabs; the selected
+   unit's details in a sheet over the bottom of the screen. */
+.play-phone-tabs,
+.play-sheet {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .play-layout.play-layout-game { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+    .play-layout-game .play-board-card { padding: 0.6rem; }
+    .play-hud .play-versus { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+    .play-side { padding: 0.2rem 0.5rem; gap: 0.3rem; }
+    .play-side-name { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .play-scorebox { padding: 0.1rem 0.8rem; }
+
+    /* The steps: title, phases, then the turn and the tools, each a row of its own */
+    .play-steps { grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
+    .play-steps > *,
+    .play-steps .play-turn,
+    .play-steps .play-toolbar-actions,
+    .play-steps .play-phases:not([hidden]) + .play-turn { grid-column: 1; grid-row: auto; justify-self: stretch; }
+    .play-steps .play-turn { text-align: center; }
+    .play-steps .play-toolbar-actions { display: flex; justify-content: center; gap: 0.4rem; }
+    .play-phases { overflow-x: auto; }
+
+    /* Next phase: under the board, not over the small board's deployment zone */
+    .play-go { position: static; display: flex; justify-content: center; width: 100%; margin-top: 0.5rem; }
+    .play-go[hidden] { display: none; }
+    .play-phone-tabs { display: flex; margin: 0.6rem 0 0; }
+    .play-phone-tabs .toggle-btn { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Only the chosen tab's content */
+    .play-layout-game[data-phone-tab="0"] #army-1,
+    .play-layout-game[data-phone-tab="0"] .play-log,
+    .play-layout-game[data-phone-tab="1"] #army-0,
+    .play-layout-game[data-phone-tab="1"] .play-log,
+    .play-layout-game[data-phone-tab="log"] .play-army { display: none; }
+
+    .play-sheet {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1400;
+        max-height: 40vh; overflow-y: auto;
+        padding: 0.75rem max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+        background: var(--bg-tertiary); border-top: 2px solid var(--accent); border-radius: 12px 12px 0 0;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+    }
+    .play-sheet:has(#unit-detail:not(:empty)) { display: block; }
+    .play-games-body { padding: 1rem 0.25rem; }
+    .play-bf-modal .play-bf-layout { padding: 0.5rem 0; }
+    .play-sheet-close { float: right; background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; }
+    /* Room under the page so the sheet never hides its end */
+    .play-layout-game:has(.play-sheet #unit-detail:not(:empty)) { padding-bottom: 60vh; }
+}
+
+/* Touch screens: the board's zoom buttons and One model switch (play.js, step g) */
+.play-icon-btn.touch-only { display: none; }
+@media (pointer: coarse) {
+    .play-bf-letters .btn-small { min-width: 44px; }
+    .play-icon-btn.touch-only { display: inline-block; }
+    .play-steps .play-toolbar-actions { flex-wrap: wrap; }
+}

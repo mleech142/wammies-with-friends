@@ -25,6 +25,93 @@ if (document.querySelector('meta[name="app-hosted"]') && !/^\/(login|welcome|joi
     };
 }
 
+/** The header's menu button (phones and narrow windows, docs/phone-plan.md): opens and closes the links. */
+(() => {
+    const toggle = document.getElementById('nav-toggle');
+    const nav = document.getElementById('header-nav');
+    if (!toggle || !nav) return;
+    const show = open => {
+        toggle.setAttribute('aria-expanded', String(open));
+        nav.classList.toggle('open', open);
+        toggle.querySelector('i').className = open ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+    };
+    toggle.addEventListener('click', () => show(!nav.classList.contains('open')));
+    document.addEventListener('click', e => { if (nav.classList.contains('open') && !e.target.closest('#header-nav, #nav-toggle')) show(false); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && nav.classList.contains('open')) { show(false); toggle.focus(); } });
+})();
+
+/**
+ * Explanations a phone can't hover for: a button made by Core.infoButton(text) shows its text in a small pop-over
+ * when tapped (or clicked), until the next tap anywhere. With a mouse its title still shows on hover.
+ */
+const InfoPopover = (() => {
+    let box = null, owner = null;
+    function hide() {
+        if (box) box.hidden = true;
+        if (owner) owner.setAttribute('aria-expanded', 'false');
+        owner = null;
+    }
+    function show(button) {
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'info-popover';
+            box.setAttribute('role', 'tooltip');
+            box.id = 'info-popover';
+            document.body.appendChild(box);
+        }
+        owner = button;
+        button.setAttribute('aria-expanded', 'true');
+        box.textContent = button.dataset.info;
+        box.hidden = false;
+        const r = button.getBoundingClientRect(), width = document.documentElement.clientWidth;
+        const boxWidth = Math.min(320, width - 16);
+        box.style.maxWidth = boxWidth + 'px';
+        box.style.left = Math.max(8, Math.min(r.left + r.width / 2 - boxWidth / 2, width - boxWidth - 8)) + window.scrollX + 'px';
+        box.style.top = r.bottom + 6 + window.scrollY + 'px';
+    }
+    document.addEventListener('click', e => {
+        const button = e.target.closest('.info-btn');
+        if (button) {
+            e.preventDefault();
+            e.stopPropagation();  // Not the row's own click (ticking a rule, opening a card)
+            if (button === owner) hide(); else show(button);
+            return;
+        }
+        if (owner) hide();
+    }, true);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
+    window.addEventListener('scroll', hide, { passive: true });
+    return { hide };
+})();
+
+/**
+ * Tables that show as cards on phones and are drawn by script (class cards-on-phone with data-auto-labels): each
+ * cell is labelled with its column's heading (Core.cellLabels), again whenever rows are redrawn, including tables
+ * drawn inside them later. Cells that already have a label keep it.
+ */
+const TableCards = (() => {
+    function label(table) {
+        const headings = [...table.querySelectorAll(':scope > thead > tr > th')].map(th => th.textContent);
+        table.querySelectorAll(':scope > tbody > tr').forEach(tr => {
+            const cells = [...tr.children];
+            const labels = Core.cellLabels(headings, cells.map(td => td.colSpan));
+            if (labels) cells.forEach((td, i) => { if (labels[i] && !td.hasAttribute('data-label')) td.setAttribute('data-label', labels[i]); });
+            // Nothing in it (only spaces): no "label:" line with nothing after it
+            cells.forEach(td => td.classList.toggle('cell-empty', !td.textContent.trim() && !td.querySelector('input, select, button, img, svg, i')));
+        });
+    }
+    function watch(root) {
+        root.querySelectorAll('table.cards-on-phone[data-auto-labels]').forEach(table => {
+            label(table);
+            if (table.dataset.cardsWatched) return;
+            table.dataset.cardsWatched = '1';
+            new MutationObserver(() => { label(table); watch(table); }).observe(table, { childList: true, subtree: true });
+        });
+    }
+    watch(document);
+    return { watch };
+})();
+
 /**
  * As-you-type warnings for keyword/modifier text boxes (same rules as the Data page forms).
  * Usage: KeywordHints.attach(inputElement, hintElement, 'unit')
@@ -324,7 +411,7 @@ function renderRulesPanel(side) {
             <label class="rule-row${e.has_effect ? '' : ' rule-no-effect'}"
                    title="${escapeHtml(Core.ruleRowTitle(e))}">
                 <input type="checkbox" data-key="${e.key}" ${panel.ticked.has(e.key) ? 'checked' : ''}>
-                <span class="rule-name">${escapeHtml(e.name)}</span>
+                <span class="rule-name">${escapeHtml(e.name)}${Core.infoButton(Core.ruleConditions(e), 'When to tick it')}</span>
                 ${e.detachment ? `<span class="rule-detachment">${escapeHtml(e.detachment)}</span>` : ''}
                 ${e.cp ? `<span class="rule-cp">${escapeHtml(e.cp)} CP</span>` : ''}
                 <span class="rule-modifier">${e.has_effect ? escapeHtml(e.modifier) : 'No effect on the calculations'}</span>
@@ -845,6 +932,10 @@ async function runSimulation() {
         if (!response.ok) throw new Error(result.error || 'Simulation failed');
         lastSimulationResult = result;
         displayResults(result);
+        // One column (phones): the results are below everything else, so take the player to them
+        if (window.matchMedia('(max-width: 900px)').matches) {
+            document.getElementById('results-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     } catch (err) {
         console.error('Simulation error:', err);
         alert('Error running simulation');

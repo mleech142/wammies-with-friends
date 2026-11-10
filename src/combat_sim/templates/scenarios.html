@@ -218,7 +218,7 @@ function drawComparisonChart(results) {
         xaxis: { title: 'Damage', type: 'category', gridcolor: '#2a2a4a' },
         yaxis: { title: 'Probability %', gridcolor: '#2a2a4a' },
         legend: { orientation: 'h', y: 1.1 }
-    }, { responsive: true });
+    }, { responsive: true, displayModeBar: !window.matchMedia('(pointer: coarse)').matches });  // Its tools need a mouse
 }
 
 function loadScenario(id) {

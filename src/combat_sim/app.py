@@ -3,6 +3,7 @@ Flask application for Wammies With Friends: create_app() configures the app and 
 (routes/, play/routes.py, accounts.py, proposals.py), then access.py's gate.
 """
 
+import mimetypes
 import os
 import secrets
 import uuid
@@ -21,6 +22,8 @@ from .play.routes import register_play_routes
 from .proposals import register_proposal_routes
 from .settings import settings_path
 from .wargear import default_used  # noqa: F401  (tests import it from here)
+
+mimetypes.add_type('application/manifest+json', '.webmanifest')  # The home-screen manifest (static/)
 
 
 def create_app(config=None):

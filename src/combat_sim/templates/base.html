@@ -2,10 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="app-boot-id" content="{{ boot_id }}">
     {% if who.shared %}<meta name="app-hosted" content="1">{% endif %}
     <title>{% block title %}Wammies With Friends{% endblock %}</title>
+    {# Add to the home screen (docs/phone-plan.md, step h): opens without the browser's bars #}
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+    <meta name="theme-color" content="#23231a">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icons/apple-touch-icon.png') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Wammies">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <script src="{{ url_for('static', filename='vendor/plotly-2.27.0.min.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome-free-7.3.1/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome-free-7.3.1/css/solid.min.css') }}">
@@ -18,7 +26,10 @@
         <a href="/" class="header-brand">
             <h1><i class="fa-solid fa-dice-d6" aria-hidden="true"></i> Wammies With Friends</h1>
         </a>
-        <nav class="header-nav">
+        <button type="button" id="nav-toggle" class="nav-toggle" aria-controls="header-nav" aria-expanded="false" aria-label="Menu">
+            <i class="fa-solid fa-bars" aria-hidden="true"></i>
+        </button>
+        <nav class="header-nav" id="header-nav">
             {% if not who.shared or user %}
             <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}"><i class="fa-solid fa-dice-d6" aria-hidden="true"></i> Simulator</a>
             <a href="/analytics" class="nav-link {% if request.path == '/analytics' %}active{% endif %}"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> Analytics</a>
