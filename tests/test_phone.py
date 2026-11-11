@@ -550,8 +550,10 @@ def test_one_model_at_a_time_and_spinning_it_by_touch(tmp_path_factory, browser)
         page.wait_for_selector('#unit-sheet [data-spin]')
         page.tap('#unit-sheet [data-spin="15"]')
         page.tap('#zoom-in-btn')  # Anything else: the spin is sent
-        page.wait_for_timeout(1500)
-        page.wait_for_load_state('networkidle')
-        spun = placed(page, game, 'p1-u0')[moved[0]]
+        for _ in range(40):  # Until it is saved (a slow CI runner can take longer than a fixed pause)
+            spun = placed(page, game, 'p1-u0')[moved[0]]
+            if spun['angle']:
+                break
+            page.wait_for_timeout(250)
         assert spun['angle'] == 15 and (spun['x'], spun['y']) == (after[moved[0]]['x'], after[moved[0]]['y'])
         context.close()
