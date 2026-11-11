@@ -522,6 +522,8 @@ def test_one_model_at_a_time_and_spinning_it_by_touch(tmp_path_factory, browser)
     with live_server(tmp_path_factory.mktemp('one'), in_movement) as (address, ids):
         context = browser.new_context(**PHONE)
         page = context.new_page()
+        errors, messages = [], []
+        page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(f'{address}/play?game={ids["game"]}', wait_until='networkidle')
         cdp = context.new_cdp_session(page)
         game = ids['game']
@@ -549,11 +551,14 @@ def test_one_model_at_a_time_and_spinning_it_by_touch(tmp_path_factory, browser)
 
         page.wait_for_selector('#unit-sheet [data-spin]')
         page.tap('#unit-sheet [data-spin="15"]')
+        messages.append(page.inner_text('#play-message'))  # "Turning ...": the spin is waiting to be sent
         page.tap('#zoom-in-btn')  # Anything else: the spin is sent
         for _ in range(40):  # Until it is saved (a slow CI runner can take longer than a fixed pause)
             spun = placed(page, game, 'p1-u0')[moved[0]]
             if spun['angle']:
                 break
             page.wait_for_timeout(250)
-        assert spun['angle'] == 15 and (spun['x'], spun['y']) == (after[moved[0]]['x'], after[moved[0]]['y'])
+        messages.append(page.inner_text('#play-message'))
+        assert spun['angle'] == 15 and (spun['x'], spun['y']) == (after[moved[0]]['x'], after[moved[0]]['y']), \
+            {'messages': messages, 'errors': errors, 'spun': spun}
         context.close()
