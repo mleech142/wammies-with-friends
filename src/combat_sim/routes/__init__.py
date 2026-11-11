@@ -7,7 +7,7 @@ play/routes.py, logins' in accounts.py and proposals' in proposals.py.
 - catalogue: what the pages choose from (units, rules and stratagems to tick, detachments, enhancements, keywords)
 - analytics: the matrix, a cell's detail, Army Analysis and reverse durability
 - army_lists: the Armies page, pricing, wargear, share codes and Match view
-- saved: scenarios and comparisons
+- saved: Analytics' saved matrix comparisons
 - data_tab: the Data tab (app data, read and changed through app_data_edits.py)
 - setup: the Setup page (BSData and Wahapedia downloads and re-imports, as jobs) and the import status
 - shared: helpers more than one area uses

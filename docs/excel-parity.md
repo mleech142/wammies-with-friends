@@ -100,7 +100,7 @@ Excel lets weapons, units, faction rules and stratagems carry these in their Mod
 | Entries with no modelled effect (Command Re-roll, Explosives…) | ✅ Listed greyed out, marked "No effect on the calculations" |
 | Up to 15 rules/stratagems per side | ➕ No limit |
 
-Ticks are remembered when switching tabs and saved with Scenarios and Comparisons.
+Ticks are remembered when switching tabs and saved with Comparisons.
 
 ## 6. Single simulator (Sim-Shooting / Sim-Fighting vs the Simulator page)
 
@@ -114,7 +114,6 @@ Ticks are remembered when switching tabs and saved with Scenarios and Comparison
 | Totals: Total Damage, Total Models Killed, Weapons in Use, Check warnings | ✅ Totals in the summary cards; Monte Carlo rolls all ticked weapons together |
 | Attacker Effects / Target Effects summaries | ✅ |
 | Monte Carlo and damage distribution | ➕ |
-| Saved scenarios | ➕ |
 
 ## 7. Roster vs Analytics
 
@@ -155,7 +154,7 @@ Ticks are remembered when switching tabs and saved with Scenarios and Comparison
 
 ## 10. App-only features (keep)
 
-Monte Carlo simulation and damage distributions; per-cell wipe %; saved scenarios and comparisons; editable data with a web UI; per-weapon matrix breakdown; repeated units with independent loadouts; tab state that survives switching pages.
+Monte Carlo simulation and damage distributions; per-cell wipe %; saved comparisons; editable data with a web UI; per-weapon matrix breakdown; repeated units with independent loadouts; tab state that survives switching pages.
 
 ## 11. Proposed build order (for discussion)
 

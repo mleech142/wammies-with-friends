@@ -4,7 +4,6 @@ Analytics: the attackers x defenders matrix, a cell's Monte Carlo detail, Army A
 
 from flask import jsonify, redirect, render_template, request
 
-from .. import contagion
 from ..app_data_edits import text_list
 from ..engagement import afflictions, attack_modifiers, clamp_models, enhancement_points, leader_target, load_enhancements, load_leader, selected_rules, sources_for, stat_changes, target_modifiers, unit_target, weapon_attack
 from ..models import Faction, TargetProfile, Unit, db
@@ -40,7 +39,8 @@ def register(app):
         """Matrix comparison page for army analysis."""
         factions = Faction.query.order_by(Faction.name).all()
         factions_list = [{'id': f.id, 'name': f.name} for f in factions]
-        return render_template('analytics.html', factions=factions_list, afflictions=contagion.choices())
+        # The page offers no Afflicted choices (issue #25); the API still reads "afflicted" (contagion.py)
+        return render_template('analytics.html', factions=factions_list)
 
     # Units without a points cost count as this many points per unit (placeholder until costs are entered)
     DEFAULT_UNIT_POINTS = 1

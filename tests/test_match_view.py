@@ -7,7 +7,7 @@ factions in tests/fixtures/bsdata and the made-up Wahapedia export in tests/fixt
 import pytest
 
 from conftest import BSDATA_FIXTURES, WAHAPEDIA_FIXTURES
-from combat_sim.match_view import split_abilities
+from combat_sim.match_view import split_abilities, without_abilities
 
 APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'ranged_weapons': [], 'melee_weapons': [],
             'faction_rules': [], 'stratagems': [], 'unit_modifiers': [], 'keywords': [], 'target_profiles': []}
@@ -66,6 +66,41 @@ def test_units_rules_and_stratagems(client):
     assert [s['core'] for s in view['stratagems']] == sorted(s['core'] for s in view['stratagems'])  # Faction's first
 
 
+def test_an_ability_for_another_detachment_is_left_out(client):
+    """Issue #27: Chaos Daemons units showed their Shadow Legion ability whichever detachment was chosen."""
+    def brute_abilities(detachment):
+        units = {u['name']: u['id'] for u in client.get('/api/units').get_json()}
+        _, view = saved_match(client, detachment_keys=[detachment],
+                              units=[{'uid': 'brutes', 'unit_id': units['Shield Brutes']}], warlord=None)
+        return [a['name'] for a in view['units'][0]['abilities']]
+
+    assert 'Bastion Drill' in brute_abilities('d-bastion')
+    vanguard = brute_abilities('d-vanguard')
+    assert 'Bastion Drill' not in vanguard
+    assert 'Brute Roar' in vanguard  # Hidden by an army option that isn't a detachment: shown, as before
+
+
+def test_play_leaves_out_an_ability_for_another_detachment(client):
+    from combat_sim.play.snapshot import freeze_army
+    factions = {f['name']: f['id'] for f in client.get('/api/data/factions').get_json()}
+    units = {u['name']: u['id'] for u in client.get(f'/api/units?faction_id={factions["Starfarers"]}').get_json()}
+
+    def part(detachment):
+        army = {'name': 'Brutes', 'faction_id': factions['Starfarers'], 'detachment_keys': [detachment],
+                'units': [{'uid': 'b', 'unit_id': units['Shield Brutes']}]}
+        with client.application.app_context():
+            return freeze_army(army)['units'][0]['parts'][0]
+
+    assert part('d-vanguard')['hidden_abilities'] == ['Bastion Drill']  # The board's card leaves it out (Core.playUnitCard)
+    assert part('d-bastion')['hidden_abilities'] == []
+
+
+def test_without_abilities():
+    text = 'Bastion Drill: Shoot after falling back.\n\nIts second paragraph.\n\nBrute Roar: Shouts.\n\nDeep Strike'
+    assert without_abilities(text, {'Bastion Drill'}) == 'Brute Roar: Shouts.\n\nDeep Strike'
+    assert without_abilities(text, set()) == text
+
+
 def test_page_and_missing_army(client):
     army_id, _ = saved_match(client)
     page = client.get(f'/armies/{army_id}/match')
@@ -88,10 +123,10 @@ def test_chosen_wargear_changes_the_datasheet(client):
 
     plain = sheet(None)
     assert (plain['stats']['wounds'], plain['stats']['invulnerable_save']) == (4, None)  # Slab shields: W 4
-    assert [a['name'] for a in plain['abilities']] == ['Slab Shield']
+    assert [a['name'] for a in plain['abilities']] == ['Brute Roar', 'Slab Shield']  # Not Bastion Drill: not Star Bastion
     brute = sheet({k['Brute shield']: 2})  # Most of the unit now has Brute shields
     assert (brute['stats']['wounds'], brute['stats']['invulnerable_save']) == (3, 4)
-    assert [a['name'] for a in brute['abilities']] == ['Slab Shield', 'Brute Shield']
+    assert [a['name'] for a in brute['abilities']] == ['Brute Roar', 'Slab Shield', 'Brute Shield']
     assert brute['wargear_summary'] == '2× Brute shield'
 
 

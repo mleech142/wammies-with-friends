@@ -4,8 +4,8 @@ Database models for Wammies With Friends.
 Schema designed for Warhammer 40K 11th Edition rules.
 
 Reference data (factions, units, weapons, rules, stratagems) is rebuilt on every start
-from the BSData import and the app's own data JSON; see data_store.py. Saved scenarios,
-comparisons and the BSData ID map live only in the database.
+from the BSData import and the app's own data JSON; see data_store.py. Saved armies,
+comparisons, games and the BSData ID map live only in the database.
 
 Factions with `source` 'bsdata' come from the BSData catalogues: their units and weapons
 are read-only. 'custom' factions (and their units and weapons) are made in the app. BSData
@@ -135,6 +135,9 @@ class Unit(db.Model):
     leader_buffs = db.Column(JSON, default=list)  # BSData: parsed from its Leader text; custom: edited
     leader_buffs_override = db.Column(JSON, nullable=True)  # BSData units: edited in the app (null = parsed)
     abilities = db.Column(db.Text, nullable=True)  # Free text from the datasheet
+    # BSData units: abilities BSData shows only with some detachments, {name: [condition tree, ...]} (hidden if
+    # any tree holds; bsdata._condition_tree, evaluated by armies.hidden_abilities). None = none of those.
+    ability_conditions = db.Column(JSON, nullable=True)
 
     bsdata_id = db.Column(db.String(40), nullable=True)  # Selection entry ID (BSData units only)
     legends = db.Column(db.Boolean, default=False)
@@ -536,7 +539,7 @@ class TargetProfile(db.Model):
         }
 
 
-# Tables rebuilt from the data JSON on every start (everything except saved scenarios/comparisons)
+# Tables rebuilt from the data JSON on every start (everything except saved records and the BSData ID map)
 class Enhancement(db.Model):
     """
     A BSData enhancement of a faction (read-only; see bsdata.enhancements): its points, text, the
@@ -591,31 +594,12 @@ class StableId(db.Model):
     id = db.Column(db.Integer, nullable=False)
 
 
-class SavedScenario(db.Model):
-    """A saved simulation scenario for comparison."""
-    __tablename__ = 'saved_scenarios'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-
-    # Store the full scenario configuration as JSON
-    attacker_config = db.Column(JSON, nullable=False)
-    defender_config = db.Column(JSON, nullable=False)
-    battle_conditions = db.Column(JSON, nullable=False)
-
-    # Cached results
-    results = db.Column(JSON, nullable=True)
-
-    owner_id = db.Column(db.Integer, nullable=True)  # Self-hosted copies: the player it belongs to (None: the host's; accounts.py)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<SavedScenario {self.name}>'
+# Saved scenarios (the Scenarios page) were removed (issue #25): databases from before keep their unused
+# saved_scenarios table, which nothing reads.
 
 
 class SavedArmy(db.Model):
-    """An army list built on the Armies page (see armies.py). Kept in the database only, like scenarios."""
+    """An army list built on the Armies page (see armies.py). Kept in the database only, like comparisons."""
     __tablename__ = 'saved_armies'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -779,7 +763,7 @@ def add_missing_columns():
     (create_all only makes missing tables). Anything else still needs a manual ALTER TABLE.
     """
     inspector = db.inspect(db.engine)
-    for model in (SavedScenario, SavedComparison, SavedArmy, SavedGame, SavedBattlefield, StableId, User, Proposal):
+    for model in (SavedComparison, SavedArmy, SavedGame, SavedBattlefield, StableId, User, Proposal):
         table = model.__table__
         if not inspector.has_table(table.name):
             continue

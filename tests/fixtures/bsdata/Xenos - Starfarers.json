@@ -37,6 +37,39 @@
     "description": "Each time a unit from this army is selected to shoot, it can re-roll one Hit roll."
    }
   ],
+  "sharedProfiles": [
+   {
+    "name": "Bastion Drill",
+    "id": "a-bastion-drill",
+    "hidden": false,
+    "typeId": "pt-abil",
+    "typeName": "Abilities",
+    "characteristics": [
+     {
+      "name": "Description",
+      "$text": "This unit is eligible to shoot in a turn in which it Fell Back."
+     }
+    ],
+    "modifiers": [
+     {
+      "field": "hidden",
+      "type": "set",
+      "value": true,
+      "conditions": [
+       {
+        "childId": "d-bastion",
+        "field": "selections",
+        "includeChildSelections": true,
+        "scope": "roster",
+        "shared": true,
+        "type": "lessThan",
+        "value": 1
+       }
+      ]
+     }
+    ]
+   }
+  ],
   "sharedSelectionEntries": [
    {
     "name": "Laser pistol",
@@ -53,31 +86,38 @@
       "characteristics": [
        {
         "name": "Range",
-        "$text": "12\""
+        "$text": "12\"",
+        "typeId": "wt-ranged-range"
        },
        {
         "name": "A",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "wt-ranged-a"
        },
        {
         "name": "BS",
-        "$text": "3+"
+        "$text": "3+",
+        "typeId": "wt-ranged-bs"
        },
        {
         "name": "S",
-        "$text": "4"
+        "$text": "4",
+        "typeId": "wt-ranged-s"
        },
        {
         "name": "AP",
-        "$text": "-1"
+        "$text": "-1",
+        "typeId": "wt-ranged-ap"
        },
        {
         "name": "D",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "wt-ranged-d"
        },
        {
         "name": "Keywords",
-        "$text": "Pistol"
+        "$text": "Pistol",
+        "typeId": "wt-ranged-keywords"
        }
       ]
      }
@@ -125,31 +165,38 @@
       "characteristics": [
        {
         "name": "Range",
-        "$text": "24\""
+        "$text": "24\"",
+        "typeId": "wt-ranged-range"
        },
        {
         "name": "A",
-        "$text": "2"
+        "$text": "2",
+        "typeId": "wt-ranged-a"
        },
        {
         "name": "BS",
-        "$text": "3+"
+        "$text": "3+",
+        "typeId": "wt-ranged-bs"
        },
        {
         "name": "S",
-        "$text": "4"
+        "$text": "4",
+        "typeId": "wt-ranged-s"
        },
        {
         "name": "AP",
-        "$text": "0"
+        "$text": "0",
+        "typeId": "wt-ranged-ap"
        },
        {
         "name": "D",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "wt-ranged-d"
        },
        {
         "name": "Keywords",
-        "$text": "Rapid Fire 1"
+        "$text": "Rapid Fire 1",
+        "typeId": "wt-ranged-keywords"
        }
       ]
      },
@@ -162,31 +209,38 @@
       "characteristics": [
        {
         "name": "Range",
-        "$text": "24\""
+        "$text": "24\"",
+        "typeId": "wt-ranged-range"
        },
        {
         "name": "A",
-        "$text": "2"
+        "$text": "2",
+        "typeId": "wt-ranged-a"
        },
        {
         "name": "BS",
-        "$text": "3+"
+        "$text": "3+",
+        "typeId": "wt-ranged-bs"
        },
        {
         "name": "S",
-        "$text": "7"
+        "$text": "7",
+        "typeId": "wt-ranged-s"
        },
        {
         "name": "AP",
-        "$text": "-2"
+        "$text": "-2",
+        "typeId": "wt-ranged-ap"
        },
        {
         "name": "D",
-        "$text": "2"
+        "$text": "2",
+        "typeId": "wt-ranged-d"
        },
        {
         "name": "Keywords",
-        "$text": "Hazardous"
+        "$text": "Hazardous",
+        "typeId": "wt-ranged-keywords"
        }
       ]
      }
@@ -225,31 +279,38 @@
       "characteristics": [
        {
         "name": "Range",
-        "$text": "12\""
+        "$text": "12\"",
+        "typeId": "wt-ranged-range"
        },
        {
         "name": "A",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "wt-ranged-a"
        },
        {
         "name": "BS",
-        "$text": "3+"
+        "$text": "3+",
+        "typeId": "wt-ranged-bs"
        },
        {
         "name": "S",
-        "$text": "7"
+        "$text": "7",
+        "typeId": "wt-ranged-s"
        },
        {
         "name": "AP",
-        "$text": "-2"
+        "$text": "-2",
+        "typeId": "wt-ranged-ap"
        },
        {
         "name": "D",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "wt-ranged-d"
        },
        {
         "name": "Keywords",
-        "$text": "Pistol"
+        "$text": "Pistol",
+        "typeId": "wt-ranged-keywords"
        }
       ]
      }
@@ -271,31 +332,38 @@
       "characteristics": [
        {
         "name": "Range",
-        "$text": "Melee"
+        "$text": "Melee",
+        "typeId": "wt-melee-range"
        },
        {
         "name": "A",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "wt-melee-a"
        },
        {
         "name": "WS",
-        "$text": "4+"
+        "$text": "4+",
+        "typeId": "wt-melee-ws"
        },
        {
         "name": "S",
-        "$text": "4"
+        "$text": "4",
+        "typeId": "wt-melee-s"
        },
        {
         "name": "AP",
-        "$text": "0"
+        "$text": "0",
+        "typeId": "wt-melee-ap"
        },
        {
         "name": "D",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "wt-melee-d"
        },
        {
         "name": "Keywords",
-        "$text": null
+        "$text": null,
+        "typeId": "wt-melee-keywords"
        }
       ]
      }
@@ -364,31 +432,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "6\""
+        "$text": "6\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "4"
+        "$text": "4",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "3+"
+        "$text": "3+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "2"
+        "$text": "2",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "6+"
+        "$text": "6+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "2"
+        "$text": "2",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": ""
+        "$text": "",
+        "typeId": "ct-insv"
        },
        {
         "name": "Base",
@@ -567,31 +642,38 @@
             "characteristics": [
              {
               "name": "Range",
-              "$text": "Melee"
+              "$text": "Melee",
+              "typeId": "wt-melee-range"
              },
              {
               "name": "A",
-              "$text": "3"
+              "$text": "3",
+              "typeId": "wt-melee-a"
              },
              {
               "name": "WS",
-              "$text": "3+"
+              "$text": "3+",
+              "typeId": "wt-melee-ws"
              },
              {
               "name": "S",
-              "$text": "5"
+              "$text": "5",
+              "typeId": "wt-melee-s"
              },
              {
               "name": "AP",
-              "$text": "-1"
+              "$text": "-1",
+              "typeId": "wt-melee-ap"
              },
              {
               "name": "D",
-              "$text": "1"
+              "$text": "1",
+              "typeId": "wt-melee-d"
              },
              {
               "name": "Keywords",
-              "$text": "Lethal Hits"
+              "$text": "Lethal Hits",
+              "typeId": "wt-melee-keywords"
              }
             ]
            }
@@ -613,31 +695,38 @@
             "characteristics": [
              {
               "name": "Range",
-              "$text": "Melee"
+              "$text": "Melee",
+              "typeId": "wt-melee-range"
              },
              {
               "name": "A",
-              "$text": "3"
+              "$text": "3",
+              "typeId": "wt-melee-a"
              },
              {
               "name": "WS",
-              "$text": "3+"
+              "$text": "3+",
+              "typeId": "wt-melee-ws"
              },
              {
               "name": "S",
-              "$text": "6"
+              "$text": "6",
+              "typeId": "wt-melee-s"
              },
              {
               "name": "AP",
-              "$text": "-2"
+              "$text": "-2",
+              "typeId": "wt-melee-ap"
              },
              {
               "name": "D",
-              "$text": "1"
+              "$text": "1",
+              "typeId": "wt-melee-d"
              },
              {
               "name": "Keywords",
-              "$text": null
+              "$text": null,
+              "typeId": "wt-melee-keywords"
              }
             ]
            }
@@ -751,31 +840,38 @@
             "characteristics": [
              {
               "name": "Range",
-              "$text": "36\""
+              "$text": "36\"",
+              "typeId": "wt-ranged-range"
              },
              {
               "name": "A",
-              "$text": "1"
+              "$text": "1",
+              "typeId": "wt-ranged-a"
              },
              {
               "name": "BS",
-              "$text": "4+"
+              "$text": "4+",
+              "typeId": "wt-ranged-bs"
              },
              {
               "name": "S",
-              "$text": "9"
+              "$text": "9",
+              "typeId": "wt-ranged-s"
              },
              {
               "name": "AP",
-              "$text": "-3"
+              "$text": "-3",
+              "typeId": "wt-ranged-ap"
              },
              {
               "name": "D",
-              "$text": "D6"
+              "$text": "D6",
+              "typeId": "wt-ranged-d"
              },
              {
               "name": "Keywords",
-              "$text": "Heavy, Anti-Vehicle 4+, Laser Burn"
+              "$text": "Heavy, Anti-Vehicle 4+, Laser Burn",
+              "typeId": "wt-ranged-keywords"
              }
             ]
            }
@@ -854,31 +950,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "6\""
+        "$text": "6\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "4"
+        "$text": "4",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "2+"
+        "$text": "2+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "5"
+        "$text": "5",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "6+"
+        "$text": "6+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": "4+"
+        "$text": "4+",
+        "typeId": "ct-insv"
        }
       ]
      },
@@ -983,31 +1086,38 @@
         "characteristics": [
          {
           "name": "Range",
-          "$text": "Melee"
+          "$text": "Melee",
+          "typeId": "wt-melee-range"
          },
          {
           "name": "A",
-          "$text": "5"
+          "$text": "5",
+          "typeId": "wt-melee-a"
          },
          {
           "name": "WS",
-          "$text": "2+"
+          "$text": "2+",
+          "typeId": "wt-melee-ws"
          },
          {
           "name": "S",
-          "$text": "6"
+          "$text": "6",
+          "typeId": "wt-melee-s"
          },
          {
           "name": "AP",
-          "$text": "-2"
+          "$text": "-2",
+          "typeId": "wt-melee-ap"
          },
          {
           "name": "D",
-          "$text": "2"
+          "$text": "2",
+          "typeId": "wt-melee-d"
          },
          {
           "name": "Keywords",
-          "$text": "Sustained Hits 1"
+          "$text": "Sustained Hits 1",
+          "typeId": "wt-melee-keywords"
          }
         ]
        }
@@ -1090,31 +1200,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "8\""
+        "$text": "8\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "9"
+        "$text": "9",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "3+"
+        "$text": "3+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "10"
+        "$text": "10",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "7+"
+        "$text": "7+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "3"
+        "$text": "3",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": ""
+        "$text": "",
+        "typeId": "ct-insv"
        },
        {
         "name": "Base",
@@ -1183,31 +1300,38 @@
         "characteristics": [
          {
           "name": "Range",
-          "$text": "12\""
+          "$text": "12\"",
+          "typeId": "wt-ranged-range"
          },
          {
           "name": "A",
-          "$text": "D6"
+          "$text": "D6",
+          "typeId": "wt-ranged-a"
          },
          {
           "name": "BS",
-          "$text": "N/A"
+          "$text": "N/A",
+          "typeId": "wt-ranged-bs"
          },
          {
           "name": "S",
-          "$text": "5"
+          "$text": "5",
+          "typeId": "wt-ranged-s"
          },
          {
           "name": "AP",
-          "$text": "-1"
+          "$text": "-1",
+          "typeId": "wt-ranged-ap"
          },
          {
           "name": "D",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "wt-ranged-d"
          },
          {
           "name": "Keywords",
-          "$text": "Ignores Cover, Torrent, Twin Linked"
+          "$text": "Ignores Cover, Torrent, Twin Linked",
+          "typeId": "wt-ranged-keywords"
          }
         ]
        }
@@ -1246,31 +1370,38 @@
         "characteristics": [
          {
           "name": "Range",
-          "$text": "6\""
+          "$text": "6\"",
+          "typeId": "wt-ranged-range"
          },
          {
           "name": "A",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "wt-ranged-a"
          },
          {
           "name": "BS",
-          "$text": "2+"
+          "$text": "2+",
+          "typeId": "wt-ranged-bs"
          },
          {
           "name": "S",
-          "$text": "*"
+          "$text": "*",
+          "typeId": "wt-ranged-s"
          },
          {
           "name": "AP",
-          "$text": "*"
+          "$text": "*",
+          "typeId": "wt-ranged-ap"
          },
          {
           "name": "D",
-          "$text": "*"
+          "$text": "*",
+          "typeId": "wt-ranged-d"
          },
          {
           "name": "Keywords",
-          "$text": null
+          "$text": null,
+          "typeId": "wt-ranged-keywords"
          }
         ]
        }
@@ -1309,31 +1440,38 @@
         "characteristics": [
          {
           "name": "Range",
-          "$text": "Melee"
+          "$text": "Melee",
+          "typeId": "wt-melee-range"
          },
          {
           "name": "A",
-          "$text": "4"
+          "$text": "4",
+          "typeId": "wt-melee-a"
          },
          {
           "name": "WS",
-          "$text": "4+"
+          "$text": "4+",
+          "typeId": "wt-melee-ws"
          },
          {
           "name": "S",
-          "$text": "7"
+          "$text": "7",
+          "typeId": "wt-melee-s"
          },
          {
           "name": "AP",
-          "$text": "0"
+          "$text": "0",
+          "typeId": "wt-melee-ap"
          },
          {
           "name": "D",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "wt-melee-d"
          },
          {
           "name": "Keywords",
-          "$text": "-"
+          "$text": "-",
+          "typeId": "wt-melee-keywords"
          }
         ]
        }
@@ -1448,31 +1586,38 @@
         "characteristics": [
          {
           "name": "M",
-          "$text": "6\""
+          "$text": "6\"",
+          "typeId": "ct-m"
          },
          {
           "name": "T",
-          "$text": "3"
+          "$text": "3",
+          "typeId": "ct-t"
          },
          {
           "name": "Sv",
-          "$text": "5+"
+          "$text": "5+",
+          "typeId": "ct-sv"
          },
          {
           "name": "W",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "ct-w"
          },
          {
           "name": "LD",
-          "$text": "7+"
+          "$text": "7+",
+          "typeId": "ct-ld"
          },
          {
           "name": "OC",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "ct-oc"
          },
          {
           "name": "InSv",
-          "$text": ""
+          "$text": "",
+          "typeId": "ct-insv"
          },
          {
           "name": "Base",
@@ -1568,31 +1713,38 @@
             "characteristics": [
              {
               "name": "Range",
-              "$text": "Melee"
+              "$text": "Melee",
+              "typeId": "wt-melee-range"
              },
              {
               "name": "A",
-              "$text": "3"
+              "$text": "3",
+              "typeId": "wt-melee-a"
              },
              {
               "name": "WS",
-              "$text": "4+"
+              "$text": "4+",
+              "typeId": "wt-melee-ws"
              },
              {
               "name": "S",
-              "$text": "5"
+              "$text": "5",
+              "typeId": "wt-melee-s"
              },
              {
               "name": "AP",
-              "$text": "-1"
+              "$text": "-1",
+              "typeId": "wt-melee-ap"
              },
              {
               "name": "D",
-              "$text": "1"
+              "$text": "1",
+              "typeId": "wt-melee-d"
              },
              {
               "name": "Keywords",
-              "$text": null
+              "$text": null,
+              "typeId": "wt-melee-keywords"
              }
             ]
            }
@@ -1629,31 +1781,38 @@
           "characteristics": [
            {
             "name": "M",
-            "$text": "10\""
+            "$text": "10\"",
+            "typeId": "ct-m"
            },
            {
             "name": "T",
-            "$text": "5"
+            "$text": "5",
+            "typeId": "ct-t"
            },
            {
             "name": "Sv",
-            "$text": "6+"
+            "$text": "6+",
+            "typeId": "ct-sv"
            },
            {
             "name": "W",
-            "$text": "2"
+            "$text": "2",
+            "typeId": "ct-w"
            },
            {
             "name": "LD",
-            "$text": "8+"
+            "$text": "8+",
+            "typeId": "ct-ld"
            },
            {
             "name": "OC",
-            "$text": "0"
+            "$text": "0",
+            "typeId": "ct-oc"
            },
            {
             "name": "InSv",
-            "$text": ""
+            "$text": "",
+            "typeId": "ct-insv"
            },
            {
             "name": "Base",
@@ -1716,31 +1875,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "5\""
+        "$text": "5\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "3"
+        "$text": "3",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "5+"
+        "$text": "5+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "7+"
+        "$text": "7+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": ""
+        "$text": "",
+        "typeId": "ct-insv"
        }
       ]
      }
@@ -1985,31 +2151,38 @@
             "characteristics": [
              {
               "name": "Range",
-              "$text": "36\""
+              "$text": "36\"",
+              "typeId": "wt-ranged-range"
              },
              {
               "name": "A",
-              "$text": "2"
+              "$text": "2",
+              "typeId": "wt-ranged-a"
              },
              {
               "name": "BS",
-              "$text": "4+"
+              "$text": "4+",
+              "typeId": "wt-ranged-bs"
              },
              {
               "name": "S",
-              "$text": "8"
+              "$text": "8",
+              "typeId": "wt-ranged-s"
              },
              {
               "name": "AP",
-              "$text": "-2"
+              "$text": "-2",
+              "typeId": "wt-ranged-ap"
              },
              {
               "name": "D",
-              "$text": "3"
+              "$text": "3",
+              "typeId": "wt-ranged-d"
              },
              {
               "name": "Keywords",
-              "$text": null
+              "$text": null,
+              "typeId": "wt-ranged-keywords"
              }
             ]
            }
@@ -2400,31 +2573,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "6\""
+        "$text": "6\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "5"
+        "$text": "5",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "2+"
+        "$text": "2+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "6"
+        "$text": "6",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "5+"
+        "$text": "5+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "2"
+        "$text": "2",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": "4+"
+        "$text": "4+",
+        "typeId": "ct-insv"
        }
       ]
      },
@@ -2474,31 +2654,38 @@
         "characteristics": [
          {
           "name": "Range",
-          "$text": "Melee"
+          "$text": "Melee",
+          "typeId": "wt-melee-range"
          },
          {
           "name": "A",
-          "$text": "6"
+          "$text": "6",
+          "typeId": "wt-melee-a"
          },
          {
           "name": "WS",
-          "$text": "2+"
+          "$text": "2+",
+          "typeId": "wt-melee-ws"
          },
          {
           "name": "S",
-          "$text": "7"
+          "$text": "7",
+          "typeId": "wt-melee-s"
          },
          {
           "name": "AP",
-          "$text": "-3"
+          "$text": "-3",
+          "typeId": "wt-melee-ap"
          },
          {
           "name": "D",
-          "$text": "2"
+          "$text": "2",
+          "typeId": "wt-melee-d"
          },
          {
           "name": "Keywords",
-          "$text": null
+          "$text": null,
+          "typeId": "wt-melee-keywords"
          }
         ]
        }
@@ -2559,31 +2746,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "6\""
+        "$text": "6\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "4"
+        "$text": "4",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "4+"
+        "$text": "4+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "3"
+        "$text": "3",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "6+"
+        "$text": "6+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": "4+*"
+        "$text": "4+*",
+        "typeId": "ct-insv"
        }
       ]
      },
@@ -2637,31 +2831,38 @@
         "characteristics": [
          {
           "name": "Range",
-          "$text": "12\""
+          "$text": "12\"",
+          "typeId": "wt-ranged-range"
          },
          {
           "name": "A",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "wt-ranged-a"
          },
          {
           "name": "BS",
-          "$text": "4+"
+          "$text": "4+",
+          "typeId": "wt-ranged-bs"
          },
          {
           "name": "S",
-          "$text": "3"
+          "$text": "3",
+          "typeId": "wt-ranged-s"
          },
          {
           "name": "AP",
-          "$text": "0"
+          "$text": "0",
+          "typeId": "wt-ranged-ap"
          },
          {
           "name": "D",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "wt-ranged-d"
          },
          {
           "name": "Keywords",
-          "$text": "Pistol"
+          "$text": "Pistol",
+          "typeId": "wt-ranged-keywords"
          }
         ]
        }
@@ -2716,31 +2917,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "6\""
+        "$text": "6\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "6"
+        "$text": "6",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "3+"
+        "$text": "3+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "3"
+        "$text": "3",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "7+"
+        "$text": "7+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": ""
+        "$text": "",
+        "typeId": "ct-insv"
        },
        {
         "name": "Base",
@@ -2748,6 +2956,45 @@
         "typeId": "nr-base-size"
        }
       ]
+     },
+     {
+      "name": "Brute Roar",
+      "id": "a-brute-roar",
+      "hidden": false,
+      "typeId": "pt-abil",
+      "typeName": "Abilities",
+      "characteristics": [
+       {
+        "name": "Description",
+        "$text": "This unit shouts."
+       }
+      ],
+      "modifiers": [
+       {
+        "field": "hidden",
+        "type": "set",
+        "value": true,
+        "conditions": [
+         {
+          "childId": "e-show-brutes",
+          "field": "selections",
+          "scope": "roster",
+          "shared": true,
+          "type": "lessThan",
+          "value": 1
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "infoLinks": [
+     {
+      "name": "Bastion Drill",
+      "id": "il-brute-drill",
+      "hidden": false,
+      "targetId": "a-bastion-drill",
+      "type": "profile"
      }
     ],
     "costs": [
@@ -2797,31 +3044,38 @@
           "characteristics": [
            {
             "name": "Range",
-            "$text": "Melee"
+            "$text": "Melee",
+            "typeId": "wt-melee-range"
            },
            {
             "name": "A",
-            "$text": "4"
+            "$text": "4",
+            "typeId": "wt-melee-a"
            },
            {
             "name": "WS",
-            "$text": "3+"
+            "$text": "3+",
+            "typeId": "wt-melee-ws"
            },
            {
             "name": "S",
-            "$text": "7"
+            "$text": "7",
+            "typeId": "wt-melee-s"
            },
            {
             "name": "AP",
-            "$text": "-1"
+            "$text": "-1",
+            "typeId": "wt-melee-ap"
            },
            {
             "name": "D",
-            "$text": "2"
+            "$text": "2",
+            "typeId": "wt-melee-d"
            },
            {
             "name": "Keywords",
-            "$text": null
+            "$text": null,
+            "typeId": "wt-melee-keywords"
            }
           ]
          }
@@ -2969,31 +3223,72 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "8\""
+        "$text": "8\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "5"
+        "$text": "5",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "4+"
+        "$text": "4+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "5"
+        "$text": "5",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "6+"
+        "$text": "6+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": ""
+        "$text": "",
+        "typeId": "ct-insv"
+       }
+      ],
+      "modifiers": [
+       {
+        "field": "ct-m",
+        "type": "set",
+        "value": "10\"",
+        "conditions": [
+         {
+          "childId": "e-god-sun",
+          "field": "selections",
+          "includeChildSelections": true,
+          "scope": "u-herald",
+          "shared": true,
+          "type": "atLeast",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "field": "ct-t",
+        "type": "set",
+        "value": 6,
+        "conditions": [
+         {
+          "childId": "e-god-moon",
+          "field": "selections",
+          "includeChildSelections": true,
+          "scope": "u-herald",
+          "shared": true,
+          "type": "atLeast",
+          "value": 1
+         }
+        ]
        }
       ]
      }
@@ -3021,31 +3316,56 @@
         "characteristics": [
          {
           "name": "Range",
-          "$text": "Melee"
+          "$text": "Melee",
+          "typeId": "wt-melee-range"
          },
          {
           "name": "A",
-          "$text": "3"
+          "$text": "3",
+          "typeId": "wt-melee-a"
          },
          {
           "name": "WS",
-          "$text": "3+"
+          "$text": "3+",
+          "typeId": "wt-melee-ws"
          },
          {
           "name": "S",
-          "$text": "5"
+          "$text": "5",
+          "typeId": "wt-melee-s"
          },
          {
           "name": "AP",
-          "$text": "-1"
+          "$text": "-1",
+          "typeId": "wt-melee-ap"
          },
          {
           "name": "D",
-          "$text": "2"
+          "$text": "2",
+          "typeId": "wt-melee-d"
          },
          {
           "name": "Keywords",
-          "$text": null
+          "$text": null,
+          "typeId": "wt-melee-keywords"
+         }
+        ],
+        "modifiers": [
+         {
+          "field": "wt-melee-s",
+          "type": "set",
+          "value": 7,
+          "conditions": [
+           {
+            "childId": "e-god-sun",
+            "field": "selections",
+            "includeChildSelections": true,
+            "scope": "u-herald",
+            "shared": true,
+            "type": "atLeast",
+            "value": 1
+           }
+          ]
          }
         ]
        }

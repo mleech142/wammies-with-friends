@@ -150,7 +150,7 @@
     /** Something that changes the price or the checks: mark unsaved and ask the server again. */
     function changed() {
         markDirty();
-        reprice();
+        return reprice();
     }
 
     /** The force disposition: one of the chosen detachments' (it decides the primary mission in Play). */
@@ -314,9 +314,15 @@
         changed();
     }
 
-    function addUnit(unitId) {
+    /**
+     * Add a unit from the picker. The army's table above grows, so the page is scrolled to keep the tapped button where
+     * it was on screen (issue #26): browsers without scroll anchoring, such as Safari, would otherwise move it.
+     */
+    async function addUnit(unitId, button) {
+        const top = button?.getBoundingClientRect().top;
         state.army.units.push({ uid: newUid(), unit_id: unitId, models: null, attached_to: null, enhancement: null });  // Server picks the size
-        changed();
+        await changed();
+        if (top != null && button.isConnected) window.scrollBy(0, button.getBoundingClientRect().top - top);
     }
 
     // =========================
@@ -456,7 +462,7 @@
             </button>`;
         }).join('') : '<p class="empty-message">No units found</p>';
         picker.querySelectorAll('.unit-picker-item').forEach(btn =>
-            btn.addEventListener('click', () => addUnit(parseInt(btn.dataset.unitId))));
+            btn.addEventListener('click', () => addUnit(parseInt(btn.dataset.unitId), btn)));
     }
 
     // =========================
@@ -514,7 +520,7 @@
     function armyFields(saved) {
         return {
             id: saved.id, name: saved.name, faction_id: saved.faction_id, detachment_keys: saved.detachment_keys || [],
-            points_limit: saved.points_limit, warlord: saved.warlord || null,
+            points_limit: saved.points_limit, warlord: saved.warlord || null, disposition: saved.disposition || null,
             units: (saved.units || []).map(u => ({ uid: u.uid, unit_id: u.unit_id, models: u.models, attached_to: u.attached_to,
                                                     enhancement: u.enhancement || null, wargear: u.wargear || null })),
         };

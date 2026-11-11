@@ -399,6 +399,9 @@ def _remap_tree_weapons(tree, weapon_ids):
     node = dict(tree)
     if 'weapons' in tree:
         node['weapons'] = [[kind, weapon_ids[(kind, i)]] for kind, i in tree['weapons'] if (kind, i) in weapon_ids]
+    if 'weapon_swaps' in tree:  # An option changing the unit's weapons (bsdata.option_profile_effects)
+        node['weapon_swaps'] = [[kind, weapon_ids[(kind, a)], weapon_ids[(kind, b)]] for kind, a, b in tree['weapon_swaps']
+                                if (kind, a) in weapon_ids and (kind, b) in weapon_ids]
     node['children'] = [_remap_tree_weapons(c, weapon_ids) for c in tree.get('children', [])]
     return node
 
@@ -516,7 +519,7 @@ WAHAPEDIA_COLUMNS = ('source', 'wahapedia_id', 'text', 'parse', 'edited', 'super
 
 # Unit columns only BSData units use, left out of custom units in the data JSON
 BSDATA_COLUMNS = {'bsdata_id', 'legends', 'ranged_options', 'melee_options', 'added_modifiers', 'leader_buffs_override',
-                  'wargear', 'max_in_army', 'copy_points', 'base'}
+                  'wargear', 'max_in_army', 'copy_points', 'base', 'ability_conditions'}
 
 
 def write_json(path, data, indent=2):

@@ -412,12 +412,41 @@ def default_used(names):
 
 
 def loadout(sel):
-    """[(weapon type, weapon ID, models carrying it)] for a selection."""
+    """
+    [(weapon type, weapon ID, models carrying it)] for a selection. An option's `weapon_swaps` (a Daemon Prince's
+    allegiance changing its weapons, issue #29) replace the weapons of the model (or unit) it is taken on, for as
+    many of its carriers as models take the option.
+    """
     counts = Counter()
-    for node in sel.walk():
+
+    def swaps_on(owner):
+        """{(kind, weapon ID): [changed weapon ID, models taking the option]} from the options taken on `owner`."""
+        found = {}
+
+        def visit(node):
+            for child in node.children:
+                if child.entry.kind == 'model':
+                    continue
+                for kind, before, after in child.entry.node.get('weapon_swaps', []):
+                    found[(kind, before)] = [after, child.count * child.multiplier()]
+                visit(child)
+        visit(owner)
+        return found
+
+    def visit(node, swaps):
+        if node is sel or node.entry.kind == 'model':
+            swaps = {**swaps, **swaps_on(node)}
         carriers = node.count * node.multiplier() if node is not sel else 1
         for kind, weapon_id in node.entry.node.get('weapons', []):
-            counts[(kind, weapon_id)] += carriers
+            changed, taking = swaps.get((kind, weapon_id), (None, 0))
+            swapped = min(carriers, taking) if changed is not None else 0
+            if swapped:
+                counts[(kind, changed)] += swapped
+            if carriers - swapped:
+                counts[(kind, weapon_id)] += carriers - swapped
+        for child in node.children:
+            visit(child, swaps)
+    visit(sel, {})
     return [(kind, weapon_id, qty) for (kind, weapon_id), qty in counts.items()]
 
 
@@ -431,7 +460,8 @@ def form(sel, catalogue):
 
     def matters(entry):
         node = entry.node
-        return bool(node.get('weapons') or node.get('abilities') or node.get('keywords') or node.get('stats'))
+        return bool(node.get('weapons') or node.get('abilities') or node.get('keywords') or node.get('stats')
+                    or node.get('weapon_swaps'))
 
     def visit(node_sel, path, skip=frozenset()):
         for child in node_sel.entry.children():

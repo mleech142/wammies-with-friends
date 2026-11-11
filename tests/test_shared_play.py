@@ -1,6 +1,6 @@
 """
 Players' own lists and games on a self-hosted copy (hosted-version-scope.md section 8 c): armies everyone can
-read but only their owner change, private scenarios, comparisons and battlefields, games between two players of
+read but only their owner change, private comparisons and battlefields, games between two players of
 the copy (each plays their own seat, here, with no relay) and "your move" emails.
 """
 
@@ -67,7 +67,7 @@ def place(browser, game, unit, spots):
     return browser.post(f'/api/play/games/{game["id"]}/actions', json=body)
 
 
-# --- Armies, scenarios, comparisons, battlefields --------------------------------------
+# --- Armies, comparisons, battlefields --------------------------------------
 
 def test_everyone_sees_each_others_armies_but_only_changes_their_own(copy):
     army = saved_army(copy['pat'], "Pat's list", {'uid': 'w', 'unit': 'Void Warriors'})
@@ -85,15 +85,12 @@ def test_everyone_sees_each_others_armies_but_only_changes_their_own(copy):
     assert copy['sam'].delete(f"/api/armies/{mine['id']}").status_code == 200
 
 
-def test_scenarios_and_comparisons_are_private(copy):
-    scenario = copy['pat'].post('/api/scenarios', json={'name': 'Mine', 'attacker': {}, 'defender': {}, 'conditions': {}}).get_json()['id']
-    assert [s['name'] for s in copy['pat'].get('/api/scenarios').get_json()] == ['Mine']
-    assert copy['sam'].get('/api/scenarios').get_json() == []
-    assert copy['sam'].delete(f'/api/scenarios/{scenario}').status_code == 404
-    assert copy['sam'].put(f'/api/scenarios/{scenario}', json={'name': 'Taken'}).status_code == 404
+def test_comparisons_are_private(copy):
     comparison = copy['pat'].post('/api/comparisons', json={'name': 'Matrix', 'attackers': [], 'defenders': [], 'conditions': {}}).get_json()['id']
+    assert [c['name'] for c in copy['pat'].get('/api/comparisons').get_json()] == ['Matrix']
     assert copy['sam'].get('/api/comparisons').get_json() == []
     assert copy['sam'].get(f'/api/comparisons/{comparison}').status_code == 404
+    assert copy['sam'].delete(f'/api/comparisons/{comparison}').status_code == 404
     assert copy['pat'].get(f'/api/comparisons/{comparison}').status_code == 200
 
 

@@ -36,7 +36,9 @@ How BattleScribe data maps onto the app:
   Stealth from core rule links, and a few unconditional ability texts (see DEFENSIVE_TEXT).
   A rule link BSData hides for the unit on its own (only while a bodyguard is attached, or in
   another detachment) is left out (_hidden_alone). The stat line takes the default options'
-  stat changes (a Slabshield's +1 W).
+  stat changes (a Slabshield's +1 W). An ability BSData shows only with some detachments (the
+  Shadow Legion abilities of Chaos Daemons units) keeps those conditions (`ability_conditions`),
+  which armies.hidden_abilities evaluates for an army's chosen detachments.
 - **Rule text** keeps BSData's markup for display (`**bold**`, `*italic*`, `^^keyword^^`, bullets;
   see Core.formatRuleText) but with its whitespace tidied (tidy_text). Everything parsed from
   it (Feel No Pain, Leader lists) reads the plain words (plain_text).
@@ -64,7 +66,7 @@ from pathlib import Path
 from .rules_text import tidy_text, plain_text, parse_leader_buffs, parse_enhancement  # noqa: F401 (also used by importers of bsdata)
 from .simulation import check_keywords
 
-IMPORTER_VERSION = 16  # Bump when the output changes, so cached imports are redone
+IMPORTER_VERSION = 17 # Bump when the output changes, so cached imports are redone
 
 PTS = 'pts'
 SUPPORTED_BATTLESCRIBE_VERSIONS = ('2.',)  # Major version 2 (files are currently 2.03)
@@ -415,14 +417,17 @@ def _slim(value):
     return value
 
 
-def freeze(entry, report, depth=0, counter=None, keep=False):
+def freeze(entry, report, depth=0, counter=None, keep=False, effects=None):
     """
     A unit's option tree as plain data (wargear.py rebuilds selections from it): each node keeps
     what the selection, constraint and points code reads (its IDs, type, constraints, modifiers,
     pts cost, categories, default), its weapon profiles' keys (`weapons`, (kind, stat key), turned
     into weapon IDs by import_folder) and its children, links resolved. `k` numbers the nodes.
+    `effects` (option_profile_effects) adds an option's changes to the unit's own profiles: to its
+    `stats`, and `weapon_swaps` ([kind, stat key, changed stat key], weapon IDs once imported).
     """
     counter = counter if counter is not None else [0]
+    extra = (effects or {}).get(entry.id, {})
     counter[0] += 1
     constraint_ids = {c.get('id') for c in entry.merged('constraints')}
     pts_types = {c.get('typeId') for c in entry.node.get('costs', []) if c.get('name') == PTS} | {PTS_TYPE_ID}
@@ -446,7 +451,8 @@ def freeze(entry, report, depth=0, counter=None, keep=False):
         'abilities': [[p['name'], ability_text(p)] for p in profiles(entry, report) if p.get('typeName') == 'Abilities']
         if entry.kind == 'upgrade' else [],
         'keywords': added_keywords(entry),
-        'stats': stat_changes(entry),
+        'stats': stat_changes(entry) + extra.get('stats', []),
+        'weapon_swaps': [[kind, list(_stat_key(before)), list(_stat_key(after))] for kind, before, after in extra.get('swaps', [])],
         'children': [],
     }
     if depth < MAX_TREE_DEPTH:
@@ -455,14 +461,14 @@ def freeze(entry, report, depth=0, counter=None, keep=False):
                 continue
             if any(c.get('typeId') == ENHANCEMENTS_TYPE_ID and c.get('value') for c in child.node.get('costs', [])):
                 continue
-            frozen = freeze(child, report, depth + 1, counter)
+            frozen = freeze(child, report, depth + 1, counter, effects=effects)
             if frozen is not None:
                 node['children'].append(frozen)
         if entry.kind == 'group' and node['children']:
             # A kept group keeps all its options: one that doesn't matter alone is still a choice
             kept_ids = {c['id'] for c in node['children']}
             node['children'] = [next((c for c in node['children'] if c['id'] == child.id), None)
-                                or freeze(child, report, depth + 1, counter, keep=True)
+                                or freeze(child, report, depth + 1, counter, keep=True, effects=effects)
                                 for child in entry.children(report)
                                 if not (child.kind == 'group' and SKIPPED_GROUPS.match(child.name.strip()))
                                 and not any(c.get('typeId') == ENHANCEMENTS_TYPE_ID and c.get('value')
@@ -470,7 +476,7 @@ def freeze(entry, report, depth=0, counter=None, keep=False):
                                 and (child.id in kept_ids or child.kind != 'group')]
     # Only what matters to the maths or the points: models, weapons, pts costs (Crusade upgrades and the like go)
     matters = (node['type'] in ('unit', 'model') or node['weapons'] or node['children']
-               or node['abilities'] or node['keywords'] or node['stats']
+               or node['abilities'] or node['keywords'] or node['stats'] or node['weapon_swaps']
                or any(c['value'] for c in node['costs']) or any(m.get('field') in pts_types for m in node['modifiers']))
     if depth and not matters and not keep:
         return None
@@ -512,8 +518,9 @@ def stat_changes(entry):
     return out
 
 
-def model_stat_changes(model_sel):
-    """The stat changes of the options a model carries (not those of other models below it)."""
+def model_stat_changes(model_sel, effects=None):
+    """The stat changes of the options a model carries (not those of other models below it); `effects`: the unit's
+    option_profile_effects."""
     changes = []
 
     def visit(node):
@@ -522,9 +529,97 @@ def model_stat_changes(model_sel):
                 continue
             if child.entry.kind == 'upgrade':
                 changes.extend(stat_changes(child.entry))
+                changes.extend((effects or {}).get(child.entry.id, {}).get('stats', []))
             visit(child)
     visit(model_sel)
     return changes
+
+
+def _entries_below(entry, report, seen=None):
+    """Every entry reachable below a unit's entry (its models and options), each once."""
+    seen = seen if seen is not None else set()
+    out = []
+    for child in entry.children(report):
+        if child.id not in seen:
+            seen.add(child.id)
+            out.append(child)
+            out.extend(_entries_below(child, report, seen))
+    return out
+
+
+def _option_condition(modifier, option_ids):
+    """The option a modifier waits for when its only condition is "that option is taken" (in the unit), else None."""
+    if modifier.get('conditionGroups') or modifier.get('localConditionGroups') or modifier.get('repeats'):
+        return None
+    conditions = modifier.get('conditions') or []
+    if len(conditions) != 1:
+        return None
+    c = conditions[0]
+    taken = ((c.get('type') == 'atLeast' and (c.get('value') or 0) == 1)
+             or (c.get('type') == 'greaterThan' and (c.get('value') or 0) == 0))
+    if c.get('field') != 'selections' or c.get('scope') in ARMY_SCOPES + ('primary-catalogue',) or not taken:
+        return None
+    return option_ids.get(c.get('childId'))
+
+
+def _modified_text(text, modifier):
+    """A characteristic's text after one modifier: set, or a number increased or decreased ('8"' + 2 -> '10"')."""
+    if modifier.get('type') == 'set':
+        return str(modifier.get('value'))
+    m = re.match(r'^(\d+)(.*)$', (text or '').strip())
+    if not m or modifier.get('type') not in ('increment', 'decrement'):
+        return text
+    number = int(m.group(1)) + (1 if modifier['type'] == 'increment' else -1) * int(modifier.get('value') or 0)
+    return f'{number}{m.group(2)}'
+
+
+def _modified_profile(profile, modifiers):
+    """A copy of a profile with characteristic modifiers (BSData names each by its characteristic type) applied."""
+    chars = []
+    for c in profile.get('characteristics', []):
+        text = c.get('$text') or ''
+        for modifier in modifiers:
+            if modifier.get('field') == c.get('typeId'):
+                text = _modified_text(text, modifier)
+        chars.append(dict(c, **{'$text': text}))
+    return dict(profile, characteristics=chars)
+
+
+def option_profile_effects(entry, report):
+    """
+    What BSData changes on a unit's own profiles while one of its options is taken (issue #29: a Daemon Prince's
+    allegiance gives T 11, M 10" or S 10 on its Hellforged weapons), by the option's entry ID: {'stats': [[name,
+    'increment'|'decrement', n]] on the stat line, 'swaps': [[kind, record, changed record]] for its weapons}. Only
+    modifiers whose sole condition is that option being taken count; a weapon's changed record is a weapon of its own.
+    """
+    below = _entries_below(entry, report)
+    option_ids = {i: e.id for e in below if e.kind == 'upgrade' for i in e.ids}
+    effects = {}
+    for source in [entry] + [e for e in below if e.kind in ('model', 'upgrade')]:
+        for profile in profiles(source, report):
+            kind = WEAPON_TYPES.get(profile.get('typeName'))
+            if profile.get('typeName') != 'Unit' and not kind:
+                continue
+            by_option = {}
+            for modifier in profile.get('modifiers', []):
+                option = _option_condition(modifier, option_ids)
+                if option and modifier.get('type') in ('set', 'increment', 'decrement'):
+                    by_option.setdefault(option, []).append(modifier)
+            for option, modifiers in by_option.items():
+                changed = _modified_profile(profile, modifiers)
+                found = effects.setdefault(option, {'stats': [], 'swaps': []})
+                if kind:
+                    before, after = weapon_record(profile, kind), weapon_record(changed, kind)
+                    after['bsdata_id'] = f'{profile["id"]}+{option}'  # Its own stable database ID
+                    if _stat_key(before) != _stat_key(after):
+                        found['swaps'].append([kind, before, after])
+                    continue
+                old, new = characteristics(profile), characteristics(changed)
+                for name in UNIT_STATS:
+                    delta = (_int(new.get(name)) or 0) - (_int(old.get(name)) or 0)
+                    if delta:
+                        found['stats'].append([name, 'increment' if delta > 0 else 'decrement', abs(delta)])
+    return {option: found for option, found in effects.items() if found['stats'] or found['swaps']}
 
 
 def apply_stats(characteristics_, changes):
@@ -548,6 +643,12 @@ def _key_weapons(tree, weapon_ids):
                        if (kind, tuple(key)) in weapon_ids]
     if not tree['weapons']:
         del tree['weapons']
+    if tree.get('weapon_swaps'):
+        tree['weapon_swaps'] = [[kind, weapon_ids[(kind, tuple(a))]['id'], weapon_ids[(kind, tuple(b))]['id']]
+                                for kind, a, b in tree['weapon_swaps']
+                                if (kind, tuple(a)) in weapon_ids and (kind, tuple(b)) in weapon_ids]
+        if not tree['weapon_swaps']:
+            del tree['weapon_swaps']
     for child in tree.get('children', []):
         _key_weapons(child, weapon_ids)
 
@@ -560,7 +661,8 @@ def has_choices(tree):
         lows = [c['value'] for c in child.get('constraints', []) if c.get('type') == 'min' and c.get('scope') == 'parent']
         # An optional entry that gives weapons, an ability (a Daemonic Icon, issue #19), keywords or stats
         if child.get('type', 'group') != 'group' and not any(lows) and (
-                child.get('weapons') or child.get('abilities') or child.get('keywords') or child.get('stats')):
+                child.get('weapons') or child.get('abilities') or child.get('keywords') or child.get('stats')
+                or child.get('weapon_swaps')):
             return True
         if has_choices(child):
             return True
@@ -786,12 +888,14 @@ def profiles(entry, report):
     for group in entry.merged('infoGroups'):
         out.extend(group.get('profiles', []))
     for link in entry.merged('infoLinks'):
-        if link.get('type') in ('profile', 'infoGroup'):
+        if link.get('type') in ('profile', 'infoGroup') and not link.get('hidden'):
             target, _ = entry.cat.find(link.get('targetId'))
             if target is None:
                 report.add('missing_link', None, None, f'{entry.cat.name}: profile link "{link.get("name")}" points at nothing')
             elif link['type'] == 'profile':
-                out.append(target)
+                # The link's own modifiers (e.g. hidden outside a detachment) apply to the profile too
+                out.append(dict(target, modifiers=target.get('modifiers', []) + link['modifiers'])
+                           if link.get('modifiers') else target)
             else:
                 out.extend(target.get('profiles', []))
     return [p for p in out if not p.get('hidden')]
@@ -933,11 +1037,15 @@ class Report:
             self.items.append({'kind': kind, 'faction': faction, 'unit': unit, 'detail': detail})
 
 
-def build_unit(entry, faction_cat, report, known_keywords):
-    """A unit record (without IDs) and its weapon profiles, or None if it has no usable stat line."""
+def build_unit(entry, faction_cat, report, known_keywords, names=None):
+    """
+    A unit record (without IDs) and its weapon profiles, or None if it has no usable stat line. `names`: element names
+    by ID in every file, for the conditions kept with abilities shown only in some armies (_condition_tree).
+    """
     faction = faction_name(faction_cat)
     sel = auto_select(entry, report)
     default_models = sel.models()
+    option_effects = option_profile_effects(entry, report)  # A Daemon Prince's allegiance (issue #29)
 
     # Stat line: the Unit profile of the most numerous model
     stat_lines = Counter()
@@ -949,7 +1057,7 @@ def build_unit(entry, faction_cat, report, known_keywords):
         profile = own or unit_profile
         if profile is not None:
             weight = (node.count * node.multiplier()) if node is not sel else (1 if node.entry.kind == 'model' else 0)
-            stats_ = apply_stats(characteristics(profile), model_stat_changes(node))  # E.g. a Slabshield's +1 W
+            stats_ = apply_stats(characteristics(profile), model_stat_changes(node, option_effects))  # E.g. a Slabshield's +1 W
             stat_lines[json.dumps(stats_, sort_keys=True)] += weight
     if not stat_lines and unit_profile is not None:
         stat_lines[json.dumps(characteristics(unit_profile), sort_keys=True)] += 1
@@ -971,6 +1079,7 @@ def build_unit(entry, faction_cat, report, known_keywords):
 
     # Abilities, rules and the defensive values the maths uses
     ability_lines, rules, modifiers, fnp = [], [], [], None
+    ability_conditions = {}  # {ability name: condition trees}: those BSData hides depending on the army
     only_against = {}  # {'melee' or 'ranged': invulnerable save}
     sources = [(entry, sel)] + [(n.entry, n) for n in sel.walk() if n.entry.kind in ('model', 'upgrade') and n.entry is not entry]
     seen_abilities = set()
@@ -978,6 +1087,9 @@ def build_unit(entry, faction_cat, report, known_keywords):
         for profile in profiles(source, report):
             if profile.get('typeName') in ('Abilities',) and profile['name'] not in seen_abilities:
                 seen_abilities.add(profile['name'])
+                hides = _army_hides(profile, names or {})
+                if hides:  # Shown only with some detachments (issue #27): import_folder keeps those that name one
+                    ability_conditions[profile['name']] = hides
                 text = ability_text(profile)
                 ability_lines.append(f'{profile["name"]}: {text}')
                 for pattern, effect in DEFENSIVE_TEXT:
@@ -1039,6 +1151,12 @@ def build_unit(entry, faction_cat, report, known_keywords):
     # Loadout at the default size: weapon profiles carried by each selected entry
     loadout = {'ranged': Counter(), 'melee': Counter()}
     weapons = {}
+    # Weapons the default options change (an allegiance's +2 S): the changed ones are carried instead
+    default_swaps = {(kind, _stat_key(before)): (kind, _stat_key(after)) for node in sel.walk()
+                     for kind, before, after in option_effects.get(node.entry.id, {}).get('swaps', [])}
+    for found in option_effects.values():
+        for kind, _, after in found['swaps']:
+            weapons.setdefault((kind, _stat_key(after)), after)
     for node in sel.walk():
         if node.entry.kind == 'group':
             continue
@@ -1049,7 +1167,7 @@ def build_unit(entry, faction_cat, report, known_keywords):
                 record = weapon_record(profile, kind)
                 key = (kind, _stat_key(record))
                 weapons.setdefault(key, record)
-                loadout[kind][key] += carriers
+                loadout[kind][default_swaps.get(key, key)] += carriers
 
     options = {'ranged': [], 'melee': []}
     for profile in _all_weapon_profiles(entry, report):
@@ -1057,7 +1175,8 @@ def build_unit(entry, faction_cat, report, known_keywords):
         record = weapon_record(profile, kind)
         key = (kind, _stat_key(record))
         weapons.setdefault(key, record)
-        if key not in loadout[kind] and key not in options[kind]:
+        carried = key in loadout[kind] or default_swaps.get(key) in loadout[kind]  # Carried as its changed self
+        if not carried and key not in options[kind]:
             options[kind].append(key)
 
     for key, record in weapons.items():  # Reported once per faction and weapon, not per unit
@@ -1110,7 +1229,8 @@ def build_unit(entry, faction_cat, report, known_keywords):
         'copy_points': copy_points,
         'leader_buffs': leader_buffs,
         'abilities': '\n\n'.join(ability_lines + [r for r in rules if r != 'Leader']),
-        'wargear': freeze(entry, report),
+        'ability_conditions': ability_conditions or None,
+        'wargear': freeze(entry, report, effects=option_effects),
         '_loadout': {kind: [(key, qty) for key, qty in loadout[kind].items() if key in weapons] for kind in loadout},
         '_options': {kind: [key for key in options[kind] if key in weapons] for kind in options},
     }
@@ -1267,6 +1387,8 @@ def import_folder(folder, known_keywords=None):
     report = Report()
     data = {'factions': [], 'units': [], 'ranged_weapons': [], 'melee_weapons': [], 'detachments': [], 'enhancements': []}
 
+    names = {i: element.get('name') for c in [game_system, *catalogues.values()] for i, element in c.index.items()
+             if element.get('name')}
     imported = []  # (faction ID, catalogue, member entries) for the enhancements, once every detachment is known
     for faction_id, (cat, members) in enumerate(faction_members(catalogues, report), start=1):
         name = faction_name(cat)
@@ -1278,7 +1400,7 @@ def import_folder(folder, known_keywords=None):
         imported.append((faction_id, cat, members))
         weapon_ids = {}  # (kind, stat key) -> weapon record id within this faction
         for entry in sorted(members, key=lambda e: e.name.lower()):
-            built = build_unit(entry, cat, report, known_keywords)
+            built = build_unit(entry, cat, report, known_keywords, names)
             if built is None:
                 continue
             unit, weapons = built
@@ -1303,8 +1425,10 @@ def import_folder(folder, known_keywords=None):
         _check_leaders(data, faction_id, name, report)
 
     detachment_ids = {d['bsdata_id'] for d in data['detachments']}
-    names = {i: element.get('name') for c in [game_system, *catalogues.values()] for i, element in c.index.items()
-             if element.get('name')}
+    for unit in data['units']:
+        kept = {name: hides for name, trees in (unit['ability_conditions'] or {}).items()
+                if (hides := _detachment_hides(trees, detachment_ids))}
+        unit['ability_conditions'] = kept or None
     for faction_id, cat, members in imported:
         for enhancement in enhancements(cat, members, detachment_ids, names):
             data['enhancements'].append(dict(enhancement, id=len(data['enhancements']) + 1, faction_id=faction_id))
@@ -1344,6 +1468,33 @@ def _condition_tree(node, names):
 
     return [group(m, 'and') for m in node.get('modifiers', [])
             if m.get('field') == 'hidden' and str(m.get('value')).lower() == 'true']
+
+
+ARMY_SCOPES = ('roster', 'force')
+
+
+def _tree_leaves(trees):
+    """Every condition in condition trees."""
+    for item in trees:
+        if 'items' in item:
+            yield from _tree_leaves(item['items'])
+        else:
+            yield item
+
+
+def _army_hides(node, names):
+    """A node's "hidden" condition trees that depend on what else is in the army (a roster or force count)."""
+    return [tree for tree in _condition_tree(node, names)
+            if any(c.get('scope') in ARMY_SCOPES for c in _tree_leaves([tree]))]
+
+
+def _detachment_hides(trees, detachment_ids):
+    """
+    The trees whose army conditions all name a detachment, the only army entries armies.py can count: "hidden unless
+    the Shadow Legion detachment is chosen". Others ("Show Khorne Daemons" options) are left out, so never hide.
+    """
+    return [tree for tree in trees
+            if all(c.get('id') in detachment_ids for c in _tree_leaves([tree]) if c.get('scope') in ARMY_SCOPES)]
 
 
 def _tree_ids(trees):

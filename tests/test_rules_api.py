@@ -181,7 +181,7 @@ def test_single_weapon_payload_still_works(client):
     assert legacy['summary']['average_damage'] == simulate_weapons(client, [LASGUN])['summary']['average_damage']
 
 
-def test_saved_scenario_rule_keys_apply(client):
+def test_ticked_rule_keys_apply(client):
     plain = simulate_weapons(client, [LASGUN])['summary']['average_damage']
     payload = {'attacker': {'faction_id': GUARD, 'weapons': [LASGUN], 'rules': ['rule:1']}, 'defender': TARGET,
                'conditions': {'half_range': True}, 'method': 'analytical'}

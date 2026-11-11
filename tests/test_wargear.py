@@ -162,6 +162,38 @@ def test_an_allegiance_adds_its_keyword_for_enhancements(client):
     assert options(None)[0] == ['Sun Crown', 'Void Blade']  # BSData's first option until one is chosen
 
 
+def test_an_allegiance_changes_the_stat_line_and_weapons(imported):
+    # Issue #29: a Daemon Prince's allegiance changes its own profiles (+1 T, 10" M, +2 S on its melee weapons)
+    herald = unit(imported, 'Star Herald')
+    strength = {w['id']: w['strength'] for w in imported.data['melee_weapons']}
+    assert (herald['move'], herald['toughness']) == ('10', 5)  # BSData's first allegiance, the Sun God, by default
+    assert [strength[e['weapon_id']] for e in herald['melee_weapons']] == [7]
+    assert herald['melee_options'] == []  # The staff it carries changed, not an option to tick
+
+    tree = herald['wargear']
+    defaults = wargear.evaluate(tree, None, 1, 'cat-star')
+    assert defaults['effects']['stats'] == {} and [strength[w] for _, w, _ in defaults['loadout']] == [7]
+    moon = wargear.evaluate(tree, {member(defaults, 'Sun God'): 0, member(defaults, 'Moon God'): 1}, 1, 'cat-star')
+    assert moon['effects']['stats'] == {'M': -2, 'T': 1}  # Against the defaults: 8" and T 6
+    assert [(strength[w], qty) for _, w, qty in moon['loadout']] == [(5, 1)]  # The staff as printed
+    assert weapons(imported, moon) == weapons(imported, defaults) == {'Herald staff': 1}
+
+
+def test_an_allegiance_reaches_the_match_view_and_analytics(client):
+    star, units = ids(client)
+    herald = units['Star Herald']['id']
+    form = client.post('/api/armies/wargear', json={'unit_id': herald, 'models': 1}).get_json()['form']
+    k = {m['name']: m['k'] for s in form for m in s['members']}
+    army = {'name': 'Moon', 'faction_id': star, 'units': [{'uid': 'h', 'unit_id': herald,
+                                                           'wargear': {k['Sun God']: 0, k['Moon God']: 1}}]}
+    roster = client.post('/api/armies/price', json=army).get_json()['roster'][0]
+    assert roster['stat_changes'] == {'stats': {'M': -2, 'T': 1}, 'invulnerable_save': None}
+    saved = client.post('/api/armies', json=army).get_json()
+    sheet = client.get(f'/api/armies/{saved["id"]}/match').get_json()['units'][0]
+    assert (sheet['stats']['move'], sheet['stats']['toughness']) == ('8', 6)
+    assert [w['strength'] for w in sheet['weapons']['melee']] == [5]
+
+
 def test_each_model_chooses_its_own_option(imported):
     # Issue #16: three Brutes are one model entry ×3; choosing a Brute shield gives it to one of them, not all three
     tree = unit(imported, 'Shield Brutes')['wargear']

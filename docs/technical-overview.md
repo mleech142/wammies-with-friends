@@ -57,9 +57,9 @@ python -m coverage run --source=src/combat_sim -m pytest tests && python -m cove
 | **BSData catalogues** | Factions, datasheets, weapons, loadouts, points by unit size, wargear option trees, detachments (with Detachment Points, dispositions, Unique Tags), enhancements | Downloaded on Setup into `bsdata/`; imported by `bsdata.py`, cached in `bsdata_cache.json` |
 | **Wahapedia export** | Stratagems, detachment rules, army rules (text) | Downloaded on Setup into `wahapedia/`; imported by `wahapedia.py` on every start |
 | **App data JSON** | Custom factions, units and weapons; hand-written rules; edits to how Wahapedia's rules are read; modifiers added to BSData units; leader-buff edits; keywords; benchmark target profiles | `data/app_data.json`: committed and shipped; every Data-tab edit is written back |
-| **Database** | A working copy of all of the above (rebuilt on start) plus saved scenarios, comparisons, armies and stable BSData IDs | `combat_sim.db` (SQLite) |
+| **Database** | A working copy of all of the above (rebuilt on start) plus saved comparisons, armies, games and stable BSData IDs | `combat_sim.db` (SQLite) |
 
-BSData records keep stable database IDs across re-imports (the `stable_ids` table), so saved scenarios and armies survive updates. Reference tables are rebuilt on every start, so their schema can change freely; persistent tables only gain new nullable columns automatically.
+BSData records keep stable database IDs across re-imports (the `stable_ids` table), so saved armies and comparisons survive updates. Reference tables are rebuilt on every start, so their schema can change freely; persistent tables only gain new nullable columns automatically.
 
 ---
 

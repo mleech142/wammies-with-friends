@@ -46,31 +46,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "6\""
+        "$text": "6\"",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "3"
+        "$text": "3",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "4+"
+        "$text": "4+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "3"
+        "$text": "3",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "6+"
+        "$text": "6+",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "1"
+        "$text": "1",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": ""
+        "$text": "",
+        "typeId": "ct-insv"
        }
       ]
      }
@@ -98,31 +105,38 @@
         "characteristics": [
          {
           "name": "Range",
-          "$text": "12\""
+          "$text": "12\"",
+          "typeId": "wt-ranged-range"
          },
          {
           "name": "A",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "wt-ranged-a"
          },
          {
           "name": "BS",
-          "$text": "3+"
+          "$text": "3+",
+          "typeId": "wt-ranged-bs"
          },
          {
           "name": "S",
-          "$text": "4"
+          "$text": "4",
+          "typeId": "wt-ranged-s"
          },
          {
           "name": "AP",
-          "$text": "-1"
+          "$text": "-1",
+          "typeId": "wt-ranged-ap"
          },
          {
           "name": "D",
-          "$text": "1"
+          "$text": "1",
+          "typeId": "wt-ranged-d"
          },
          {
           "name": "Keywords",
-          "$text": "Pistol"
+          "$text": "Pistol",
+          "typeId": "wt-ranged-keywords"
          }
         ]
        }

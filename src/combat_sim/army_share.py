@@ -12,7 +12,8 @@ BSData files:
   when the ID appears more than once in the unit's tree; only choices that differ from the
   datasheet's defaults at the unit's size are written (null: a choice the defaults have and the
   list doesn't), and import adds them back to this install's defaults;
-- attachments and the Warlord by position in the list (uids are rebuilt on import).
+- attachments and the Warlord by position in the list (uids are rebuilt on import);
+- the force disposition by name, when one is chosen.
 
 Lists with units from custom factions can't be shared: those units live in the sharer's own
 app data. A code is `PREFIX` + URL-safe base64 of zlib-compressed JSON. On import anything not
@@ -128,6 +129,8 @@ def encode(army):
     payload = {'v': VERSION, 'faction': faction.bsdata_id, 'faction_name': faction.name, 'name': army['name'],
                'limit': army['points_limit'], 'detachments': army['detachment_keys'],
                'warlord': position.get(priced['warlord']), 'units': out_units}
+    if army.get('disposition'):  # Optional: codes made before force dispositions were shared lack it
+        payload['disposition'] = army['disposition']
     raw = json.dumps(payload, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
     return PREFIX + base64.urlsafe_b64encode(zlib.compress(raw, 9)).decode('ascii').rstrip('=')
 
@@ -207,5 +210,6 @@ def decode(code):
     warlord = payload.get('warlord')
     army = clean_army({'name': payload.get('name'), 'faction_id': faction.id, 'points_limit': payload.get('limit'),
                        'detachment_keys': detachments, 'units': units,
+                       'disposition': payload.get('disposition') if isinstance(payload.get('disposition'), str) else None,
                        'warlord': kept.get(warlord) if isinstance(warlord, int) else None})
     return {'army': army, 'notes': notes}

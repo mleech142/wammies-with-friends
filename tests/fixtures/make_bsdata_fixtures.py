@@ -43,7 +43,7 @@ def cons(lo=None, hi=None, scope='parent'):
 
 def unit_profile(pid, name, m, t, sv, w, ld, oc, insv='', base=None):
     chars = [('M', m), ('T', t), ('Sv', sv), ('W', w), ('LD', ld), ('OC', oc), ('InSv', insv)]
-    characteristics = [{'name': n, '$text': v} for n, v in chars]
+    characteristics = [{'name': n, '$text': v, 'typeId': f'ct-{n.lower()}'} for n, v in chars]
     if base is not None:  # New Recruit's base size column, on most real datasheets
         characteristics.append({'name': 'Base', '$text': base, 'typeId': 'nr-base-size'})
     return {'name': name, 'id': pid, 'hidden': False, 'typeId': UNIT_T, 'typeName': 'Unit',
@@ -56,7 +56,13 @@ def weapon(pid, name, kind, rng, a, skill, s, ap, d, keywords):
     return {'name': name, 'id': pid, 'hidden': False,
             'typeId': RANGED_T if kind == 'ranged' else MELEE_T,
             'typeName': 'Ranged Weapons' if kind == 'ranged' else 'Melee Weapons',
-            'characteristics': [{'name': n, '$text': v} for n, v in chars]}
+            'characteristics': [{'name': n, '$text': v, 'typeId': f'wt-{kind}-{n.lower()}'} for n, v in chars]}
+
+
+def taken(option, scope):
+    """A profile modifier's condition: "while `option` is taken" on the model (or unit) `scope`."""
+    return [{'childId': option, 'field': 'selections', 'includeChildSelections': True, 'scope': scope, 'shared': True,
+             'type': 'atLeast', 'value': 1}]
 
 
 def ability(pid, name, text):
@@ -370,7 +376,15 @@ gun_crew = {
 shield_brutes = {
     'name': 'Shield Brutes', 'id': 'u-brutes', 'hidden': False, 'type': 'unit',
     'categoryLinks': [cat_link('k-faction-star', 'Faction: Starfarers'), cat_link('k-inf', 'Infantry')],
-    'profiles': [unit_profile('p-brute', 'Brute', '6"', '6', '3+', '3', '7+', '1', base='50mm')],
+    'profiles': [unit_profile('p-brute', 'Brute', '6"', '6', '3+', '3', '7+', '1', base='50mm'),
+                 # Hidden by a roster option that isn't a detachment (like "Show Khorne Daemons"): always shown
+                 ability('a-brute-roar', 'Brute Roar', 'This unit shouts.') | {'modifiers': [
+                     {'field': 'hidden', 'type': 'set', 'value': True, 'conditions': [
+                         {'childId': 'e-show-brutes', 'field': 'selections', 'scope': 'roster', 'shared': True,
+                          'type': 'lessThan', 'value': 1}]}]}],
+    # Shown only with the Star Bastion detachment, as Chaos Daemons' Shadow Legion abilities are (issue #27)
+    'infoLinks': [{'name': 'Bastion Drill', 'id': 'il-brute-drill', 'hidden': False, 'targetId': 'a-bastion-drill',
+                   'type': 'profile'}],
     'costs': pts(90),
     'selectionEntries': [
         model('m-brute', 'Brute', constraints=cons(3, 3), children=[
@@ -385,14 +399,19 @@ shield_brutes = {
     ],
 }
 
-# An allegiance to choose: each option adds its god's keyword (no weapons, no points)
+# An allegiance to choose: each option adds its god's keyword (no weapons, no points). As BSData writes a Daemon
+# Prince's (issue #29), the bonuses are modifiers on the model's own profiles while the option is taken: the Sun God
+# gives M 10" and S 7 on the staff, the Moon God T 6
 star_herald = {
     'name': 'Star Herald', 'id': 'u-herald', 'hidden': False, 'type': 'model',
     'categoryLinks': [cat_link('k-faction-star', 'Faction: Starfarers'), cat_link('k-char', 'Character')],
-    'profiles': [unit_profile('p-herald', 'Star Herald', '8"', '5', '4+', '5', '6+', '1')],
+    'profiles': [unit_profile('p-herald', 'Star Herald', '8"', '5', '4+', '5', '6+', '1') | {'modifiers': [
+        {'field': 'ct-m', 'type': 'set', 'value': '10"', 'conditions': taken('e-god-sun', 'u-herald')},
+        {'field': 'ct-t', 'type': 'set', 'value': 6, 'conditions': taken('e-god-moon', 'u-herald')}]}],
     'costs': pts(60),
     'selectionEntries': [upgrade('e-herald-staff', 'Herald staff', constraints=cons(1, 1), profiles=[
-        weapon('p-herald-staff', 'Herald staff', 'melee', 'Melee', '3', '3+', '5', '-1', '2', None)])],
+        weapon('p-herald-staff', 'Herald staff', 'melee', 'Melee', '3', '3+', '5', '-1', '2', None) | {'modifiers': [
+            {'field': 'wt-melee-s', 'type': 'set', 'value': 7, 'conditions': taken('e-god-sun', 'u-herald')}]}])],
     'selectionEntryGroups': [group('g-allegiance', 'Allegiance', constraints=cons(1, 1), children=[
         upgrade('e-god-sun', 'Sun God', modifiers=[{'field': 'category', 'type': 'add', 'value': 'k-god-sun'},
                                                    {'field': 'category', 'type': 'add', 'value': 'k-god-sun-helper'}]),
@@ -449,6 +468,11 @@ write('Xenos - Starfarers', {'catalogue': {
     'categoryEntries': [{'name': 'Faction: Starfarers', 'id': 'k-faction-star'}],
     'sharedRules': [{'name': 'Star Pact', 'id': 'r-star-pact', 'hidden': False,
                      'description': 'Each time a unit from this army is selected to shoot, it can re-roll one Hit roll.'}],
+    'sharedProfiles': [ability('a-bastion-drill', 'Bastion Drill', 'This unit is eligible to shoot in a turn in which it '
+                               'Fell Back.') | {'modifiers': [
+        {'field': 'hidden', 'type': 'set', 'value': True, 'conditions': [
+            {'childId': 'd-bastion', 'field': 'selections', 'includeChildSelections': True, 'scope': 'roster',
+             'shared': True, 'type': 'lessThan', 'value': 1}]}]}],
     'sharedSelectionEntries': [laser_pistol, laser_rifle, plasma_pistol, ccw, void_warriors, star_captain, star_walker, beast_pack,
                                gun_crew, star_detachments, star_lord, field_medic, shield_brutes, star_herald],
     'sharedSelectionEntryGroups': [star_enhancements, battleline_enhancements],

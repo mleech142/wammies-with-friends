@@ -43,7 +43,7 @@ can withdraw one while it waits.
 Tell everyone to **use a throwaway password**: the copy is run by someone in the group, not a company.
 
 **What's whose:** each player's armies are their own, and everyone can see everyone's (read-only: opening another
-player's army and saving it makes a copy of your own). Scenarios, comparisons and battlefields are private. Old
+player's army and saving it makes a copy of your own). Comparisons and battlefields are private. Old
 records from before the copy had players are the host's.
 
 **Playing each other:** on the Play page's New game form, choose the other player under **Against**, which side
@@ -67,7 +67,7 @@ own mail server (for example your email provider's SMTP, with an app password):
 
 ## Data and updates
 
-Everything the app writes is in the `/data` volume: the app data JSON, the database (armies, scenarios, games),
+Everything the app writes is in the `/data` volume: the app data JSON, the database (armies, comparisons, games),
 `settings.json`, `secret_key` (signs logins: keep it private), and the BSData and Wahapedia downloads. Back up that
 volume.
 

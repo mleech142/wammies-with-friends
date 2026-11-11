@@ -6,6 +6,7 @@ Needs an app context; everything else in the play package works on the plain dat
 
 from .. import armies, contagion
 from ..engagement import unit_stats
+from ..match_view import without_abilities
 from ..models import Detachment, Enhancement, Faction, FactionRule, MeleeWeapon, RangedWeapon, Stratagem, Unit, db
 from ..rules_text import (ability_buffs, afflicts_after_shooting, contagion_bonus, damaged_threshold, deadly_demise, firing_deck,
                           granted_ability, has_core_ability, parse_transport, plain_text, scouts_distance, units_contagion_bonus)
@@ -36,8 +37,9 @@ def freeze_army(army):
         attached = [(by_uid[uid], 'leader') for uid in entry['led_by']] + \
                    [(by_uid[uid], 'support') for uid in entry['supported_by']]
         role = 'bodyguard' if attached else 'unit'
-        parts = [_part(entry, role, catalogue, priced['warlord'], army['faction_id'])] + \
-                [_part(e, r, catalogue, priced['warlord'], army['faction_id']) for e, r in attached]
+        keys = army['detachment_keys']
+        parts = [_part(entry, role, catalogue, priced['warlord'], army['faction_id'], keys)] + \
+                [_part(e, r, catalogue, priced['warlord'], army['faction_id'], keys) for e, r in attached]
         units.append({'uid': entry['uid'], 'name': entry['name'], 'parts': parts})
     return {'name': army['name'], 'faction': priced['faction'], 'disposition': priced['disposition'], 'units': units,
             'points_limit': army.get('points_limit'),
@@ -125,10 +127,13 @@ def _rules(army):
     return [_entry(r, 'rule') for r in records if _offered(r, army)]
 
 
-def _part(entry, role, catalogue, warlord, faction_id=None):
+def _part(entry, role, catalogue, warlord, faction_id=None, detachment_keys=()):
     unit = db.session.get(Unit, entry['unit_id'])
     enhancement = Enhancement.query.filter_by(bsdata_id=entry['enhancement']).first() if entry['enhancement'] else None
     stats = unit_stats(unit, entry.get('wargear_effects'))
+    # Abilities BSData shows only with other detachments (a Shadow Legion ability) don't count, nor show on its card
+    hidden = armies.hidden_abilities(unit, detachment_keys, catalogue, (entry.get('wargear_effects') or {}).get('keywords', []))
+    abilities = without_abilities(unit.abilities, hidden)
     return {
         'uid': entry['uid'],
         'unit_id': unit.id,
@@ -144,19 +149,20 @@ def _part(entry, role, catalogue, warlord, faction_id=None):
         'leader_buffs': unit.effective_leader_buffs if role == 'leader' else [],
         'enhancement': {'name': enhancement.name, 'buffs': enhancement.buffs or []} if enhancement else None,
         'warlord': entry['uid'] == warlord,
-        'fights_first': has_core_ability(unit.abilities, 'Fights First'),
-        'deep_strike': has_core_ability(unit.abilities, 'Deep Strike'),
-        'infiltrators': has_core_ability(unit.abilities, 'Infiltrators'),
-        'scouts': scouts_distance(unit.abilities),
-        'transport': parse_transport(unit.abilities) if 'Transport' in (unit.keywords or []) else None,
-        'firing_deck': firing_deck(unit.abilities),
-        'deadly_demise': deadly_demise(unit.abilities),
-        'damaged': damaged_threshold(unit.abilities),
+        'hidden_abilities': sorted(hidden),
+        'fights_first': has_core_ability(abilities, 'Fights First'),
+        'deep_strike': has_core_ability(abilities, 'Deep Strike'),
+        'infiltrators': has_core_ability(abilities, 'Infiltrators'),
+        'scouts': scouts_distance(abilities),
+        'transport': parse_transport(abilities) if 'Transport' in (unit.keywords or []) else None,
+        'firing_deck': firing_deck(abilities),
+        'deadly_demise': deadly_demise(abilities),
+        'damaged': damaged_threshold(abilities),
         # Death Guard (contagion.py): Nurgle's Gift counts for a model of the army's own faction
-        'contagion': has_core_ability(unit.abilities, contagion.RULE_NAME) and unit.faction_id == faction_id,
-        'contagion_bonus': contagion_bonus(unit.abilities),
-        'afflicts': afflicts_after_shooting(unit.abilities),
-        'ability_buffs': ability_buffs(unit.abilities),  # Its own attacks' bonuses (so far only against Afflicted units)
+        'contagion': has_core_ability(abilities, contagion.RULE_NAME) and unit.faction_id == faction_id,
+        'contagion_bonus': contagion_bonus(abilities),
+        'afflicts': afflicts_after_shooting(abilities),
+        'ability_buffs': ability_buffs(abilities),  # Its own attacks' bonuses (so far only against Afflicted units)
     }
 
 

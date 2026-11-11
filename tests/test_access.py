@@ -9,8 +9,7 @@ from flask import Flask, g
 from werkzeug.exceptions import Forbidden, NotFound
 
 from combat_sim import access, paths
-from combat_sim.models import (Proposal, SavedArmy, SavedBattlefield, SavedComparison, SavedGame, SavedScenario, User,
-                               db)
+from combat_sim.models import Proposal, SavedArmy, SavedBattlefield, SavedComparison, SavedGame, User, db
 
 APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'ranged_weapons': [], 'melee_weapons': [],
             'faction_rules': [], 'stratagems': [], 'unit_modifiers': [], 'keywords': [], 'target_profiles': []}
@@ -35,7 +34,6 @@ def copy(make_client, monkeypatch):
         records = {
             'army': SavedArmy(name='Pat list', faction_id=1, units=[], owner_id=pat),
             'old army': SavedArmy(name='Old list', faction_id=1, units=[], owner_id=None),
-            'scenario': SavedScenario(name='Pat plan', attacker_config={}, defender_config={}, battle_conditions={}, owner_id=pat),
             'comparison': SavedComparison(name='Pat matrix', attackers=[], defenders=[], battle_conditions={}, owner_id=pat),
             'battlefield': SavedBattlefield(name='Pat table', data={}, owner_id=pat),
             'game': SavedGame(name='Grudge', armies=[], events=[], owner_id=pat, seat_users=[pat, people['Sam'].id]),
@@ -62,8 +60,7 @@ RULES = [
     # record,       Pat (read, write), Sam (read, write), Host (read, write)
     ('army',        (True, True), (True, False), (True, False)),     # shared
     ('old army',    (True, False), (True, False), (True, True)),     # from before the copy had players: the host's
-    ('scenario',    (True, True), (False, False), (False, False)),   # private, the host included
-    ('comparison',  (True, True), (False, False), (False, False)),
+    ('comparison',  (True, True), (False, False), (False, False)),   # private, the host included
     ('battlefield', (True, True), (False, False), (False, False)),
     ('game',        (True, True), (True, False), (False, False)),    # its players; only the starter deletes it
     ('solo game',   (True, True), (False, False), (False, False)),
@@ -93,7 +90,7 @@ def test_get_says_not_found_or_not_allowed_with_the_reason(copy):
             access.get(*ids['army'], write=True)
         assert 'copy it' in refused.value.description
         with pytest.raises(NotFound):
-            access.get(*ids['scenario'])  # private: as good as missing
+            access.get(*ids['comparison'])  # private: as good as missing
         with pytest.raises(NotFound):
             access.get(SavedArmy, 999_999)
         with pytest.raises(Forbidden) as refused:
@@ -110,11 +107,11 @@ def test_listed_shows_what_each_player_can_see(copy):
         ctx = as_player(app, users, name)
         try:
             seen[name] = {model.__name__: sorted(r.name if hasattr(r, 'name') else r.summary for r in access.listed(model))
-                          for model in (SavedArmy, SavedScenario, SavedGame, Proposal)}
+                          for model in (SavedArmy, SavedComparison, SavedGame, Proposal)}
         finally:
             ctx.pop()
-    assert seen['Sam'] == {'SavedArmy': ['Old list', 'Pat list'], 'SavedScenario': [], 'SavedGame': ['Grudge'], 'Proposal': []}
-    assert seen['Host'] == {'SavedArmy': ['Old list', 'Pat list'], 'SavedScenario': [], 'SavedGame': [],
+    assert seen['Sam'] == {'SavedArmy': ['Old list', 'Pat list'], 'SavedComparison': [], 'SavedGame': ['Grudge'], 'Proposal': []}
+    assert seen['Host'] == {'SavedArmy': ['Old list', 'Pat list'], 'SavedComparison': [], 'SavedGame': [],
                             'Proposal': ['Add faction']}
     assert seen['Pat']['SavedGame'] == ['Grudge', 'Practice']
 
@@ -141,7 +138,7 @@ def test_removed_players_are_labelled(copy):
 def test_the_desktop_install_is_its_own_host(make_client, monkeypatch):
     app = make_app(make_client, monkeypatch, hosted=False)
     with app.test_request_context():
-        record = SavedScenario(name='x', attacker_config={}, defender_config={}, battle_conditions={}, owner_id=None)
+        record = SavedComparison(name='x', attackers=[], defenders=[], battle_conditions={}, owner_id=None)
         who = access.principal()
         assert isinstance(who, access.Desktop) and who.is_host and who.local and not who.shared
         assert access.can_read(record) and access.can_write(record)

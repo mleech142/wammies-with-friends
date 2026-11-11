@@ -116,6 +116,17 @@ def test_rules_bsdata_hides_for_a_unit_on_its_own_are_left_out(result):
     assert 'Feel No Pain 4+' not in u['abilities']
 
 
+def test_abilities_shown_only_with_a_detachment_keep_its_condition(result):
+    # Issue #27: a Shadow Legion ability is a linked profile hidden unless that detachment is in the army
+    u = unit(result, 'Shield Brutes')
+    assert 'Bastion Drill: This unit is eligible to shoot' in u['abilities'] and 'Brute Roar: This unit shouts.' in u['abilities']
+    conditions = u['ability_conditions']
+    assert list(conditions) == ['Bastion Drill']  # Brute Roar's army option isn't a detachment: no condition kept
+    assert [(c['test'], c['scope'], c['id']) for c in conditions['Bastion Drill'][0]['items']] == \
+        [('lessThan', 'roster', 'd-bastion')]
+    assert unit(result, 'Void Warriors')['ability_conditions'] is None
+
+
 def test_default_options_change_the_stat_line(result):
     # Issue #13: the Slab shield (the default) gives +1 W, so the datasheet shows 4, not the profile's 3
     assert unit(result, 'Shield Brutes')['wounds'] == 4
@@ -131,6 +142,9 @@ def test_options_without_weapons_or_points_stay_in_the_option_tree(result):
     herald = options(unit(result, 'Star Herald')['wargear'])  # Issue #10: the Daemon Prince's allegiance
     assert herald['Sun God']['keywords'] == ['Sun God', 'Sun God non-Battleline']
     assert herald['Moon God']['keywords'] == ['Moon God']
+    # Issue #29: its changes to the model's own profiles while taken (BSData's "set" as a change from the printed value)
+    assert (herald['Sun God']['stats'], herald['Moon God']['stats']) == ([['M', 'increment', 2]], [['T', 'increment', 1]])
+    assert len(herald['Sun God']['weapon_swaps']) == 1 and 'weapon_swaps' not in herald['Moon God']
 
 
 def test_feel_no_pain_from_core_rule_link_and_legends_flag(result):

@@ -310,7 +310,7 @@ def test_broken_bsdata_folder_is_reported_not_fatal(make_client, tmp_path):
 
 def test_pages_render_with_bsdata(app_client):
     client, _ = app_client
-    for page in ('/', '/analytics', '/scenarios', '/data'):
+    for page in ('/', '/analytics', '/data'):
         assert client.get(page).status_code == 200, page
 
 

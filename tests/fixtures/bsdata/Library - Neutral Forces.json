@@ -32,31 +32,38 @@
       "characteristics": [
        {
         "name": "M",
-        "$text": "-"
+        "$text": "-",
+        "typeId": "ct-m"
        },
        {
         "name": "T",
-        "$text": "9"
+        "$text": "9",
+        "typeId": "ct-t"
        },
        {
         "name": "Sv",
-        "$text": "4+"
+        "$text": "4+",
+        "typeId": "ct-sv"
        },
        {
         "name": "W",
-        "$text": "12"
+        "$text": "12",
+        "typeId": "ct-w"
        },
        {
         "name": "LD",
-        "$text": "-"
+        "$text": "-",
+        "typeId": "ct-ld"
        },
        {
         "name": "OC",
-        "$text": "0"
+        "$text": "0",
+        "typeId": "ct-oc"
        },
        {
         "name": "InSv",
-        "$text": ""
+        "$text": "",
+        "typeId": "ct-insv"
        }
       ]
      }

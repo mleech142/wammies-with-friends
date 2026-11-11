@@ -332,17 +332,6 @@
         return value ? [String(value)] : [];
     }
 
-    /**
-     * The saved unit among `units`: by its ID, else by name within its faction, else by name
-     * (scenarios saved before the ID). The same name can be in several factions (Harlequins).
-     */
-    function findSavedUnit(units, config) {
-        const named = (units || []).filter(u => u.name === config.unit_name);
-        return (units || []).find(u => config.unit_id != null && u.id === config.unit_id)
-            || named.find(u => config.faction_id != null && u.faction_id === config.faction_id)
-            || named[0] || null;
-    }
-
     /** "No detachment", one name, or "A + B" for the chosen detachments. */
     function detachmentSummary(detachments, chosenKeys) {
         const names = (detachments || []).filter(d => (chosenKeys || []).includes(d.key)).map(d => d.name);
@@ -1321,9 +1310,10 @@
                     `<td>${c.range}</td><td>${escapeHtml(c.attacks)}</td><td>${c.skill}</td><td>${escapeHtml(c.strength)}</td><td>${c.ap}</td><td>${escapeHtml(c.damage)}</td></tr>`;
             }).join('');
             const found = abilities[i];
+            const hidden = new Set(part.hidden_abilities || []);  // Shown by BSData only with other detachments
             const text = found === undefined ? '<p class="play-card-note">Loading abilities…</p>'
                 : !found.found ? `<p class="play-card-note">Its abilities aren't in this PC's data.</p>`
-                : found.abilities.filter(a => a.name !== 'Leader').map(a => `<div class="play-card-ability">${a.name ? `<b>${escapeHtml(a.name)}:</b> ` : ''}${formatRuleText(a.text)}</div>`).join('') +
+                : found.abilities.filter(a => a.name !== 'Leader' && !hidden.has(a.name)).map(a => `<div class="play-card-ability">${a.name ? `<b>${escapeHtml(a.name)}:</b> ` : ''}${formatRuleText(a.text)}</div>`).join('') +
                   (found.rules.length ? `<p class="play-card-rules">${found.rules.map(escapeHtml).join(', ')}</p>` : '');
             const tags = [roles[part.role], part.warlord && 'Warlord'].filter(Boolean).map(t => `<span class="play-card-tag">${t}</span>`).join('');
             return `<section class="play-card-part"><h4>${escapeHtml(part.name)}${part.models > 1 ? ` <span class="play-card-qty">×${part.models}</span>` : ''} ${tags}</h4>` +
@@ -1366,7 +1356,7 @@
         escapeHtml, truncate, formatMetricValue, getHeatColor, keywordHintHtml,
         copyLabel, defenderLabel, weaponVisible, pointsFor, pointsLabel, scaleUnitSize,
         simulatorWeapons, matchupWeaponEntry, matchupWeapons, detachmentOptionsHtml, detachmentKeys, detachmentSummary,
-        detachmentPickerHtml, findSavedUnit, formatRuleLine, formatRuleText,
+        detachmentPickerHtml, formatRuleLine, formatRuleText,
         leaderBuffSummary, withLeaderWeapons, withLeaderEntries, withLoadout, attackerEntry, defenderEntry, activeEnhancements, enhancementRefs, armyPoints, armyDetachmentPoints,
         usedWeapons, weaponPayload, rulesForFilter, ruleRowTitle, ruleConditions, rulesSelection, woundsMarker, buildMatrixRequest,
         statTile, infoButton, cellLabels, renderAnalysisSummary, renderGaps, renderRoleScores, renderCoverage, renderReverse,

@@ -51,8 +51,13 @@ def unit_payload(**overrides):
 
 def test_pages_render(setup):
     client, _ = setup
-    for page in ('/analytics', '/scenarios', '/data', '/setup'):
+    for page in ('/analytics', '/data', '/setup'):
         assert client.get(page).status_code == 200, page
+    # Saved scenarios were removed (issue #25): their page and API are gone, and not in the menu
+    assert client.get('/scenarios').status_code == 404 and client.get('/api/scenarios').status_code == 404
+    assert 'href="/scenarios"' not in client.get('/setup').get_data(as_text=True)
+    # Nor does Analytics offer Death Guard's Afflicted choices (the API still reads them: test_contagion.py)
+    assert 'mat-attackers-afflicted' not in client.get('/analytics').get_data(as_text=True)
     # The Analytics page was called Matchups: its old address still works
     assert client.get('/matchups').headers['Location'].endswith('/analytics')
     # No BSData loaded and setup not skipped: the Simulator sends you to Setup

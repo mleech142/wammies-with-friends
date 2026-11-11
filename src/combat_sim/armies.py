@@ -193,9 +193,22 @@ def enhancement_hidden(enhancement, bearer, detachment_keys, catalogue_id, keywo
     True if BSData hides `enhancement` for this bearer (a Unit) with these detachments chosen;
     `keywords`: those its chosen wargear adds (a Daemon Prince's allegiance).
     """
+    return _hidden(enhancement.hidden_when, bearer, detachment_keys, catalogue_id, keywords)
+
+
+def hidden_abilities(unit, detachment_keys, catalogue_id, keywords=()):
+    """
+    Names of the unit's abilities BSData hides with these detachments chosen (Unit.ability_conditions): a Chaos
+    Daemons unit's Shadow Legion ability outside the Shadow Legion detachment (issue #27).
+    """
+    return {name for name, trees in (unit.ability_conditions or {}).items()
+            if _hidden(trees, unit, detachment_keys, catalogue_id, keywords)}
+
+
+def _hidden(trees, bearer, detachment_keys, catalogue_id, keywords=()):
     context = {'detachments': set(detachment_keys), 'catalogue': catalogue_id, 'bearer_ids': {bearer.bsdata_id},
                'bearer_names': {bearer.name.lower()} | {k.lower() for k in list(bearer.keywords or []) + list(keywords)}}
-    return any(_tree_holds(tree, context) for tree in enhancement.hidden_when or [])
+    return any(_tree_holds(tree, context) for tree in trees or [])
 
 
 def enhancement_allowed(enhancement, bearer, detachment_keys, catalogue_id, keywords=()):

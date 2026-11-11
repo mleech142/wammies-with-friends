@@ -108,14 +108,6 @@ def seed(client):
     blue = army('Blue', 'Gun Crew')
     game = client.post('/api/play/games', json={'name': 'Phone game', 'armies': [red, blue], 'setup': False}).get_json()
     client.post('/api/play/setting', json={'enabled': True})
-    for name, saves in (('Rifles vs Brutes', 3), ('Rifles vs Crew', 5)):
-        client.post('/api/scenarios', json={
-            'name': name,
-            'attacker': {'unit_name': 'Void Warriors', 'weapon_name': 'Laser rifle x5', 'weapons': [
-                {'name': 'Laser rifle', 'type': 'ranged', 'attacks': '2', 'skill': 3, 'strength': 4, 'ap': 0,
-                 'damage': '1', 'abilities': [], 'models': 5}]},
-            'defender': {'unit_name': name.split(' vs ')[1], 'toughness': 5, 'save': saves, 'wounds': 2, 'model_count': 5},
-            'conditions': {}})
     return {'army': red, 'game': game['id']}
 
 
@@ -209,14 +201,6 @@ def assert_fits(page):
     assert not found['zooms'], f"fields with text under {INPUT_TEXT}px (iOS zooms in): {found['zooms']}"
 
 
-def compare_scenarios(page):
-    for n in (0, 1):  # The list redraws after each tap
-        page.locator('.scenario-content').nth(n).click()
-    page.click('button:has-text("Compare Selected")')
-    page.wait_for_load_state('networkidle')
-    page.wait_for_timeout(500)
-
-
 def matrix(page):
     """Analytics with the saved Red army attacking the Blue army, the matrix run."""
     address = page.url.split('/analytics')[0]
@@ -250,8 +234,6 @@ PAGES = {
     'armies-open': ('/armies', open_army),
     'armies-wargear': ('/armies', open_wargear),
     'match': ('/armies/{army}/match', None),
-    'scenarios': ('/scenarios', None),
-    'scenarios-compare': ('/scenarios', compare_scenarios),
     'data': ('/data', None),
     'data-faction': ('/data', open_faction),
     'data-units': ('/data', data_tab('Units', '#filter-faction')),
@@ -345,6 +327,37 @@ def test_running_a_simulation_on_a_phone_shows_the_results(server, phone):
     phone.wait_for_timeout(800)  # The smooth scroll
     top = phone.evaluate("document.getElementById('results-panel').getBoundingClientRect().top")
     assert -2 <= top < 100
+
+
+def test_adding_a_unit_on_a_phone_keeps_the_picker_where_it_was(server, phone):
+    """Issue #26: the army's table grows above the picker. Scroll anchoring switched off, as in Safari, which has none."""
+    phone.goto(server[0] + '/armies', wait_until='networkidle')
+    open_army(phone)
+    phone.add_style_tag(content='html, body, * { overflow-anchor: none !important; }')
+    picked = phone.locator('.unit-picker-item').last
+    picked.scroll_into_view_if_needed()
+    top = picked.evaluate('el => el.getBoundingClientRect().top')
+    rows = phone.locator('#army-units tr').count()
+    picked.tap()
+    phone.wait_for_function(f"document.querySelectorAll('#army-units tr').length > {rows}")
+    phone.wait_for_timeout(300)
+    assert abs(picked.evaluate('el => el.getBoundingClientRect().top') - top) <= 2
+
+
+def test_opening_a_saved_army_keeps_its_force_disposition(server, phone):
+    """Issue #28: the page dropped the saved disposition, showed the first one and saved that over it."""
+    phone.goto(server[0] + '/armies', wait_until='networkidle')
+    phone.evaluate("""async () => {
+        const factions = await fetch('/api/data/factions').then(r => r.json());
+        const body = {name: 'Holders', faction_id: factions.find(f => f.name === 'Starfarers').id, points_limit: 2000,
+                      detachment_keys: ['d-vanguard', 'd-bastion'], disposition: 'Take and Hold', units: []};
+        await fetch('/api/armies', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    }""")
+    phone.reload(wait_until='networkidle')
+    phone.click('.army-open:has-text("Holders")')
+    phone.wait_for_selector('#army-disposition option', state='attached')
+    assert phone.input_value('#army-disposition') == 'Take and Hold'  # Not the first option, Purge the Foe
+    assert not phone.is_visible('#army-disposition-confirm')
 
 
 def test_the_matrix_on_a_phone_is_one_attacker_at_a_time(server, phone):

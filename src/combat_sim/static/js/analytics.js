@@ -50,11 +50,18 @@
             cover: false,
             damaged: false,
             reroll_hits: 'none',
-            reroll_wounds: 'none',
-            attackers_afflicted: '',  // Death Guard's Nurgle's Gift: '' (not Afflicted), 'none' (no Plague) or a Plague
-            defenders_afflicted: ''
+            reroll_wounds: 'none'
         }
     };
+
+    /**
+     * The conditions with those kept from earlier (the remembered page, a saved comparison) added. Analytics no
+     * longer offers Death Guard's Afflicted choices (issue #25), so ones saved before are dropped, not sent unseen.
+     */
+    function withConditions(saved) {
+        const { attackers_afflicted: _a, defenders_afflicted: _d, ...rest } = saved || {};
+        return { ...state.conditions, ...rest };
+    }
 
     // DOM Elements
     const elements = {};
@@ -111,7 +118,7 @@
 
         state.attackers = saved.attackers || [];
         state.defenders = saved.defenders || [];
-        state.conditions = { ...state.conditions, ...(saved.conditions || {}) };
+        state.conditions = withConditions(saved.conditions);
         state.currentMetric = saved.currentMetric || state.currentMetric;
         state.weaponTypeFilter = saved.weaponTypeFilter || state.weaponTypeFilter;
         state.showWeapons = !!saved.showWeapons;
@@ -214,12 +221,6 @@
         });
         document.getElementById('mat-reroll-wounds').addEventListener('change', (e) => {
             state.conditions.reroll_wounds = e.target.value;
-        });
-        document.getElementById('mat-attackers-afflicted').addEventListener('change', (e) => {
-            state.conditions.attackers_afflicted = e.target.value;
-        });
-        document.getElementById('mat-defenders-afflicted').addEventListener('change', (e) => {
-            state.conditions.defenders_afflicted = e.target.value;
         });
 
         // Metric selector
@@ -1332,7 +1333,7 @@
                     ...savedConditions } = data.battle_conditions || {};
             state.defenderMode = savedMode === 'generic' ? 'generic' : 'real';
             state.genericIncluded = savedIncluded ? new Set(savedIncluded) : null;
-            state.conditions = { ...state.conditions, ...savedConditions };
+            state.conditions = withConditions(savedConditions);
             state.results = results;
             restoreTicks(savedTicks);
 
@@ -1378,11 +1379,6 @@
         document.getElementById('mat-damaged').checked = !!state.conditions.damaged;
         document.getElementById('mat-reroll-hits').value = state.conditions.reroll_hits;
         document.getElementById('mat-reroll-wounds').value = state.conditions.reroll_wounds;
-        for (const [id, key] of [['mat-attackers-afflicted', 'attackers_afflicted'], ['mat-defenders-afflicted', 'defenders_afflicted']]) {
-            const select = document.getElementById(id);
-            select.value = state.conditions[key] || '';
-            if (select.selectedIndex < 0) select.value = '';
-        }
     }
 
     function debounce(fn, delay) {

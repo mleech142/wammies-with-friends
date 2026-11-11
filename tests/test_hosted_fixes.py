@@ -52,12 +52,12 @@ def add_player(host, name):
 def test_a_removed_players_id_is_never_given_to_the_next(host):
     pat = add_player(host, 'Pat')
     pat_id = pat.get('/api/auth/me').get_json()['id']
-    pat.post('/api/scenarios', json={'name': "Pat's plan", 'attacker': {}, 'defender': {}, 'conditions': {}})
+    pat.post('/api/comparisons', json={'name': "Pat's plan", 'attackers': [], 'defenders': [], 'conditions': {}})
     assert host.delete(f'/api/players/{pat_id}').status_code == 200
     assert 'Pat' not in [p['name'] for p in host.get('/api/players').get_json()]
     newcomer = add_player(host, 'Pat')  # the name is free again
     assert newcomer.get('/api/auth/me').get_json()['id'] != pat_id
-    assert newcomer.get('/api/scenarios').get_json() == []  # nothing of the old Pat's
+    assert newcomer.get('/api/comparisons').get_json() == []  # nothing of the old Pat's
     assert pat.get('/api/armies').status_code == 401
 
 

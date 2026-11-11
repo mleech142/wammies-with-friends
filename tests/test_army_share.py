@@ -77,6 +77,14 @@ def test_round_trip_keeps_the_whole_list(client):
     assert entries[0]['wargear_summary'] == 'Power axe, Void Warrior w/ heavy laser'
 
 
+def test_the_force_disposition_goes_with_the_code(client):
+    body = dict(full_army(client), disposition='Take and Hold')
+    assert import_code(client, share(client, body))['army']['disposition'] == 'Take and Hold'
+    # Codes without one (none chosen, or made before dispositions were shared) import without one
+    assert 'disposition' not in payload(share(client, full_army(client)))
+    assert import_code(client, share(client, full_army(client)))['army']['disposition'] is None
+
+
 def test_codes_carry_bsdata_ids_not_database_ids(client):
     data = payload(share(client, full_army(client)))
     assert data['faction'] == 'cat-star' and data['faction_name'] == 'Starfarers'

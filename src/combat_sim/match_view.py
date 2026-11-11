@@ -6,7 +6,8 @@ the army's rules (faction and chosen detachments), the enhancements taken and th
 it can use (core, faction and chosen detachments'), each stratagem with when it is used.
 
 Unit abilities are stored as one text (bsdata.py: "Name: text" paragraphs, then the core and
-faction rules the datasheet links to, by name); `split_abilities` reads it back.
+faction rules the datasheet links to, by name); `split_abilities` reads it back. Abilities BSData
+shows only with other detachments are left out (armies.hidden_abilities).
 """
 
 import re
@@ -45,6 +46,23 @@ def split_abilities(text):
         else:
             abilities.append({'name': '', 'text': block})
     return abilities, rules
+
+
+def without_abilities(text, names):
+    """A unit's ability text (as split_abilities reads it) without the abilities named in `names`."""
+    if not names:
+        return text
+    kept, dropping = [], False
+    for block in re.split(r'\n{2,}', (text or '').replace('\r', '')):
+        line = block.strip()
+        m = ABILITY.match(line)
+        if m:
+            dropping = m.group(1).strip() in names
+        elif '\n' not in line and len(line) <= 40 and not line.endswith('.'):
+            dropping = False  # A rule the datasheet links to
+        if line and not dropping:
+            kept.append(line)
+    return '\n\n'.join(kept)
 
 
 def keyword_hints():
@@ -94,11 +112,12 @@ def sheet_abilities(abilities, effects):
     return out
 
 
-def unit_sheet(unit, entry, catalogue, hints, faction_rule_names, enhancements):
+def unit_sheet(unit, entry, catalogue, hints, faction_rule_names, enhancements, detachment_keys=()):
     weapons = unit_weapons(unit, entry, catalogue, hints)
     effects = entry.get('wargear_effects')
     abilities, rules = split_abilities(unit.abilities)
-    abilities = sheet_abilities(abilities, effects)
+    hidden = armies.hidden_abilities(unit, detachment_keys, catalogue, (effects or {}).get('keywords', []))
+    abilities = sheet_abilities([a for a in abilities if a['name'] not in hidden], effects)
     # Weapon abilities the importer lists with the unit's rules (Sustained Hits...) belong on the weapons
     option_ids = {'ranged': unit.ranged_options or [], 'melee': unit.melee_options or []}
     carried = [a['text'] for rows in weapons.values() for w in rows for a in w['abilities']]
@@ -192,7 +211,8 @@ def match_view(army):
                                     for e in priced['units'] if entry['uid'] in e['led_by'] + e['supported_by']), None),
                  'wargear_summary': entry.get('wargear_summary') or '', 'problems': entry['problems']}
         if unit is not None:
-            sheet.update(unit_sheet(unit, entry, catalogue, hints, rule_names, enhancements))
+            sheet.update(unit_sheet(unit, entry, catalogue, hints, rule_names, enhancements,
+                                    [d['key'] for d in priced['detachments']]))
         sheets.append(sheet)
 
     # Units as they take the field: each unit, then the leaders and support units joining it

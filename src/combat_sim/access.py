@@ -4,7 +4,7 @@ Who may do what: the one place the app decides it (docs/hosted-version-scope.md;
 **Records.** Every saved record kind with an owner is in `POLICY`, with its sharing rule:
 
 - ``shared``: every player reads it, only its owner changes it (armies).
-- ``private``: only its owner (scenarios, comparisons, battlefields).
+- ``private``: only its owner (comparisons, battlefields).
 - ``game``: its owner (who started it) and the two players seated in it read it; only the owner changes it
   (deletes it). Which side each plays is Play's rule (play/routes.py `seat_of`), not this module's.
 - ``proposal``: its owner and the host read it; only its owner changes it (withdraws it).
@@ -33,12 +33,11 @@ from flask import abort, current_app, g, jsonify, redirect, render_template, req
 from sqlalchemy import or_
 
 from . import settings
-from .models import Proposal, SavedArmy, SavedBattlefield, SavedComparison, SavedGame, SavedScenario, User, db
+from .models import Proposal, SavedArmy, SavedBattlefield, SavedComparison, SavedGame, User, db
 
 SHARED, PRIVATE, GAME, PROPOSAL = 'shared', 'private', 'game', 'proposal'
 POLICY = {
     SavedArmy: (SHARED, "This army is another player's: copy it to make one you can change."),
-    SavedScenario: (PRIVATE, None),
     SavedComparison: (PRIVATE, None),
     SavedBattlefield: (PRIVATE, None),
     SavedGame: (GAME, 'Only the player who started this game can delete it.'),

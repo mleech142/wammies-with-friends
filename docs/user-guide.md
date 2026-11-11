@@ -173,10 +173,10 @@ Things that depend on the table rather than the dice: movement, charges, Precisi
 
 ## Your data and updates
 
-- **To update the game data,** open **Setup** and press **Download latest** again. Saved scenarios and armies keep working.
+- **To update the game data,** open **Setup** and press **Download latest** again. Saved armies and comparisons keep working.
 - **To update the app,** download the new release and replace the unzipped folder. Nothing is lost: your data lives in `%APPDATA%\Wammies With Friends\` (paste that into File Explorer's address bar to find it). It holds:
   - the downloaded game data;
-  - your saved scenarios, comparisons and armies;
+  - your saved comparisons and armies;
   - your own rules, custom units and edits.
 
 ---
