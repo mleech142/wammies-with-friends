@@ -620,7 +620,7 @@ def test_one_model_at_a_time_and_spinning_it_by_touch(tmp_path_factory, browser)
         page.wait_for_timeout(500)
         assert page.is_visible('#move-ok'), page.inner_text('#play-message')
         assert placed(page, game, 'p1-u0') == before  # Not sent until Confirm
-        page.wait_for_selector('#move-ok:not([disabled])')
+        page.wait_for_selector('#place-bar .play-check-ok')  # The server has said the move is allowed
         page.tap('#move-ok')
         page.wait_for_load_state('networkidle')
         page.wait_for_timeout(300)

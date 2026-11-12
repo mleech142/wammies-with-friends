@@ -3953,13 +3953,19 @@
         const unit = unitById(pending.unitId);
         const check = state.check && state.check.unitId === pending.unitId ? state.check : null;
         bar.hidden = false;
-        bar.innerHTML = `<span>${check && !check.ok ? `<strong class="play-check-bad">Not allowed:</strong> ${escapeHtml(check.error)}`
-                : `Move <strong>${escapeHtml(unit.name)}</strong> here?${check ? ' <span class="play-check-ok">Allowed</span>' : ''}`}</span>
-            <span class="play-pending-actions">
-                <button class="btn btn-primary" id="move-ok" ${check && !check.ok ? 'disabled' : ''}><i class="fa-solid fa-check" aria-hidden="true"></i> Confirm</button>
-                <button class="btn-small" id="move-reset"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reset</button></span>`;
-        $('move-ok').addEventListener('click', confirmPendingMove);
-        $('move-reset').addEventListener('click', cancelPendingMove);
+        // The buttons are made once and kept: the server's answer arriving only changes the words and whether
+        // Confirm can be pressed, so a tap on Confirm never lands on a button that was just replaced
+        if (!$('move-ok')) {
+            bar.innerHTML = `<span id="move-text"></span>
+                <span class="play-pending-actions">
+                    <button class="btn btn-primary" id="move-ok"><i class="fa-solid fa-check" aria-hidden="true"></i> Confirm</button>
+                    <button class="btn-small" id="move-reset"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reset</button></span>`;
+            $('move-ok').addEventListener('click', confirmPendingMove);
+            $('move-reset').addEventListener('click', cancelPendingMove);
+        }
+        $('move-text').innerHTML = check && !check.ok ? `<strong class="play-check-bad">Not allowed:</strong> ${escapeHtml(check.error)}`
+            : `Move <strong>${escapeHtml(unit.name)}</strong> here?${check ? ' <span class="play-check-ok">Allowed</span>' : ''}`;
+        $('move-ok').disabled = !!(check && !check.ok);
     }
 
     // --- While dragging: would the server take the move? (a dry run, GameSession.check) ---------------------------
