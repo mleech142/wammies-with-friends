@@ -7,7 +7,7 @@
     <div class="page-header">
         <h2><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Setup</h2>
     </div>
-    <p class="data-note">The app doesn't include any game data: download your own copy of each of the two data sets
+    <p class="data-note" data-read-more>The app doesn't include any game data: download your own copy of each of the two data sets
         below. Neither is endorsed by Games Workshop. Download them again any time to update.</p>
 
     <section class="setup-card setup-downloads">
@@ -57,7 +57,7 @@
         <div class="setup-row">
             <input type="text" id="folder-input" class="filter-input" placeholder="C:\path\to\wh40k-11e">
             <button class="btn btn-secondary" id="browse-btn" onclick="browseFolder()">Browse…</button>
-            <button class="btn btn-primary" id="folder-btn" onclick="useFolder()">Use this folder</button>
+            <button class="btn btn-secondary" id="folder-btn" onclick="useFolder()">Use this folder</button>
         </div>
         <div class="setup-row" style="margin-top: 0.5rem">
             <button class="btn-small" onclick="useFolder(null)">Use the default folder</button>
@@ -76,6 +76,16 @@
         <div class="setup-message" id="reimport-message"></div>
     </section>
 
+    <section class="setup-card">
+        <h3>Layout</h3>
+        <p>How pages are laid out on this device. Automatic picks a phone layout on a phone (held either way), a tablet's
+            on a touch screen, and a desktop's with a mouse.</p>
+        <label class="setup-row">Layout
+            <select class="filter-select" data-layout-setting aria-label="Layout">
+                <option value="auto">Automatic</option><option value="phone">Phone</option>
+                <option value="tablet">Tablet</option><option value="desktop">Desktop</option>
+            </select></label>
+    </section>
     <section class="setup-card">
         <h3>Play (experimental)</h3>
         <p>Full games against a friend on a top-down board. Still being built: turn it on to try what's there so far.</p>

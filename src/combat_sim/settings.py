@@ -11,7 +11,8 @@ The install's, which only its host changes (the Setup page):
   "relay_url": "https://..."            # Play's relay (desktop installs; a self-hosted copy uses RELAY_URL)
 }
 
-A person's own preferences (PREFERENCES): "show_play" (Play in the menu) and "player_name" (the name they play
+A person's own preferences (PREFERENCES): "show_play" (Play in the menu), "layout" (phone, tablet, desktop or
+automatic: Core.layoutFor) and "player_name" (the name they play
 under online). Read and change them only through access.principal(): on a desktop install they are in this file
 too; on a self-hosted copy each player's are in their account (users.preferences), a missing one falling back to
 this file's.
@@ -25,7 +26,7 @@ from pathlib import Path
 from .data_store import write_json
 
 SETTINGS_FILE = 'settings.json'
-PREFERENCES = ('show_play', 'player_name')  # A person's own (access.Principal.preferences)
+PREFERENCES = ('show_play', 'player_name', 'layout')  # A person's own (access.Principal.preferences)
 
 
 def settings_path(data_json):

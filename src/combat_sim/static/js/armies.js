@@ -52,7 +52,7 @@
         $('unit-legends').addEventListener('change', loadFactionUnits);
         $('army-units').addEventListener('change', onUnitsChange);
         $('army-units').addEventListener('click', onUnitsClick);
-        $('save-army-btn').addEventListener('click', () => saveArmy());
+        $('save-army-btn').addEventListener('click', e => Busy.during(e.currentTarget, saveArmy().then(id => { if (id) Toast.show('Army saved'); })));
         $('attackers-btn').addEventListener('click', () => analyse('attacker'));
         $('defenders-btn').addEventListener('click', () => analyse('defender'));
         $('match-btn').addEventListener('click', openMatchView);
@@ -67,6 +67,18 @@
             $('import-code').focus();
         });
         $('import-apply').addEventListener('click', importCode);
+        // Phones: Add units opens as a sheet, kept open while units are added (each confirmed by a toast)
+        const showAdd = open => {
+            document.body.classList.toggle('army-add-open', open);
+            $('army-add-scrim').hidden = !open;
+            if (open && !window.matchMedia('(pointer: coarse)').matches) $('unit-search').focus();
+        };
+        $('add-units-fab').addEventListener('click', () => showAdd(true));
+        $('army-add-done').addEventListener('click', () => showAdd(false));
+        $('army-add-scrim').addEventListener('click', () => showAdd(false));
+        Sheets.addHandle($('army-add'));
+        Sheets.swipeToClose($('army-add'), () => showAdd(false));
+        $('army-points-problems').addEventListener('click', () => $('army-problems').scrollIntoView({ behavior: 'smooth', block: 'center' }));
         $('wargear-sections').addEventListener('change', onWargearChange);
         $('wargear-size').addEventListener('change', e => { state.wargear.models = parseInt(e.target.value); loadWargear(); });
         $('wargear-apply').addEventListener('click', () => closeWargear(true));
@@ -79,6 +91,12 @@
         loadArmyList();
         const saved = PageState.load(PAGE_STATE_KEY);
         await openArmy(saved?.army || newArmy(), !!saved?.dirty);
+        // ?army=<id> (from the command palette): open that saved army, as a click on it in the list would
+        const asked = parseInt(new URLSearchParams(location.search).get('army'));
+        if (asked) {
+            history.replaceState(null, '', location.pathname);
+            await openSaved(asked);
+        }
     }
 
     // =========================
@@ -204,6 +222,11 @@
         const pointsEl = $('army-points');
         pointsEl.querySelector('.army-points-total').textContent = points.text;
         pointsEl.classList.toggle('over', points.over);
+        const limit = state.army.points_limit;
+        $('army-points-fill').style.width = limit ? `${Math.min(100, (priced?.total || 0) / limit * 100)}%` : '0';
+        const problemCount = (priced?.problems || []).length;
+        $('army-points-problems').hidden = !problemCount;
+        $('army-points-problems').innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${problemCount} to fix`;
         const dp = priced && priced.detachments.length ? Core.armyDetachmentPoints(priced.dp_total, priced.dp_limit) : null;
         $('army-dp').textContent = dp ? dp.text : '';
         const names = (priced?.detachments || []).map(d => d.name);
@@ -222,7 +245,7 @@
         $('army-enhancement-count').textContent = priced && (priced.enhancement_count || units.some(u => u.enhancement_options.length)) ? enhancements : '';
         $('army-enhancement-count').classList.toggle('over', !!priced && priced.enhancement_count > priced.enhancement_limit);
         $('army-units').innerHTML = units.length ? units.map(u => unitRow(u, labels)).join('') :
-            `<tr><td colspan="7" class="empty-cell">${state.army.faction_id ? 'No units yet: add them from the list on the right.' : 'Choose a faction to start.'}</td></tr>`;
+            `<tr><td colspan="7" class="empty-cell">${state.army.faction_id ? 'No units yet: add them from Add units.' : 'Choose a faction to start.'}</td></tr>`;
         renderSavedState();
     }
 
@@ -262,10 +285,15 @@
             <td data-label="Points" title="${u.enhancement_points ? `Unit ${u.unit_points} + enhancement ${u.enhancement_points}` : ''}">${u.points ?? '-'}</td>
             <td${joins ? ' data-label="Joins"' : ''}>${joins}</td>
             <td${enhancement ? ' data-label="Enhancement"' : ''}>${enhancement}</td>
-            <td class="col-remove">
-                <button class="btn-small army-copy-unit" data-uid="${escapeHtml(u.uid)}" title="Add another">+1</button>
-                <button class="btn-remove army-remove-unit" data-uid="${escapeHtml(u.uid)}" title="Remove"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-            </td>
+            <td class="col-remove"><div class="overflow">
+                <button type="button" class="btn-small overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-label="More for ${escapeHtml(labels.get(u.uid))}"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i></button>
+                <div class="overflow-items" role="menu" aria-label="${escapeHtml(labels.get(u.uid))}">
+                    <div class="overflow-title">${escapeHtml(labels.get(u.uid))}</div>
+                    <button class="btn-small army-copy-unit" data-uid="${escapeHtml(u.uid)}" title="Add another"><span class="label-wide">+1</span><span class="label-phone"><i class="fa-solid fa-clone" aria-hidden="true"></i> Add another copy</span></button>
+                    <button class="btn-remove army-remove-unit" data-uid="${escapeHtml(u.uid)}" title="Remove"><i class="fa-solid fa-xmark label-wide" aria-hidden="true"></i><span class="label-phone"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove from the army</span></button>
+                    <button type="button" class="btn btn-secondary overflow-cancel">Cancel</button>
+                </div>
+            </div></td>
         </tr>`;
     }
 
@@ -323,6 +351,9 @@
         state.army.units.push({ uid: newUid(), unit_id: unitId, models: null, attached_to: null, enhancement: null });  // Server picks the size
         await changed();
         if (top != null && button.isConnected) window.scrollBy(0, button.getBoundingClientRect().top - top);
+        const added = state.priced?.units?.at(-1);
+        Haptics.tap();
+        Toast.show(`Added ${added?.name || 'unit'} · ${Core.armyPoints(state.priced?.total || 0, state.army.points_limit).text}`);
     }
 
     // =========================
@@ -483,12 +514,15 @@
         }
         list.innerHTML = armies.map(a => {
             const points = Core.armyPoints(a.total, a.points_limit);
+            const filled = a.points_limit ? Math.min(100, Math.round(100 * (a.total || 0) / a.points_limit)) : 0;
+            const army = [a.faction, a.detachment].filter(Boolean).join(' · ');
             return `<div class="army-list-item ${a.id === state.army.id ? 'active' : ''}">
                 <button type="button" class="army-open" data-id="${a.id}">
                     <span class="army-list-name">${escapeHtml(a.name)}</span>
                     ${a.mine === false ? `<span class="army-list-meta">${escapeHtml(a.owner || 'Another player')}'s · read-only</span>` : ''}
-                    <span class="army-list-meta">${escapeHtml([a.faction, a.detachment].filter(Boolean).join(' · '))}</span>
-                    <span class="army-list-meta ${points.over ? 'over' : ''}">${points.text} · ${a.unit_count} units${a.problem_count ? ` · ${a.problem_count} to fix` : ''}</span>
+                    <span class="army-list-meta army-list-clamp" title="${escapeHtml(army)}">${escapeHtml(army)}</span>
+                    ${a.points_limit ? `<span class="army-list-meter ${points.over ? 'over' : ''}" aria-hidden="true"><span style="width:${filled}%"></span></span>` : ''}
+                    <span class="army-list-meta ${points.over ? 'over' : ''}">${points.text} · ${a.unit_count} units${a.problem_count ? ` · <span class="army-list-fix">${a.problem_count} to fix</span>` : ''}</span>
                 </button>
                 <div class="army-list-actions">
                     <button class="btn-small army-duplicate" data-id="${a.id}" title="Make a copy"><i class="fa-solid fa-copy" aria-hidden="true"></i></button>
@@ -529,7 +563,7 @@
     /** Save the army (new or existing); returns its id, or null if it couldn't be saved. */
     async function saveArmy() {
         if (!state.army.faction_id) {
-            alert('Choose a faction first.');
+            Toast.show('Choose a faction first.', 'error');
             return null;
         }
         const id = state.army.id;
@@ -538,7 +572,7 @@
         });
         const saved = await resp.json();
         if (!resp.ok) {
-            alert(saved.error || 'The army could not be saved.');
+            Toast.show(saved.error || 'The army could not be saved.', 'error');
             return null;
         }
         state.army.id = saved.id;
@@ -575,7 +609,7 @@
 
     async function analyse(side) {
         if (!state.army.units.length) {
-            alert('Add some units first.');
+            Toast.show('Add some units first.', 'error');
             return;
         }
         const id = state.dirty || !state.army.id ? await saveArmy() : state.army.id;
@@ -585,7 +619,7 @@
     /** Save, then show the army's Match view: its datasheets, rules and stratagems for the table. */
     async function openMatchView() {
         if (!state.army.units.length) {
-            alert('Add some units first.');
+            Toast.show('Add some units first.', 'error');
             return;
         }
         const id = state.dirty || !state.army.id ? await saveArmy() : state.army.id;
@@ -607,7 +641,7 @@
     /** A share code for the list as it stands (saved or not): units by their BSData IDs, wargear included. */
     async function showShareCode() {
         if (!state.army.faction_id || !state.army.units.length) {
-            alert('Add some units first.');
+            Toast.show('Add some units first.', 'error');
             return;
         }
         const resp = await fetch('/api/armies/share', {
@@ -616,7 +650,7 @@
         });
         const data = await resp.json();
         if (!resp.ok) {
-            alert(data.error || 'This list could not be shared.');
+            Toast.show(data.error || 'This list could not be shared.', 'error');
             return;
         }
         $('share-code').value = data.code;

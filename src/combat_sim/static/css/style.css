@@ -20,6 +20,54 @@
     --success: #b5aa32;            /* Olive, lifted for dark backgrounds */
     --warning: #e0b23c;
     --error: #e5484d;
+    --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--accent);
+
+    /* Type: every font-size in the app is one of these steps */
+    --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-display: 'Barlow Condensed', 'Arial Narrow', var(--font-body);  /* the brand and page and card titles */
+    --fs-2xs: 0.65rem;
+    --fs-xs: 0.75rem;
+    --fs-sm: 0.85rem;
+    --fs-md: 0.95rem;
+    --fs-base: 1rem;
+    --fs-lg: 1.15rem;
+    --fs-xl: 1.5rem;
+    --fs-2xl: 2rem;
+    --fs-3xl: 2.5rem;
+
+    /* Corners */
+    --radius-sm: 4px;      /* chips, small buttons, inputs inside tables */
+    --radius-md: 6px;      /* buttons, inputs */
+    --radius-lg: 8px;      /* cards, panels, pop-ups */
+    --radius-pill: 999px;
+
+    /* Spacing (4px steps): use these in new rules */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+
+    color-scheme: dark;    /* native controls (checkboxes, scrollbars, date pickers, selects' lists) drawn dark */
+    accent-color: var(--accent);
+}
+
+/* Barlow Condensed (SIL Open Font License, static/vendor/barlow-condensed-5.0.13/OFL.txt) */
+@font-face {
+    font-family: 'Barlow Condensed';
+    font-weight: 600;
+    font-display: swap;
+    src: url('../vendor/barlow-condensed-5.0.13/barlow-condensed-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Barlow Condensed';
+    font-weight: 700;
+    font-display: swap;
+    src: url('../vendor/barlow-condensed-5.0.13/barlow-condensed-latin-700-normal.woff2') format('woff2');
 }
 
 * {
@@ -29,16 +77,43 @@
 }
 
 body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body);
     background: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
     line-height: 1.5;
 }
 
+/* Links: the accent, underlined on hover (buttons and tabs styled as links set their own) */
+a {
+    color: var(--accent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+a:hover {
+    color: var(--accent-hover);
+}
+
+/* Keyboard focus: one ring for every control (a mouse click doesn't show it) */
+:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    border-color: var(--accent) !important;
+}
+
 /* Header */
 .header {
-    background: var(--bg-tertiary);
+    /* A little warmth and depth behind the brand, as the Match view's datasheet headers have */
+    background:
+        radial-gradient(ellipse 60% 140% at 0% 0%, rgba(232, 114, 47, 0.10), transparent 70%),
+        linear-gradient(180deg, #22211a 0%, var(--bg-tertiary) 100%);
+    box-shadow: inset 0 -1px 0 rgba(232, 114, 47, 0.12);
     padding: 1rem 2rem;
     border-bottom: 1px solid var(--border);
     display: flex;
@@ -47,9 +122,21 @@ body {
 }
 
 .header h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-size: var(--fs-2xl);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    color: var(--text-primary);
+}
+
+.header h1 > .fa-solid {
     color: var(--accent);
+}
+
+.header h1 .brand-name {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .header-nav {
@@ -59,7 +146,7 @@ body {
 }
 
 .version {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -74,7 +161,7 @@ body {
     max-width: 1800px;
     margin: 0 auto;
     padding: 1rem 1.5rem 1.5rem;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
     border-top: 1px solid var(--border);
 }
@@ -91,18 +178,22 @@ body {
 .setup-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     padding: 1.25rem 1.5rem;
     margin-bottom: 1.25rem;
 }
 
 .setup-card h3 {
     margin-bottom: 0.5rem;
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 600;
+    line-height: 1.2;
 }
 
 .setup-card p {
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
     margin-bottom: 0.75rem;
 }
 
@@ -139,7 +230,7 @@ body {
 
 .setup-step-body h4 {
     margin: 0.25rem 0 0.4rem;
-    font-size: 1rem;
+    font-size: var(--fs-base);
     color: var(--text-primary);
 }
 
@@ -157,7 +248,7 @@ body {
 
 .setup-message {
     margin-top: 0.75rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .setup-message:empty {
@@ -175,7 +266,7 @@ body {
 .setup-report summary {
     cursor: pointer;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
 }
 
 .setup-report table {
@@ -186,22 +277,31 @@ body {
 .card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
     margin-bottom: 1rem;
 }
 
+/* Card titles: the display face, in the text colour (the accent is kept for the icon, the one primary action and
+   what is selected) */
 .card h2 {
-    font-size: 1rem;
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
     font-weight: 600;
+    line-height: 1.2;
+    color: var(--text-primary);
+    margin-bottom: var(--space-4);
+}
+
+.card h2 > .fa-solid,
+.page-header h2 > .fa-solid {
     color: var(--accent);
-    margin-bottom: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-size: 0.8em;
+    margin-right: 0.15em;
 }
 
 .card h3 {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     font-weight: 600;
     color: var(--text-secondary);
     margin-bottom: 0.5rem;
@@ -228,7 +328,7 @@ body {
 
 .form-group label {
     display: block;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     font-weight: 500;
     color: var(--text-secondary);
     margin-bottom: 0.25rem;
@@ -246,9 +346,9 @@ body {
     padding: 0.75rem 1rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -302,7 +402,7 @@ body {
 }
 
 .autocomplete-item .item-faction {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
@@ -314,7 +414,7 @@ body {
     margin: 1rem 0;
     padding: 1rem;
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
 }
 
 .weapon-stats {
@@ -327,7 +427,7 @@ body {
 
 .stat-label {
     display: block;
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
     margin-bottom: 0.25rem;
@@ -335,13 +435,13 @@ body {
 
 .stat-value {
     display: block;
-    font-size: 1.25rem;
+    font-size: var(--fs-lg);
     font-weight: 700;
     color: var(--text-primary);
 }
 
 .weapon-abilities {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--accent);
     padding: 0.5rem 0;
 }
@@ -349,13 +449,13 @@ body {
 /* Attacker weapon list */
 .weapon-list {
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow-x: auto;
 }
 
 .weapon-list-empty {
     padding: 1rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
     text-align: center;
 }
@@ -363,12 +463,12 @@ body {
 .weapon-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .weapon-table th {
     padding: 0.5rem;
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -430,7 +530,7 @@ body {
 }
 
 .weapon-row-abilities {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     font-weight: 400;
     color: var(--accent);
     margin-top: 0.15rem;
@@ -442,9 +542,9 @@ body {
     padding: 0.5rem 0.75rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
 }
 
 .input-small:focus {
@@ -484,9 +584,9 @@ body {
     padding: 0.5rem 0.75rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     transition: all 0.2s;
     user-select: none;
 }
@@ -520,7 +620,7 @@ body {
 }
 
 .reroll-row > label {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
     min-width: 80px;
 }
@@ -534,9 +634,9 @@ body {
     padding: 0.35rem 0.75rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     cursor: pointer;
     transition: all 0.15s;
 }
@@ -562,7 +662,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
@@ -571,9 +671,9 @@ body {
     padding: 0.35rem 0.5rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 
 /* Action buttons */
@@ -588,8 +688,8 @@ body {
 .btn {
     padding: 0.75rem 1.5rem;
     border: none;
-    border-radius: 6px;
-    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-md);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -625,13 +725,13 @@ body {
 .result-card {
     background: var(--bg-tertiary);
     padding: 1.25rem;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     text-align: center;
 }
 
 .result-value {
     display: block;
-    font-size: 2.5rem;
+    font-size: var(--fs-3xl);
     font-weight: 700;
     color: var(--accent);
     line-height: 1;
@@ -639,7 +739,7 @@ body {
 
 .result-label {
     display: block;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
     text-transform: uppercase;
     margin-top: 0.5rem;
@@ -664,7 +764,7 @@ body {
 
 .distribution .chart-note {
     margin: -0.5rem 0 0.75rem;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -682,14 +782,14 @@ body {
 }
 
 .breakdown-table th {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
 }
 
 .breakdown-table td {
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
 }
 
 .breakdown-table tr:last-child td {
@@ -700,7 +800,7 @@ body {
 .chart-container {
     height: 280px;
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 0.5rem;
 }
 
@@ -715,7 +815,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
     background: var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -733,7 +833,7 @@ body {
     text-align: center;
     padding: 3rem;
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
 }
 
 /* =========================================================================
@@ -748,8 +848,8 @@ body {
     padding: 0.5rem 1rem;
     color: var(--text-secondary);
     text-decoration: none;
-    font-size: 0.875rem;
-    border-radius: 4px;
+    font-size: var(--fs-sm);
+    border-radius: var(--radius-sm);
     transition: all 0.2s;
 }
 
@@ -761,6 +861,41 @@ body {
 .nav-link.active {
     color: var(--accent);
     background: var(--bg-secondary);
+}
+
+/* Wider screens: the version is in the footer; the admin pages (Data, Setup, ...) after a divider, quieter than the
+   main tools */
+@media (min-width: 901px) {
+    .header-nav .version {
+        display: none;
+    }
+
+    .header-nav .nav-primary + .nav-link:not(.nav-primary) {
+        position: relative;
+        margin-left: var(--space-3);
+    }
+
+    .header-nav .nav-primary + .nav-link:not(.nav-primary)::before {
+        content: '';
+        position: absolute;
+        left: calc(-0.5 * (var(--space-3) + 1rem));  /* halfway across the margin and the nav's gap */
+        top: 20%;
+        bottom: 20%;
+        border-left: 1px solid var(--border);
+    }
+
+    .header-nav .nav-link:not(.nav-primary):not(.active) {
+        color: var(--text-muted);
+    }
+
+    .header-nav .nav-link:not(.nav-primary):not(.active):hover {
+        color: var(--text-primary);
+    }
+}
+
+.footer-version {
+    float: right;
+    margin-left: var(--space-4);
 }
 
 /* =========================================================================
@@ -777,7 +912,10 @@ body {
 }
 
 .page-header h2 {
-    font-size: 1.5rem;
+    font-family: var(--font-display);
+    font-size: var(--fs-2xl);
+    font-weight: 700;
+    line-height: 1.15;
     color: var(--text-primary);
 }
 
@@ -796,7 +934,7 @@ body {
     margin-bottom: 1rem;
     background: var(--bg-secondary);
     padding: 0.25rem;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     width: fit-content;
 }
 
@@ -805,9 +943,9 @@ body {
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    font-size: 0.875rem;
+    font-size: var(--fs-sm);
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     transition: all 0.2s;
 }
 
@@ -844,9 +982,9 @@ body {
     padding: 0.5rem 1rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--text-primary);
-    font-size: 0.875rem;
+    font-size: var(--fs-sm);
 }
 
 .filter-select:focus,
@@ -867,7 +1005,7 @@ body {
     width: 100%;
     border-collapse: collapse;
     background: var(--bg-secondary);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
 }
 
@@ -880,7 +1018,7 @@ body {
 
 .data-table th {
     background: var(--bg-tertiary);
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -896,10 +1034,10 @@ body {
 
 .btn-small {
     padding: 0.35rem 0.75rem;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     cursor: pointer;
     transition: all 0.15s;
@@ -917,6 +1055,18 @@ body {
     background: var(--error);
     border-color: var(--error);
     color: white;
+}
+
+/* With a mouse, a row's Delete stays quiet until the row is pointed at: a column of red buttons draws the eye away
+   from the data (touch screens keep it red, there's no hover) */
+@media (hover: hover) {
+    tr .btn-small.btn-danger:not(:hover) {
+        color: var(--text-muted);
+    }
+
+    tr:hover .btn-small.btn-danger:not(:hover) {
+        color: var(--error);
+    }
 }
 
 /* =========================================================================
@@ -983,7 +1133,7 @@ body {
 }
 
 .weapon-picker-column h4 {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
     margin-bottom: 0.4rem;
 }
@@ -996,7 +1146,7 @@ body {
 .weapon-picker-list {
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     max-height: 220px;
     overflow-y: auto;
     padding: 0.25rem;
@@ -1008,7 +1158,7 @@ body {
     column-gap: 0.5rem;
     align-items: center;
     padding: 0.35rem 0.5rem;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
 }
 
 .weapon-picker-item:hover {
@@ -1033,7 +1183,7 @@ body {
     padding: 0.25rem 0.35rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     text-align: center;
 }
@@ -1043,24 +1193,24 @@ body {
 }
 
 .weapon-picker-hint {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
     margin-bottom: 0.5rem;
 }
 
 .weapon-picker-name {
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-primary);
 }
 
 .weapon-picker-stats {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
 .weapon-picker-empty {
     padding: 0.75rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
     text-align: center;
 }
@@ -1080,14 +1230,14 @@ body {
 }
 
 .modal-header h3 {
-    font-size: 1.1rem;
+    font-size: var(--fs-lg);
     color: var(--text-primary);
 }
 
 .modal-close {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: var(--fs-xl);
     color: var(--text-secondary);
     cursor: pointer;
     line-height: 1;
@@ -1143,7 +1293,7 @@ body {
 }
 
 .diff-section h4 {
-    font-size: 0.875rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
     margin-bottom: 0.75rem;
     text-transform: uppercase;
@@ -1158,7 +1308,7 @@ body {
 .diff-item {
     padding: 0.75rem 1rem;
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     border-left: 3px solid transparent;
 }
 
@@ -1182,9 +1332,9 @@ body {
 }
 
 .diff-badge {
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     padding: 0.15rem 0.5rem;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     font-weight: 600;
 }
 
@@ -1204,7 +1354,7 @@ body {
 }
 
 .diff-details {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
     margin-top: 0.5rem;
     margin-left: 1.75rem;
@@ -1249,12 +1399,12 @@ body {
 .roster-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .roster-table th {
     padding: 0.5rem;
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -1301,7 +1451,7 @@ body {
 
 .roster-unit-faction {
     display: block;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -1310,20 +1460,43 @@ body {
 }
 
 .roster-abilities {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--accent);
 }
 
 .roster-muted {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 
 .roster-empty td {
-    padding: 1.25rem;
+    padding: var(--space-6) var(--space-4);
     color: var(--text-muted);
     text-align: center;
     border-bottom: none;
+}
+
+.roster-table .roster-empty td,
+#defender-table .roster-empty td {
+    text-align: center;
+}
+
+.roster-empty td > .fa-solid {
+    display: block;
+    margin: 0 auto;
+    font-size: var(--fs-xl);
+    color: var(--accent-dim);
+    margin-bottom: var(--space-2);
+}
+
+.roster-empty td > strong {
+    display: block;
+    color: var(--text-secondary);
+}
+
+/* An empty roster shows its message, not a row of column headings with nothing under them */
+table:has(.roster-empty) thead {
+    display: none;
 }
 
 .roster-models {
@@ -1331,9 +1504,9 @@ body {
     padding: 0.3rem 0.4rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     text-align: center;
 }
 
@@ -1358,7 +1531,7 @@ body {
     background: none;
     border: none;
     color: var(--text-muted);
-    font-size: 1.1rem;
+    font-size: var(--fs-lg);
     cursor: pointer;
     padding: 0 0.25rem;
 }
@@ -1390,7 +1563,7 @@ body {
     max-height: 55vh;
     overflow-y: auto;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: var(--bg-tertiary);
 }
 
@@ -1424,14 +1597,14 @@ body {
 
 .unit-picker-faction {
     grid-row: 2;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
 .unit-picker-stats {
     grid-row: span 2;
     align-self: center;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
 }
 
@@ -1473,7 +1646,7 @@ body {
 .toggle-bar {
     display: flex;
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 3px;
 }
 
@@ -1483,9 +1656,9 @@ body {
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     transition: all 0.2s;
 }
 
@@ -1521,7 +1694,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     cursor: pointer;
 }
 
@@ -1538,7 +1711,7 @@ body {
 }
 
 .reroll-label {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
@@ -1546,9 +1719,9 @@ body {
     padding: 0.35rem 0.5rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 
 .select-small:focus {
@@ -1564,7 +1737,7 @@ body {
 }
 
 .metric-selector label {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
@@ -1573,13 +1746,41 @@ body {
     min-height: 300px;
 }
 
-.matrix-placeholder {
+/* Empty states: an icon, what's missing and what to do (the Analytics grid, its tables, Simulator results, Play) */
+.matrix-placeholder,
+.empty-state {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 200px;
+    gap: var(--space-2);
+    min-height: 200px;
+    padding: var(--space-8) var(--space-4);
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
+    text-align: center;
+}
+
+.matrix-placeholder::before {
+    content: "\e473";  /* fa-chart-simple */
+    font: var(--fa-font-solid);
+    font-size: var(--fs-2xl);
+    color: var(--accent-dim);
+}
+
+.empty-state > .fa-solid {
+    font-size: var(--fs-2xl);
+    color: var(--accent-dim);
+}
+
+.empty-state strong {
+    color: var(--text-secondary);
+    font-size: var(--fs-base);
+}
+
+.matrix-placeholder p,
+.empty-state p {
+    max-width: 42ch;
 }
 
 .matrix-loading,
@@ -1588,7 +1789,7 @@ body {
     align-items: center;
     justify-content: center;
     height: 200px;
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
 }
 
 .matrix-loading {
@@ -1607,7 +1808,7 @@ body {
 
 .matrix-table {
     border-collapse: collapse;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 
 .matrix-table th,
@@ -1661,7 +1862,7 @@ body {
 }
 
 .matrix-summary h3 {
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
     color: var(--accent);
     margin-bottom: 1rem;
     text-transform: uppercase;
@@ -1674,7 +1875,7 @@ body {
 }
 
 .summary-column h4 {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
     margin-bottom: 0.75rem;
 }
@@ -1687,7 +1888,7 @@ body {
 .summary-column li {
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--border);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .summary-column li:last-child {
@@ -1726,7 +1927,7 @@ body {
 }
 
 .detail-header h3 {
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
     color: var(--accent);
     text-transform: uppercase;
 }
@@ -1735,7 +1936,7 @@ body {
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: 1.25rem;
+    font-size: var(--fs-lg);
     cursor: pointer;
     line-height: 1;
 }
@@ -1746,7 +1947,7 @@ body {
 
 .detail-matchup {
     margin-bottom: 1rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .detail-matchup .detail-attacker,
@@ -1768,19 +1969,19 @@ body {
 .detail-stat {
     background: var(--bg-tertiary);
     padding: 0.75rem;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     text-align: center;
 }
 
 .detail-stat .detail-value {
     display: block;
-    font-size: 1.5rem;
+    font-size: var(--fs-xl);
     font-weight: 700;
     color: var(--accent);
 }
 
 .detail-stat .detail-label {
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
 }
@@ -1791,14 +1992,14 @@ body {
 
 .detail-breakdown h4,
 .detail-distribution h4 {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
     text-transform: uppercase;
     margin-bottom: 0.75rem;
 }
 
 .detail-breakdown .breakdown-table {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 
 .detail-breakdown .breakdown-table td {
@@ -1808,7 +2009,7 @@ body {
 .chart-container-small {
     height: 180px;
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
 }
 
 /* Comparison List */
@@ -1818,7 +2019,7 @@ body {
     align-items: center;
     padding: 0.75rem 1rem;
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     margin-bottom: 0.5rem;
 }
 
@@ -1829,7 +2030,7 @@ body {
 }
 
 .comparison-info .comparison-meta {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -1873,7 +2074,7 @@ body {
    ========================================================================= */
 
 .data-note {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
     margin: -0.5rem 0 1rem;
 }
@@ -1885,9 +2086,9 @@ body {
 
 /* BSData import status and record sources (Data page) */
 .bsdata-status {
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     padding: 0.5rem 0.75rem;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--border);
     background: var(--bg-secondary);
     margin-bottom: 1rem;
@@ -1913,8 +2114,8 @@ body {
 .legends-tag {
     display: inline-block;
     padding: 0.05rem 0.45rem;
-    border-radius: 999px;
-    font-size: 0.65rem;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-2xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -1940,7 +2141,7 @@ body {
 
 /* How much of a Wahapedia rule's text was read into modifiers */
 .rule-parse {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
     margin-left: 0.25rem;
 }
@@ -1956,7 +2157,7 @@ body {
 
 .rule-source {
     margin-top: 0.25rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 
 .rule-source summary {
@@ -1971,7 +2172,7 @@ body {
 }
 
 .rule-parse-notes {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -1985,7 +2186,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
     white-space: nowrap;
 }
@@ -2002,18 +2203,31 @@ body {
     margin: 0.75rem 0 0.5rem;
 }
 
-.data-section-header h3,
+.data-section-header h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
 .data-section-header h4 {
     margin: 0;
-    font-size: 0.85rem;
-    color: var(--accent);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
+/* A count of none in a table (countCell in data.html) */
+.count-none {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
 .data-section-header h4 {
     color: var(--text-secondary);
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
 }
 
 .data-table .col-expand {
@@ -2024,7 +2238,7 @@ body {
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
     cursor: pointer;
     padding: 0 0.25rem;
 }
@@ -2045,7 +2259,7 @@ body {
 .data-table-compact th,
 .data-table-compact td {
     padding: 0.4rem 0.6rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 
 .data-table .empty-cell {
@@ -2056,7 +2270,7 @@ body {
 
 .data-table .notes-cell {
     max-width: 320px;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
@@ -2072,10 +2286,10 @@ body {
     padding: 0.5rem 0.65rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--text-primary);
     font: inherit;
-    font-size: 0.875rem;
+    font-size: var(--fs-sm);
 }
 
 .modal .form-group textarea {
@@ -2104,7 +2318,7 @@ body {
     padding: 0.25rem 0.35rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     text-align: center;
 }
@@ -2140,9 +2354,9 @@ body {
     padding: 0.35rem 0.75rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     color: var(--text-secondary);
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     cursor: pointer;
     transition: all 0.15s;
 }
@@ -2161,13 +2375,13 @@ body {
 .kw-guide {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     margin-bottom: 1.25rem;
 }
 
 .kw-guide summary {
     padding: 0.75rem 1rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     font-weight: 600;
     color: var(--text-primary);
     cursor: pointer;
@@ -2175,7 +2389,7 @@ body {
 
 .kw-guide-body {
     padding: 0 1rem 1rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
 }
 
@@ -2191,7 +2405,7 @@ body {
     padding: 0.1rem 0.35rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     font-family: Consolas, 'Courier New', monospace;
     font-size: 0.8em;
     color: var(--text-primary);
@@ -2199,7 +2413,7 @@ body {
 
 .kw-group-title {
     margin: 1.25rem 0 0.6rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -2209,9 +2423,9 @@ body {
     margin-left: 0.35rem;
     padding: 0.05rem 0.45rem;
     background: var(--bg-tertiary);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     color: var(--text-muted);
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
 }
 
 .kw-grid {
@@ -2228,7 +2442,7 @@ body {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-left: 3px solid var(--success);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
 }
 
 .kw-card.kw-card-reference {
@@ -2244,15 +2458,15 @@ body {
 
 .kw-card-header h4 {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
     color: var(--text-primary);
 }
 
 .kw-badge {
     flex-shrink: 0;
     padding: 0.1rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.65rem;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-2xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -2273,10 +2487,10 @@ body {
     padding: 0.2rem 0.5rem;
     background: var(--bg-tertiary);
     border: 1px dashed var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-family: Consolas, 'Courier New', monospace;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     cursor: copy;
 }
 
@@ -2296,7 +2510,7 @@ body {
 
 .kw-summary {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     line-height: 1.45;
     color: var(--text-secondary);
 }
@@ -2312,8 +2526,8 @@ body {
 .kw-tag {
     padding: 0.1rem 0.45rem;
     background: var(--bg-tertiary);
-    border-radius: 4px;
-    font-size: 0.7rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
@@ -2323,7 +2537,7 @@ body {
 
 .kw-ref {
     margin-left: auto;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -2332,7 +2546,7 @@ body {
     display: grid;
     gap: 0.2rem;
     margin-top: 0.3rem;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
 }
 
 .kw-hint:empty {
@@ -2354,7 +2568,7 @@ body {
 .rules-panel {
     margin-top: 1rem;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     background: var(--bg-tertiary);
 }
 
@@ -2376,7 +2590,7 @@ body {
     content: '\f054';  /* Font Awesome chevron-right */
     font: var(--fa-font-solid);
     color: var(--text-muted);
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     width: 0.8rem;
 }
 
@@ -2385,7 +2599,7 @@ body {
 }
 
 .rules-panel-title {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -2393,7 +2607,7 @@ body {
 }
 
 .rules-summary {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     font-weight: 400;
     color: var(--text-muted);
     text-transform: none;
@@ -2408,6 +2622,26 @@ body {
     padding: 0 0.6rem 0.6rem;
 }
 
+/* In the Simulator's attacker and defender cards: a section of the card under a divider, not a box inside a box */
+.attacker-panel > .rules-panel,
+.defender-panel > .rules-panel {
+    margin-top: var(--space-5);
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    background: none;
+}
+
+.attacker-panel > .rules-panel > summary,
+.defender-panel > .rules-panel > summary {
+    padding: var(--space-3) 0;
+}
+
+.attacker-panel > .rules-panel .rules-list,
+.defender-panel > .rules-panel .rules-list {
+    padding: 0;
+}
+
 .rules-list {
     display: grid;
     gap: 0.15rem;
@@ -2417,9 +2651,9 @@ body {
 
 .rules-group-title {
     margin: 0.5rem 0 0.15rem;
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     font-weight: 600;
-    color: var(--accent);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
@@ -2430,9 +2664,9 @@ body {
     align-items: center;
     gap: 0.4rem;
     padding: 0.35rem 0.5rem;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .rule-row:hover {
@@ -2458,8 +2692,8 @@ body {
 .rule-cp {
     padding: 0.05rem 0.4rem;
     background: var(--bg-secondary);
-    border-radius: 4px;
-    font-size: 0.65rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-2xs);
     color: var(--text-secondary);
 }
 
@@ -2470,7 +2704,7 @@ body {
 .rule-modifier {
     flex-basis: 100%;
     padding-left: 1.4rem;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
@@ -2486,7 +2720,7 @@ body {
 
 .rules-empty {
     padding: 0.6rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
     text-align: center;
 }
@@ -2508,13 +2742,13 @@ body {
 
 .matchup-rules-column .rules-list {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     background: var(--bg-tertiary);
     padding: 0.4rem;
 }
 
 .rules-hint {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -2527,7 +2761,7 @@ body {
 /* Simulator: per-weapon results */
 .results-mc-extra {
     margin: -0.5rem 0 1rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
 }
 
@@ -2581,7 +2815,7 @@ body {
 
 .points-table th {
     padding: 0.25rem 0.4rem;
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     color: var(--text-muted);
     text-transform: uppercase;
     text-align: left;
@@ -2596,7 +2830,7 @@ body {
     padding: 0.4rem 0.5rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--text-primary);
 }
 
@@ -2604,7 +2838,7 @@ body {
     background: none;
     border: none;
     color: var(--text-muted);
-    font-size: 1.1rem;
+    font-size: var(--fs-lg);
     cursor: pointer;
 }
 
@@ -2618,7 +2852,7 @@ body {
     align-items: center;
     gap: 0.35rem;
     margin-top: 0.4rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -2629,7 +2863,7 @@ body {
 .unit-points {
     display: block;
     margin-top: 0.2rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--warning);
 }
 
@@ -2639,7 +2873,7 @@ body {
 
 .matrix-weight {
     display: block;
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     font-weight: 400;
     color: var(--text-muted);
 }
@@ -2679,29 +2913,29 @@ body {
     padding: 0.8rem 1rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
 }
 
 .analysis-value {
-    font-size: 1.35rem;
+    font-size: var(--fs-xl);
     font-weight: 700;
     color: var(--accent);
     overflow-wrap: anywhere;
 }
 
 .analysis-label {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
 .analysis-note {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
 .analysis-intro {
     margin: 0.5rem 0 0.75rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
 }
 
@@ -2733,7 +2967,7 @@ body {
 
 .wiped-badge {
     display: block;
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     font-weight: 600;
     color: var(--success);
 }
@@ -2751,16 +2985,16 @@ body {
     padding: 0.5rem 0.65rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--text-primary);
     font: inherit;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .roster-text {
     min-width: 160px;
     padding: 0.3rem 0.45rem;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 
 .text-input:focus,
@@ -2771,7 +3005,7 @@ body {
 
 .field-hint {
     margin-top: 0.3rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -2788,7 +3022,7 @@ body {
 }
 
 .label-row .filter-check {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
 }
 
 .detachment-select {
@@ -2800,8 +3034,8 @@ body {
 .option-tag {
     display: inline-block;
     padding: 0 0.4rem;
-    border-radius: 999px;
-    font-size: 0.65rem;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-2xs);
     font-weight: 600;
     background: color-mix(in srgb, var(--warning) 18%, transparent);
     color: var(--warning);
@@ -2815,7 +3049,7 @@ body {
 }
 
 .weapon-options-header td {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--text-muted);
@@ -2832,7 +3066,7 @@ body {
 
 .bsdata-reference {
     margin-top: 1rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .bsdata-reference summary {
@@ -2842,7 +3076,7 @@ body {
 
 .bsdata-reference h5 {
     margin: 1rem 0 0.25rem;
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
     color: var(--accent-hover);
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.15rem;
@@ -2868,9 +3102,9 @@ body {
     padding: 0.35rem 0.5rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     text-align: left;
     cursor: pointer;
     margin-bottom: 0.25rem;
@@ -2882,13 +3116,13 @@ body {
 
 /* BSData rule text (Core.formatRuleText) */
 .rule-text {
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
     line-height: 1.55;
 }
 
 .rule-text h6 {
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-primary);
     margin: 0.6rem 0 0.15rem;
 }
@@ -2933,7 +3167,7 @@ body {
     padding: 0.5rem 0.75rem;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
 }
 
 /* Leaders */
@@ -2941,18 +3175,18 @@ body {
     display: block;
     margin-top: 0.35rem;
     max-width: 100%;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     background: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 0.15rem 0.3rem;
 }
 
 .leader-buffs {
     display: block;
     margin-top: 0.2rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--warning);
     white-space: normal;
 }
@@ -2990,7 +3224,7 @@ h4 .fa-solid,
 
 .armies-layout {
     display: grid;
-    grid-template-columns: 240px minmax(0, 1fr) 300px;
+    grid-template-columns: 260px minmax(0, 1fr) 300px;
     gap: 1rem;
     align-items: start;
 }
@@ -3018,7 +3252,7 @@ h4 .fa-solid,
 }
 
 .army-points-total {
-    font-size: 1.6rem;
+    font-size: var(--fs-xl);
     font-weight: 700;
     color: var(--accent);
 }
@@ -3028,7 +3262,7 @@ h4 .fa-solid,
 }
 
 .army-saved-state {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
 }
 
@@ -3039,7 +3273,7 @@ h4 .fa-solid,
 .army-problems {
     margin: 0 0 0.75rem 1.1rem;
     color: var(--warning);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .army-detachments {
@@ -3072,7 +3306,7 @@ h4 .fa-solid,
 .army-detachments-chosen {
     flex: 1;
     min-width: 0;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3103,7 +3337,7 @@ h4 .fa-solid,
     align-items: baseline;
     gap: 0.25rem 0.4rem;
     padding: 0.3rem 0.4rem;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
 }
 
@@ -3116,14 +3350,14 @@ h4 .fa-solid,
 }
 
 .army-detachment-meta {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
 .army-detachment-tag {
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     padding: 0 0.35rem;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     border: 1px solid var(--border);
     color: var(--text-secondary);
 }
@@ -3131,14 +3365,14 @@ h4 .fa-solid,
 /* Detachment checklists on the Simulator and Analytics */
 .detachment-picker {
     margin: 0.25rem 0 0.5rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .detachment-picker summary {
     cursor: pointer;
     padding: 0.35rem 0.6rem;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: var(--bg-tertiary);
 }
 
@@ -3160,7 +3394,7 @@ h4 .fa-solid,
 
 .detachment-dp,
 .detachment-faction {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -3170,7 +3404,7 @@ h4 .fa-solid,
 }
 
 .army-enhancement-count {
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
 }
 
@@ -3179,9 +3413,9 @@ h4 .fa-solid,
 }
 
 .army-warlord-tag {
-    font-size: 0.65rem;
+    font-size: var(--fs-2xs);
     padding: 0 0.35rem;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--accent-tint);
     color: var(--accent);
     text-transform: uppercase;
@@ -3189,7 +3423,7 @@ h4 .fa-solid,
 
 .army-joined-by {
     display: block;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
 }
 
 /* The army table stays inside its card: dropdowns shrink with it, and it scrolls sideways if still too wide */
@@ -3212,7 +3446,7 @@ h4 .fa-solid,
 }
 
 .army-wargear-summary {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
 }
 
@@ -3236,7 +3470,7 @@ h4 .fa-solid,
 
 .wargear-section {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     padding: 0.5rem 0.75rem 0.6rem;
     margin: 0 0 0.75rem;
 }
@@ -3249,7 +3483,7 @@ h4 .fa-solid,
 
 .wargear-range {
     font-weight: 400;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-muted);
 }
 
@@ -3267,7 +3501,7 @@ h4 .fa-solid,
 }
 
 .wargear-loadout {
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
 }
 
@@ -3312,7 +3546,7 @@ h4 .fa-solid,
 .army-unit-warning {
     display: inline-block;
     padding: 0 0.4rem;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--warning) 20%, transparent);
     color: var(--warning);
     font-weight: 700;
@@ -3335,7 +3569,7 @@ h4 .fa-solid,
     align-items: center;
     gap: 0.4rem;
     margin: 0.5rem 0;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
 }
 
@@ -3347,13 +3581,83 @@ h4 .fa-solid,
 .army-list-item {
     display: flex;
     align-items: flex-start;
-    gap: 0.25rem;
+    gap: var(--space-1);
     border-bottom: 1px solid var(--border);
-    padding: 0.5rem 0;
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+    margin: 0 calc(-1 * var(--space-2));
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-sm);
+}
+
+.army-list-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.army-list-item.active {
+    background: var(--accent-tint);
+    border-left-color: var(--accent);
 }
 
 .army-list-item.active .army-list-name {
     color: var(--accent);
+}
+
+/* Faction and detachments: two lines at most (the whole of it on hover) */
+.army-list-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* How full the list is, against its points limit */
+.army-list-meter {
+    display: block;
+    align-self: stretch;
+    width: 100%;
+    height: 4px;
+    margin: var(--space-1) 0 2px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-tertiary);
+    overflow: hidden;
+}
+
+.army-list-meter > span {
+    display: block;
+    height: 100%;
+    background: var(--success);
+    border-radius: inherit;
+}
+
+.army-list-meter.over > span {
+    background: var(--warning);
+}
+
+.army-list-fix {
+    color: var(--warning);
+}
+
+/* With a mouse, a saved army's copy and delete buttons appear on pointing at it */
+@media (hover: hover) and (min-width: 901px) {
+    .army-list-item {
+        position: relative;
+    }
+
+    /* Over the top right of the entry (not beside it), so its text has the card's whole width */
+    .army-list-item .army-list-actions {
+        position: absolute;
+        top: var(--space-1);
+        right: var(--space-1);
+        padding-left: var(--space-2);
+        background: linear-gradient(90deg, transparent, var(--bg-secondary) var(--space-2));
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .army-list-item:hover .army-list-actions,
+    .army-list-item:focus-within .army-list-actions {
+        opacity: 1;
+    }
 }
 
 .army-open {
@@ -3376,7 +3680,7 @@ h4 .fa-solid,
 }
 
 .army-list-meta {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
@@ -3393,11 +3697,11 @@ h4 .fa-solid,
     width: calc(100% - 2rem);
     margin: 1rem;
     font-family: ui-monospace, Consolas, monospace;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     background: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 0.75rem;
     resize: vertical;
 }
@@ -3413,7 +3717,7 @@ h4 .fa-solid,
 .army-share-error {
     margin: 0 1rem;
     color: var(--error);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .army-share-error:empty {
@@ -3423,7 +3727,7 @@ h4 .fa-solid,
 .army-copied {
     margin-right: auto;
     color: var(--success);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 @media (max-width: 1100px) {
@@ -3444,11 +3748,11 @@ h4 .fa-solid,
 }
 
 .play-badge {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     vertical-align: middle;
     padding: 0.1rem 0.45rem;
     border: 1px solid var(--accent-dim);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     color: var(--text-secondary);
 }
 
@@ -3462,7 +3766,7 @@ h4 .fa-solid,
 .play-layout .card h3 { margin-bottom: 0.6rem; }
 .play-new-title { margin-top: 1.25rem; }
 .play-games .filter-select, .play-games .filter-input { width: 100%; }
-.play-hint { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem; }
+.play-hint { color: var(--text-muted); font-size: var(--fs-sm); margin-top: 0.5rem; }
 
 .play-game-row { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem; }
 .play-game-row.active .play-game-open { border-color: var(--accent); background: var(--accent-tint); }
@@ -3472,7 +3776,7 @@ h4 .fa-solid,
     background: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 0.4rem 0.6rem;
     cursor: pointer;
 }
@@ -3485,8 +3789,8 @@ h4 .fa-solid,
 .play-subbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center;
                gap: 0.75rem; margin-bottom: 0.35rem; min-height: 1.4rem; }
 .play-toolbar-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.3rem; }
-.play-message { color: var(--text-secondary); font-size: 0.85rem; line-height: 1.3; }
-.play-turn { font-size: 0.9rem; padding-left: 0.5rem; border-left: 4px solid var(--play-p1); }
+.play-message { color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.3; }
+.play-turn { font-size: var(--fs-md); padding-left: 0.5rem; border-left: 4px solid var(--play-p1); }
 .play-turn.play-p2 { border-left-color: var(--play-p2); }
 .play-move-modes { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.25rem 0 0.4rem; }
 .play-move-modes .btn-small.active { border-color: var(--accent); background: var(--accent-tint); color: var(--text-primary); }
@@ -3499,10 +3803,10 @@ h4 .fa-solid,
     z-index: 50;
     pointer-events: none;
     padding: 0.15rem 0.45rem;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 .play-readout.over { color: var(--error); border-color: var(--error); }
 .play-message.error { color: var(--error); }
@@ -3512,7 +3816,7 @@ h4 .fa-solid,
     width: 100%;
     aspect-ratio: 62 / 46;
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     touch-action: none;
     user-select: none;
     cursor: grab;
@@ -3568,20 +3872,20 @@ h4 .fa-solid,
     background: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 0.35rem 0.55rem;
     margin-bottom: 0.25rem;
     cursor: pointer;
 }
 .play-unit small { display: block; color: var(--text-muted); }
 .play-unit.selected { border-color: var(--accent); background: var(--accent-tint); }
-.play-orders { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem; }
-.play-orders select { width: 100%; font-size: 0.8rem; padding: 0.15rem 0.3rem; }
+.play-orders { display: block; font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: 0.35rem; }
+.play-orders select { width: 100%; font-size: var(--fs-sm); padding: 0.15rem 0.3rem; }
 .play-unit-group.targeted .play-unit-outline { stroke: var(--error); stroke-opacity: 1; stroke-width: 0.3; stroke-dasharray: 0.4 0.2; }
 .play-shooting { margin-bottom: 0.5rem; }
 .play-weapon { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
 .play-weapon label { display: block; }
-.play-weapon select { width: 100%; margin-top: 0.2rem; font-size: 0.85rem; }
+.play-weapon select { width: 100%; margin-top: 0.2rem; font-size: var(--fs-sm); }
 .play-weapon.blocked label { color: var(--text-muted); }
 .play-why { display: block; color: var(--warning); }
 .play-shooting .btn { margin-top: 0.5rem; width: 100%; }
@@ -3595,10 +3899,10 @@ h4 .fa-solid,
 .play-move-modes .btn-small small { color: var(--text-muted); }
 .play-log-attack { margin: 0.35rem 0 0.35rem 1rem; }
 .play-dice-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.2rem; margin-top: 0.15rem; }
-.play-dice-label { width: 7.5rem; color: var(--text-secondary); font-size: 0.85rem; }
+.play-dice-label { width: 7.5rem; color: var(--text-secondary); font-size: var(--fs-sm); }
 .play-die {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 1.35rem; height: 1.35rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;
+    width: 1.35rem; height: 1.35rem; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600;
     background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-muted);
 }
 .play-die.success { border-color: var(--success); color: var(--text-primary); }
@@ -3610,14 +3914,14 @@ h4 .fa-solid,
 .play-phase { display: flex; flex-direction: column; align-items: center; width: 4.2rem; }
 .play-phase-box {
     position: relative; display: flex; align-items: center; justify-content: center;
-    width: 2.4rem; height: 2.4rem; border-radius: 6px; font-size: 1rem;
+    width: 2.4rem; height: 2.4rem; border-radius: var(--radius-md); font-size: var(--fs-base);
     background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-muted);
     transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
-.play-phase-label { margin-top: 0.1rem; font-size: 0.7rem; color: var(--text-muted); text-align: center; line-height: 1.15; }
+.play-phase-label { margin-top: 0.1rem; font-size: var(--fs-xs); color: var(--text-muted); text-align: center; line-height: 1.15; }
 .play-phase-label small { display: block; color: var(--player); font-weight: 600; }
 .play-phase.done .play-phase-box { color: var(--text-secondary); border-color: var(--accent-dim); opacity: 0.7; }
-.play-phase-done { position: absolute; right: -0.3rem; bottom: -0.3rem; font-size: 0.6rem; padding: 0.12rem;
+.play-phase-done { position: absolute; right: -0.3rem; bottom: -0.3rem; font-size: var(--fs-2xs); padding: 0.12rem;
                    border-radius: 50%; background: var(--bg-secondary); color: var(--success); }
 .play-phase.current .play-phase-box { background: var(--player); border-color: var(--player); color: var(--on-accent);
                                       box-shadow: 0 0 0 3px color-mix(in srgb, var(--player) 30%, transparent); }
@@ -3628,8 +3932,8 @@ h4 .fa-solid,
                                             animation: play-ready 1.8s ease-in-out infinite; }
 @keyframes play-ready { 50% { stroke-opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) { .play-unit-group.ready .play-unit-outline { animation: none; } }
-.play-ready { font-style: normal; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-              margin-left: 0.4rem; padding: 0 0.3rem; border-radius: 3px; vertical-align: middle;
+.play-ready { font-style: normal; font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+              margin-left: 0.4rem; padding: 0 0.3rem; border-radius: var(--radius-sm); vertical-align: middle;
               background: var(--success); color: var(--on-accent); }
 .play-unit.acted { opacity: 0.55; }
 .play-objective { --owner: var(--text-muted); }
@@ -3642,7 +3946,7 @@ h4 .fa-solid,
 .play-objective-letter { fill: var(--owner); font-size: 0.6px; font-weight: 700; text-anchor: middle; dominant-baseline: central;
                          pointer-events: none; }
 .play-objective.neutral .play-objective-letter { fill: var(--text-secondary); }
-.play-scoreboard { display: flex; gap: 0.75rem; font-size: 0.85rem; color: var(--text-secondary); }
+.play-scoreboard { display: flex; gap: 0.75rem; font-size: var(--fs-sm); color: var(--text-secondary); }
 .play-scoreboard .play-p1 { border-bottom: 2px solid var(--play-p1); }
 .play-scoreboard .play-p2 { border-bottom: 2px solid var(--play-p2); }
 .play-unit-group.shocked .play-unit-outline { stroke: var(--warning); stroke-opacity: 1; stroke-dasharray: 0.2 0.15; }
@@ -3650,30 +3954,30 @@ h4 .fa-solid,
 .play-effects summary { cursor: pointer; color: var(--text-secondary); }
 .play-effects ul { list-style: none; margin: 0.3rem 0; }
 .play-effects li { display: flex; align-items: center; gap: 0.35rem; }
-.play-effect { padding: 0 0.35rem; border-radius: 4px; font-size: 0.85rem; border: 1px solid var(--border); }
+.play-effect { padding: 0 0.35rem; border-radius: var(--radius-sm); font-size: var(--fs-sm); border: 1px solid var(--border); }
 .play-effect.stratagem { border-color: var(--accent); }
 .play-effect.rule { border-color: var(--success); }
 .play-effect.manual { border-color: var(--warning); }
 .play-effect-add { display: grid; gap: 0.25rem; margin-top: 0.3rem; min-width: 0; }
-.play-effect-add .filter-select { width: 100%; min-width: 0; font-size: 0.85rem; }
+.play-effect-add .filter-select { width: 100%; min-width: 0; font-size: var(--fs-sm); }
 .play-units { min-width: 0; }
 .play-stratagems { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }
-.play-stratagems select { width: auto; font-size: 0.8rem; padding: 0.1rem 0.3rem; }
+.play-stratagems select { width: auto; font-size: var(--fs-sm); padding: 0.1rem 0.3rem; }
 .play-player-stratagems { margin-bottom: 0.5rem; }
 .play-player-stratagems summary { cursor: pointer; border-left: 4px solid var(--play-p1); padding-left: 0.4rem; }
 .play-player-stratagems.play-p2 summary { border-left-color: var(--play-p2); }
 .play-stratagem { display: block; width: 100%; text-align: left; margin-top: 0.25rem; padding: 0.3rem 0.5rem; cursor: pointer;
-                  background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; }
+                  background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .play-stratagem small { display: block; color: var(--text-muted); }
 .play-stratagem:disabled { opacity: 0.5; cursor: default; }
-.play-pending { margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--warning); border-radius: 6px; background: var(--accent-tint); }
+.play-pending { margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--warning); border-radius: var(--radius-md); background: var(--accent-tint); }
 .play-pending small { display: block; color: var(--text-secondary); }
 .play-pending-actions { display: inline-flex; gap: 0.3rem; align-items: center; margin-left: 0.5rem; }
-.play-correction { margin-bottom: 0.5rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-tertiary); }
+.play-correction { margin-bottom: 0.5rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-tertiary); }
 .play-correction input[type=number] { width: 4.5rem; }
 .play-correction-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.5rem; }
 .play-detail .play-part { border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.5rem; }
-.play-stats { color: var(--text-secondary); font-size: 0.9rem; }
+.play-stats { color: var(--text-secondary); font-size: var(--fs-md); }
 
 @media (max-width: 1100px) {
     .play-layout { grid-template-columns: minmax(0, 1fr); }
@@ -3682,7 +3986,7 @@ h4 .fa-solid,
 /* Armies: the force disposition, beside the detachments */
 .army-disposition { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
 .army-disposition label { font-weight: 600; }
-.army-disposition-note { color: var(--warning); font-size: 0.85rem; }
+.army-disposition-note { color: var(--warning); font-size: var(--fs-sm); }
 
 /* =========================================================================
    Match view (Armies page): datasheets, rules and stratagems for the table
@@ -3696,7 +4000,7 @@ h4 .fa-solid,
 
 .match-back {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     text-decoration: none;
 }
 
@@ -3710,7 +4014,7 @@ h4 .fa-solid,
     align-items: center;
     gap: 0.25rem 0.5rem;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
 }
 
 .match-meta-faction {
@@ -3759,7 +4063,7 @@ h4 .fa-solid,
 .match-tab {
     background: none;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--text-secondary);
     font: inherit;
     font-weight: 600;
@@ -3778,7 +4082,7 @@ h4 .fa-solid,
 }
 
 .match-count {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     opacity: 0.8;
     margin-left: 0.15rem;
 }
@@ -3804,12 +4108,12 @@ h4 .fa-solid,
     overflow-y: auto;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     padding: 0.75rem;
 }
 
 .match-roster h3 {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: var(--text-secondary);
     text-transform: uppercase;
     margin-bottom: 0.4rem;
@@ -3822,10 +4126,10 @@ h4 .fa-solid,
     gap: 0.5rem;
     background: none;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     font: inherit;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     text-align: left;
     padding: 0.3rem 0.4rem;
     cursor: pointer;
@@ -3833,6 +4137,12 @@ h4 .fa-solid,
 
 .match-roster-item:hover {
     background: var(--accent-tint);
+}
+
+.match-roster-item.current {
+    color: var(--accent);
+    background: var(--accent-tint);
+    box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .match-roster-item.attached {
@@ -3869,7 +4179,7 @@ h4 .fa-solid,
 
 .match-group-title {
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -3884,7 +4194,7 @@ h4 .fa-solid,
 .match-unit {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     margin-bottom: 1rem;
     overflow: hidden;
     scroll-margin-top: 4.5rem;
@@ -3918,7 +4228,7 @@ h4 .fa-solid,
 }
 
 .match-unit-name {
-    font-size: 1.15rem;
+    font-size: var(--fs-lg);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -3926,7 +4236,7 @@ h4 .fa-solid,
 
 .match-unit-size {
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .match-unit-points {
@@ -3942,7 +4252,7 @@ h4 .fa-solid,
     display: none;
     flex-wrap: wrap;
     gap: 0.2rem 0.9rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
 }
@@ -3953,7 +4263,7 @@ h4 .fa-solid,
 
 .match-unit-mini b {
     color: var(--text-muted);
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
 }
 
 .match-chip {
@@ -3961,8 +4271,8 @@ h4 .fa-solid,
     align-items: center;
     gap: 0.3rem;
     padding: 0.1rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-xs);
     font-weight: 600;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
@@ -3997,7 +4307,7 @@ h4 .fa-solid,
     align-items: center;
     min-width: 3.4rem;
     border: 2px solid var(--accent-dim);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: var(--bg-tertiary);
     overflow: hidden;
 }
@@ -4007,14 +4317,14 @@ h4 .fa-solid,
     text-align: center;
     background: var(--accent-dim);
     color: var(--text-primary);
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
     letter-spacing: 0.05em;
     padding: 0.1rem 0;
 }
 
 .match-stat-value {
-    font-size: 1.35rem;
+    font-size: var(--fs-xl);
     font-weight: 700;
     padding: 0.15rem 0.5rem 0.25rem;
     font-variant-numeric: tabular-nums;
@@ -4026,18 +4336,18 @@ h4 .fa-solid,
     gap: 0.5rem;
     padding: 0.3rem 0.8rem;
     border: 2px solid var(--accent);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: var(--accent-tint);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .match-save .fa-solid {
     color: var(--accent);
-    font-size: 1.2rem;
+    font-size: var(--fs-lg);
 }
 
 .match-save b {
-    font-size: 1.1rem;
+    font-size: var(--fs-lg);
 }
 
 .match-unit-columns {
@@ -4054,13 +4364,13 @@ h4 .fa-solid,
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 0.9rem;
-    font-size: 0.875rem;
+    font-size: var(--fs-sm);
 }
 
 .match-weapon-table th {
     background: var(--bg-tertiary);
     color: var(--text-secondary);
-    font-size: 0.72rem;
+    font-size: var(--fs-xs);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding: 0.35rem 0.4rem;
@@ -4102,31 +4412,35 @@ h4 .fa-solid,
     margin-top: 0.2rem;
 }
 
+/* A weapon's abilities as small pills (not underlined text, which reads as links) */
 .match-weapon-keyword {
-    font-size: 0.7rem;
+    display: inline-block;
+    margin: 2px 4px 0 0;
+    padding: 0 0.45em;
+    font-size: var(--fs-2xs);
     font-weight: 700;
+    line-height: 1.6;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.04em;
     color: var(--accent);
+    background: var(--accent-tint);
+    border: 1px solid rgba(232, 114, 47, 0.3);
+    border-radius: var(--radius-pill);
     cursor: default;
 }
 
-.match-weapon-keyword::before {
-    content: '[';
-}
-
-.match-weapon-keyword::after {
-    content: ']';
-}
-
 .match-weapon-keyword[title] {
-    text-decoration: underline dotted;
-    text-underline-offset: 2px;
     cursor: help;
 }
 
+@media print {
+    .match-weapon-keyword::before { content: '['; }
+    .match-weapon-keyword::after { content: ']'; }
+    .match-weapon-keyword { background: none; border: none; padding: 0; }
+}
+
 .match-abilities {
-    font-size: 0.875rem;
+    font-size: var(--fs-sm);
 }
 
 .match-ability-line {
@@ -4138,7 +4452,7 @@ h4 .fa-solid,
 }
 
 .match-ability-kind {
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     color: var(--text-muted);
@@ -4148,12 +4462,12 @@ h4 .fa-solid,
 .match-tag {
     display: inline-block;
     padding: 0.1rem 0.45rem;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-primary);
     font: inherit;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     font-weight: 600;
 }
 
@@ -4179,7 +4493,7 @@ h4 .fa-solid,
 .match-ability-name {
     font-weight: 700;
     text-transform: uppercase;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     letter-spacing: 0.03em;
     color: var(--accent);
     margin-bottom: 0.2rem;
@@ -4199,7 +4513,7 @@ h4 .fa-solid,
 
 .match-ability-enhancement {
     background: var(--accent-tint);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 0.5rem 0.6rem;
     border-top: none;
     margin-top: 0.4rem;
@@ -4209,7 +4523,7 @@ h4 .fa-solid,
     margin-top: 0.75rem;
     padding-top: 0.6rem;
     border-top: 1px solid var(--border);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.02em;
@@ -4234,7 +4548,7 @@ h4 .fa-solid,
 }
 
 .match-rule-section h3 {
-    font-size: 1rem;
+    font-size: var(--fs-base);
     color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -4243,7 +4557,7 @@ h4 .fa-solid,
 
 .match-rule-meta {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     font-weight: 400;
     text-transform: none;
     letter-spacing: 0;
@@ -4254,15 +4568,15 @@ h4 .fa-solid,
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-left: 3px solid var(--accent);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 0.8rem 1rem;
     margin-bottom: 0.6rem;
-    font-size: 0.9rem;
+    font-size: var(--fs-md);
     transition: box-shadow 0.3s;
 }
 
 .match-rule h4 {
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
     text-transform: uppercase;
     letter-spacing: 0.03em;
     margin-bottom: 0.3rem;
@@ -4290,10 +4604,10 @@ h4 .fa-solid,
 .match-filter-chip {
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     color: var(--text-secondary);
     font: inherit;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     padding: 0.25rem 0.75rem;
     cursor: pointer;
 }
@@ -4321,9 +4635,9 @@ h4 .fa-solid,
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-top: 4px solid var(--strat-colour);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     padding: 0.75rem 0.9rem;
-    font-size: 0.875rem;
+    font-size: var(--fs-sm);
     break-inside: avoid;
 }
 
@@ -4343,7 +4657,7 @@ h4 .fa-solid,
 }
 
 .match-stratagem-head h4 {
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
     text-transform: uppercase;
     letter-spacing: 0.03em;
     line-height: 1.25;
@@ -4359,25 +4673,25 @@ h4 .fa-solid,
     height: 2.6rem;
     border-radius: 50%;
     border: 2px solid var(--strat-colour);
-    font-size: 1.1rem;
+    font-size: var(--fs-lg);
     font-weight: 800;
     line-height: 1;
 }
 
 .match-cp small {
-    font-size: 0.55rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     color: var(--text-muted);
 }
 
 .match-stratagem-meta {
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
 }
 
 .match-stratagem-when {
     color: var(--strat-colour);
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     font-weight: 600;
     margin-bottom: 0.4rem;
 }
@@ -4400,7 +4714,7 @@ h4 .fa-solid,
     }
 
     .match-stat-value {
-        font-size: 1.1rem;
+        font-size: var(--fs-lg);
     }
 
     .match-roster {
@@ -4412,7 +4726,7 @@ h4 .fa-solid,
     }
 
     .match-weapon-table {
-        font-size: 0.8rem;
+        font-size: var(--fs-sm);
     }
 
     .match-weapon-table th,
@@ -4498,9 +4812,9 @@ h4 .fa-solid,
 .nav-badge {
     background: var(--warning);
     color: #000;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 0 0.4rem;
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     font-weight: 600;
 }
 
@@ -4509,7 +4823,7 @@ h4 .fa-solid,
     width: 100%;
     border-collapse: collapse;
     margin: 0.5rem 0;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
 }
 
 .proposal-card .proposal-fields td,
@@ -4522,7 +4836,7 @@ h4 .fa-solid,
 }
 
 .proposal-card .proposal-status {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     opacity: 0.8;
 }
 
@@ -4550,9 +4864,9 @@ h4 .fa-solid,
     display: none;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--text-primary);
-    font-size: 1.15rem;
+    font-size: var(--fs-lg);
     width: 44px;
     height: 44px;
     cursor: pointer;
@@ -4608,9 +4922,9 @@ code {
     background: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--accent-dim);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     line-height: 1.4;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
@@ -4622,7 +4936,7 @@ code {
     }
 
     .header h1 {
-        font-size: 1.2rem;
+        font-size: var(--fs-lg);
     }
 
     .nav-toggle {
@@ -4658,7 +4972,7 @@ code {
         gap: 0.6rem;
         min-height: 48px;
         padding: 0.5rem 0.75rem;
-        font-size: 1rem;
+        font-size: var(--fs-base);
     }
 
     .header-nav .version {
@@ -4702,7 +5016,7 @@ code {
     }
 
     .result-value {
-        font-size: 1.8rem;
+        font-size: var(--fs-2xl);
     }
 
     .weapon-table th,
@@ -4802,7 +5116,7 @@ code {
 
     table.cards-on-phone > tbody > tr {
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: var(--radius-lg);
         margin-bottom: 0.6rem;
         padding: 0.4rem 0.6rem;
         background: var(--bg-secondary);
@@ -4893,7 +5207,7 @@ code {
     }
 
     .matrix-table.matrix-list td {
-        font-size: 0.95rem;
+        font-size: var(--fs-md);
     }
 
     /* A cell's detail takes the whole screen */
@@ -4916,7 +5230,7 @@ code {
         display: inline-block;
         min-width: 6.5rem;
         margin-right: 0.5rem;
-        font-size: 0.75rem;
+        font-size: var(--fs-xs);
         text-transform: uppercase;
         letter-spacing: 0.04em;
         color: var(--text-muted);
@@ -4984,6 +5298,1327 @@ code {
         min-width: 44px;
         min-height: 44px;
         margin: -12px -8px;
-        font-size: 1rem;
+        font-size: var(--fs-base);
+    }
+}
+
+/* =========================================================================
+   Phones, part 2: an app's layout (2.12). The main pages in a tab bar at the bottom of the screen and the rest under
+   More; sheets that slide up from the bottom (More, action sheets, tips, Add units, a matrix cell, Play's unit) with
+   a grip to drag them away; the main action of a page in a bar fixed above the tabs; tips for anything with a hover
+   title (app.js Tips: tap plain text, press and hold a button). Desktop windows keep their layout: everything here
+   is behind the phone and tablet widths, except the tips (a click shows them too) and the shared chips.
+   Layers, lowest first: action bars 1400, the floating button 1300, Play's sheet 1400, scrims 1550, the More sheet
+   1600, the tab bar 1650, modal sheets 1700, scrims over those 1750, action sheets and tip sheets 1800, the toast 1900,
+   tip bubbles 2000.
+   ========================================================================= */
+
+:root {
+    --tabbar-h: 0px;
+}
+
+@keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: none; }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+}
+
+@keyframes tip-in {
+    from { opacity: 0; transform: translateY(-4px); }
+}
+
+/* --- Tips: what can be tapped or clicked for its explanation is underlined with dots --- */
+:is(span, abbr, dfn, th, small, em, strong, b, sup, li, code, h3, h4):is([title]:not([title=""]), [data-tip], [data-tip-title]):not(:is(a, button, label, summary, svg, .play-unit, .matrix-cell, .matrix-row-header, [data-unit]) *):not(.matrix-cell, .matrix-row-header, .play-die) {
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+    text-underline-offset: 3px;
+    cursor: help;
+}
+
+.info-popover {
+    white-space: pre-line;
+    animation: tip-in 0.14s ease-out;
+}
+
+/* The bubble's arrow, pointing at what was touched */
+.info-popover:not(.tip-sheet)::before {
+    content: '';
+    position: absolute;
+    top: -7px;
+    left: calc(var(--arrow-x, 50%) - 6px);
+    width: 12px;
+    height: 12px;
+    background: var(--bg-tertiary);
+    border-left: 1px solid var(--accent-dim);
+    border-top: 1px solid var(--accent-dim);
+    transform: rotate(45deg);
+}
+
+.info-popover.above::before {
+    top: auto;
+    bottom: -7px;
+    transform: rotate(225deg);
+}
+
+.info-popover.tip-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    z-index: 1800;
+    max-height: 60vh;
+    overflow-y: auto;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    padding: 0 max(1.25rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+    font-size: var(--fs-base);
+    line-height: 1.55;
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+    animation: sheet-up 0.22s ease-out;
+}
+
+.tip-heading {
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0.25rem 0 0.35rem;
+}
+
+/* Weapon abilities as chips (AbilityHints in app.js), each explaining itself */
+.kw-chip {
+    position: relative;
+    display: inline-block;
+    margin: 0.2rem 0.3rem 0 0;
+    padding: 0.05rem 0.5rem;
+    border-radius: var(--radius-pill);
+    background: var(--accent-tint);
+    color: var(--accent);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+/* A finger needs more than the chip's few pixels: its tap area reaches past it */
+@media (pointer: coarse) {
+    .kw-chip[title]::after,
+    .kw-chip[data-tip-title]::after {
+        content: '';
+        position: absolute;
+        inset: -8px -3px;
+    }
+}
+
+/* --- Sheets: the dimmed page behind, the grip on top --- */
+.sheet-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1550;
+    background: rgba(0, 0, 0, 0.5);
+    animation: fade-in 0.2s ease-out;
+}
+
+.sheet-scrim[hidden] {
+    display: none;
+}
+
+.tip-scrim,
+.overflow-scrim {
+    z-index: 1750;
+}
+
+.sheet-handle {
+    display: none;
+}
+
+/* --- Action sheets (class overflow, ActionSheets in app.js): in place on wider screens --- */
+.overflow,
+.overflow-items {
+    display: contents;
+}
+
+.overflow-toggle,
+.overflow-title,
+.overflow-cancel,
+.label-phone,
+.read-more-btn,
+.action-bar-result,
+.results-empty,
+.run-label-short,
+.army-points-problems,
+.army-points-meter,
+.army-add-done,
+.fab,
+.tab-bar,
+.brand-page {
+    display: none;
+}
+
+.segmented-source {
+    display: none !important;
+}
+
+/* Analytics on a wide screen: Run Matrix first, as before (the comparisons' buttons are in an action sheet's markup) */
+.matchups-actions > #btn-run-matrix {
+    order: -1;
+}
+
+.btn-group.segmented .btn-option {
+    flex: 1 1 0;
+}
+
+/* Simulator: before a run, what to do instead of empty tiles and a table of dashes (all widths) */
+.results-panel:not(.has-result) > :not(h2):not(.results-empty) {
+    display: none;
+}
+
+.results-panel:not(.has-result) > .results-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 160px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.results-panel:not(.has-result) > .results-empty .fa-solid {
+    font-size: var(--fs-2xl);
+    color: var(--accent-dim);
+}
+
+/* Simulator on a wide screen: a workbench, the inputs on the left and the results in a column that stays in view
+   while they change (as an inspector panel does) */
+@media (min-width: 1280px) {
+    .sim-workbench {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(380px, 32%);
+        gap: var(--space-4);
+        align-items: start;
+    }
+
+    .sim-workbench > .results-panel {
+        position: sticky;
+        top: var(--space-4);
+        max-height: calc(100vh - 2 * var(--space-4));
+        overflow-y: auto;
+        margin-bottom: var(--space-4);
+    }
+
+    .sim-workbench .results-detail {
+        grid-template-columns: 1fr;
+    }
+
+    .sim-workbench .result-value {
+        font-size: var(--fs-2xl);
+    }
+
+    .sim-workbench .results-summary {
+        gap: var(--space-2);
+    }
+
+    .sim-workbench .result-card {
+        padding: var(--space-4) var(--space-2);
+    }
+}
+
+/* Dropdown menus (Dropdowns in app.js): wider screens only (class desktop-only) */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-caret {
+    font-size: 0.7em;
+    margin-left: 0.2em;
+    opacity: 0.7;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + var(--space-1));
+    z-index: 1200;
+    min-width: 200px;
+    padding: var(--space-1);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.dropdown.open .dropdown-menu {
+    display: block;
+    animation: fade-in 0.12s ease-out;
+}
+
+.dropdown-menu [role=menuitem] {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: var(--fs-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-menu [role=menuitem]:hover,
+.dropdown-menu [role=menuitem]:focus-visible {
+    background: var(--bg-secondary);
+    box-shadow: none;
+}
+
+.dropdown-menu [role=menuitem] .fa-solid {
+    width: 1.1em;
+    color: var(--text-muted);
+}
+
+@media (min-width: 901px) {
+    /* Armies: copying and sharing are in the Export menu */
+    .army-actions .overflow-items > #text-btn,
+    .army-actions .overflow-items > #share-btn {
+        display: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .desktop-only {
+        display: none !important;
+    }
+}
+
+/* The command palette (CommandPalette in app.js) and its button in the header */
+.cmdk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.35rem 0.5rem 0.35rem 0.7rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+}
+
+.cmdk-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent-dim);
+}
+
+kbd {
+    display: inline-block;
+    padding: 0 0.35em;
+    font-family: inherit;
+    font-size: var(--fs-2xs);
+    font-weight: 600;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-sm);
+}
+
+.cmdk {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 12vh var(--space-4) var(--space-4);
+    background: rgba(0, 0, 0, 0.55);
+    animation: fade-in 0.12s ease-out;
+}
+
+.cmdk[hidden] {
+    display: none;
+}
+
+.cmdk-panel {
+    width: min(640px, 100%);
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+}
+
+.cmdk-search {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.cmdk-input {
+    flex: 1;
+    min-width: 0;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: var(--fs-lg);
+}
+
+.cmdk-input:focus-visible {
+    box-shadow: none;
+}
+
+.cmdk-list {
+    list-style: none;
+    overflow-y: auto;
+    padding: var(--space-1) var(--space-2) var(--space-2);
+}
+
+.cmdk-group {
+    padding: var(--space-3) var(--space-2) var(--space-1);
+    font-size: var(--fs-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.cmdk-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: var(--fs-md);
+}
+
+.cmdk-item .fa-solid {
+    width: 1.2em;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.cmdk-item.active {
+    background: var(--accent-tint);
+    box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.cmdk-item.active .fa-solid {
+    color: var(--accent);
+}
+
+.cmdk-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cmdk-hint {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.cmdk-empty {
+    padding: var(--space-6);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.cmdk-foot {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-4);
+    border-top: 1px solid var(--border);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+}
+
+.cmdk-foot kbd {
+    margin-right: 0.2em;
+}
+
+/* The toast (Toast in app.js) */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--tabbar-h) + 1rem);
+    z-index: 1900;
+    max-width: calc(100vw - 2rem);
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--radius-pill);
+    background: var(--text-primary);
+    color: var(--bg-tertiary);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    width: max-content;
+    max-width: min(480px, calc(100vw - 2rem));
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 16px);
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.toast.toast-error {
+    background: var(--error);
+    color: white;
+    border-radius: var(--radius-lg);
+}
+
+/* A button whose work is under way (Busy in app.js): a spinner in place of its icon */
+.is-busy {
+    cursor: progress !important;
+    opacity: 0.85;
+}
+
+.is-busy > .fa-solid:first-child {
+    display: none;
+}
+
+.is-busy::before {
+    content: "\f110";  /* fa-spinner */
+    font: var(--fa-font-solid);
+    display: inline-block;
+    margin-right: 0.4em;
+    animation: busy-spin 0.9s linear infinite;
+}
+
+@keyframes busy-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .is-busy::before { animation-duration: 3s; }
+}
+
+/* The Play orders, folded away (all widths): set once, rarely changed */
+.play-orders-group > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 40px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: var(--fs-sm);
+}
+
+.play-orders-hint {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.play-orders-group[open] {
+    margin-bottom: 0.5rem;
+}
+
+/* --- Phones and tablets: tabs, the More sheet, action bars --- */
+@media (max-width: 900px) {
+    body.has-tab-bar {
+        --tabbar-h: calc(58px + env(safe-area-inset-bottom));
+        padding-bottom: var(--tabbar-h);
+    }
+
+    /* The header: the dice and the page's name */
+    .brand-name {
+        display: none;
+    }
+
+    .brand-page {
+        display: inline;
+        color: var(--text-primary);
+    }
+
+    .header h1 {
+        font-size: var(--fs-lg);
+    }
+
+    .header-brand h1 .fa-solid {
+        color: var(--accent);
+        margin-right: 0.5rem;
+    }
+
+    .header {
+        min-height: 52px;
+    }
+
+    body.has-tab-bar .nav-toggle {
+        display: none;
+    }
+
+    .tab-bar {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1650;
+        height: var(--tabbar-h);
+        padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        background: rgba(26, 26, 19, 0.95);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-top: 1px solid var(--border);
+    }
+
+    .tab {
+        position: relative;
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font: inherit;
+        font-size: var(--fs-xs);
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .tab i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px;
+        height: 30px;
+        border-radius: 15px;
+        font-size: var(--fs-lg);
+        transition: background-color 0.2s, color 0.2s;
+    }
+
+    .tab.active {
+        color: var(--text-primary);
+    }
+
+    .tab.active i {
+        background: var(--accent-tint);
+        color: var(--accent);
+    }
+
+    .tab:active i {
+        background: var(--bg-secondary);
+    }
+
+    .tab-dot {
+        position: absolute;
+        top: 8px;
+        left: calc(50% + 12px);
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--warning);
+    }
+
+    /* The header's links: a sheet over the bottom of the screen, above the tabs (More) */
+    .header-nav {
+        position: fixed;
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: var(--tabbar-h);
+        z-index: 1600;
+        max-height: 75vh;
+        overflow-y: auto;
+        padding: 0 max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
+        border: 1px solid var(--border);
+        border-bottom: none;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .header-nav.open {
+        animation: sheet-up 0.22s ease-out;
+    }
+
+    body.has-tab-bar .header-nav .nav-primary {
+        display: none;
+    }
+
+    .header-nav .nav-link {
+        border-radius: 10px;
+    }
+
+    .sheet-handle {
+        display: block;
+        flex: none;
+        width: 40px;
+        height: 5px;
+        margin: 0.5rem auto;
+        border-radius: var(--radius-sm);
+        background: var(--border);
+        touch-action: none;
+    }
+
+    /* Pop-ups and sheets over the tab bar */
+    .modal {
+        z-index: 1700;
+    }
+
+    /* A page's main action: a bar fixed above the tabs */
+    .action-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--tabbar-h);
+        z-index: 1400;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin: 0;
+        padding: 0.6rem max(1rem, env(safe-area-inset-right)) 0.6rem max(1rem, env(safe-area-inset-left));
+        background: rgba(35, 35, 26, 0.96);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .action-bar:has(.overflow.open) {
+        z-index: 1800;
+    }
+
+    body:has(.action-bar) {
+        padding-bottom: calc(var(--tabbar-h) + 72px);
+    }
+
+    .action-bar > .btn-primary {
+        flex: 1 1 auto;
+        justify-content: center;
+        min-height: 48px;
+        font-size: var(--fs-base);
+    }
+
+    /* Simulator: Run, with the last result beside it */
+    .simulate-actions.action-bar {
+        margin-top: 0;
+    }
+
+    .run-label-full {
+        display: none;
+    }
+
+    .run-label-short {
+        display: inline;
+    }
+
+    .action-bar-result:not([hidden]) {
+        display: flex;
+        align-items: baseline;
+        gap: 0.3rem;
+        min-height: 48px;
+        padding: 0.7rem 0.9rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text-primary);
+        font: inherit;
+        font-size: var(--fs-sm);
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .bar-value {
+        font-size: var(--fs-lg);
+        font-weight: 700;
+        color: var(--accent);
+    }
+
+    .bar-label {
+        color: var(--text-muted);
+        margin-right: 0.35rem;
+    }
+
+    .action-bar-result .fa-solid {
+        color: var(--text-muted);
+        font-size: var(--fs-xs);
+    }
+
+    /* Before a run: one line, the icon beside it */
+    .results-panel:not(.has-result) > .results-empty {
+        flex-direction: row;
+        justify-content: flex-start;
+        min-height: 0;
+        padding: 0.5rem 0 0.25rem;
+        text-align: left;
+    }
+
+    .results-panel:not(.has-result) > .results-empty .fa-solid {
+        font-size: inherit;
+        color: var(--accent);
+    }
+
+    /* Analytics: Run Matrix in the bar, saving and loading behind the folder button */
+    .matchups-actions.action-bar {
+        flex-wrap: nowrap;
+        margin-bottom: 0;
+    }
+
+    .matchups-actions > #btn-run-matrix {
+        order: 0;
+    }
+
+    .matrix-container {
+        min-height: 0;
+    }
+
+    /* Armies: the points stay at the top of the screen, with a bar filling to the limit */
+    .army-points {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.15rem 0.75rem;
+        margin: 0.75rem 0 0.5rem;
+        padding: 0.45rem 0.75rem 0.85rem;
+        background: rgba(50, 47, 32, 0.97);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+    }
+
+    .army-points-total {
+        font-size: var(--fs-xl);
+    }
+
+    .army-points > :empty:not(.army-points-meter):not(.army-points-fill) {
+        display: none;
+    }
+
+    .army-points-meter {
+        display: block;
+        position: absolute;
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 0.4rem;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--bg-tertiary);
+        overflow: hidden;
+    }
+
+    .army-points-fill {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--accent);
+        transition: width 0.3s ease-out;
+    }
+
+    .army-points.over .army-points-fill {
+        background: var(--error);
+    }
+
+    .army-points-problems:not([hidden]) {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-left: auto;
+        padding: 0.2rem 0.7rem;
+        border: 1px solid var(--warning);
+        border-radius: var(--radius-pill);
+        background: rgba(224, 178, 60, 0.12);
+        color: var(--warning);
+        font: inherit;
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Add units: a floating button opening a sheet that stays while units are added */
+    .fab {
+        display: inline-flex;
+        position: fixed;
+        right: max(1rem, env(safe-area-inset-right));
+        bottom: calc(var(--tabbar-h) + 1rem);
+        z-index: 1300;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 56px;
+        padding: 0 1.3rem;
+        border: none;
+        border-radius: 18px;
+        background: var(--accent);
+        color: var(--on-accent);
+        font: inherit;
+        font-size: var(--fs-base);
+        font-weight: 700;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        width: max-content;
+        white-space: nowrap;
+    }
+
+    .fab .fa-solid {
+        margin-right: 0;
+    }
+
+    .fab:active {
+        transform: scale(0.97);
+    }
+
+    body.army-add-open .fab {
+        display: none;
+    }
+
+    body:has(.fab) {
+        padding-bottom: calc(var(--tabbar-h) + 88px);
+    }
+
+    .armies-layout > .army-add {
+        display: none;
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: 10vh;
+        bottom: 0;
+        z-index: 1700;
+        flex-direction: column;
+        margin: 0 !important;
+        padding: 0 max(1rem, env(safe-area-inset-right)) 0 max(1rem, env(safe-area-inset-left));
+        border: none;
+        border-top: 1px solid var(--border);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+    }
+
+    body.army-add-open .armies-layout > .army-add {
+        display: flex;
+        animation: sheet-up 0.25s ease-out;
+    }
+
+    .army-add-scrim {
+        z-index: 1650;
+    }
+
+    .army-add-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .army-add .army-add-head h3 {
+        margin: 0;
+        font-size: var(--fs-lg);
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--text-primary);
+    }
+
+    .army-add-done {
+        display: inline-flex;
+        padding: 0.5rem 1.2rem;
+    }
+
+    .army-add .army-unit-picker {
+        flex: 1 1 auto;
+        max-height: none;
+        overflow-y: auto;
+        margin: 0 calc(-1 * max(1rem, env(safe-area-inset-left))) 0 calc(-1 * max(1rem, env(safe-area-inset-left)));
+        padding: 0 max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    }
+
+    /* Analytics: a cell's detail is a sheet from the bottom (drag it down to close) */
+    .matchups-detail-panel {
+        top: auto !important;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-height: 88vh;
+        z-index: 1700;
+        padding-top: 0;
+        border: none;
+        border-top: 1px solid var(--border);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+        animation: sheet-up 0.25s ease-out;
+    }
+}
+
+@media (min-width: 601px) {
+    .overflow-items > .sheet-handle {
+        display: none;
+    }
+}
+
+/* --- Phones --- */
+@media (max-width: 600px) {
+    /* Sections run edge to edge, without a card's frame: more width for what's in them */
+    .main-content .card:not(.card .card):not(.modal *):not(.army-add) {
+        margin-left: -1rem;
+        margin-right: -1rem;
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+        padding: 1.1rem 1rem;
+    }
+
+    /* Field labels and sub-headings in normal case: easier to read at a glance */
+    .form-group label,
+    .card h3,
+    .conditions-column h3 {
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: var(--fs-sm);
+        font-weight: 600;
+    }
+
+    /* The page's own title is in the header now; only its buttons stay */
+    .page-header:not(.match-header) > h2 {
+        display: none;
+    }
+
+    .page-header:not(.match-header) {
+        justify-content: flex-end;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .page-header:not(.match-header):not(:has(button, a, select)) {
+        display: none;
+    }
+
+    /* Long notes: two lines, then More */
+    [data-read-more]:not(.expanded) {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .read-more-btn {
+        display: inline-flex;
+        align-items: center;
+        margin: -0.4rem 0 0.75rem;
+        padding: 0;
+        background: none;
+        border: none;
+        color: var(--accent);
+        font: inherit;
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Action sheets: a list of the group's buttons over the bottom of the screen */
+    .overflow {
+        display: block;
+    }
+
+    .overflow-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+
+    .overflow-items {
+        display: none;
+    }
+
+    .overflow.open .overflow-items {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1800;
+        max-height: 80vh;
+        overflow-y: auto;
+        padding: 0 max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+        background: var(--bg-tertiary);
+        border-top: 1px solid var(--border);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.5);
+        text-align: left;
+        animation: sheet-up 0.22s ease-out;
+    }
+
+    .overflow.open .overflow-items > :is(button, a) {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        width: 100%;
+        min-height: 52px;
+        margin: 0;
+        padding: 0.75rem 1rem;
+        background: transparent;
+        border: none;
+        border-radius: 10px;
+        color: var(--text-primary);
+        font-size: var(--fs-base);
+        font-weight: 500;
+        text-align: left;
+    }
+
+    .overflow.open .overflow-items > :is(button, a):active {
+        background: var(--bg-secondary);
+    }
+
+    .overflow.open .overflow-items > :is(button, a) .fa-solid {
+        width: 1.25rem;
+        margin-right: 0;
+        color: var(--text-secondary);
+    }
+
+    .overflow.open .overflow-items > .btn-remove,
+    .overflow.open .overflow-items > .btn-danger,
+    .overflow.open .overflow-items > .btn-remove .fa-solid {
+        color: var(--error);
+    }
+
+    .overflow.open .overflow-items > .overflow-cancel {
+        justify-content: center;
+        margin-top: 0.4rem;
+        background: var(--bg-secondary);
+        font-weight: 600;
+    }
+
+    .overflow-title {
+        display: block;
+        padding: 0 1rem 0.4rem;
+        color: var(--text-muted);
+        font-size: var(--fs-sm);
+        font-weight: 600;
+    }
+
+    .overflow-items .label-wide {
+        display: none;
+    }
+
+    .overflow-items .label-phone {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    /* Pop-ups slide up, as a phone's sheets do */
+    .modal.show > .modal-content {
+        animation: sheet-up 0.25s ease-out;
+    }
+
+    /* Simulator: the Legends tick beside the search box's label stays small */
+    .label-row .filter-check {
+        font-size: var(--fs-sm);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .army-form > .form-group:nth-child(3) {
+        grid-column: 1 / -1;
+    }
+
+    .army-form > .form-group:nth-child(3) select {
+        width: 100%;
+    }
+
+    /* Armies: Save and Match view side by side, the rest behind More */
+    .army-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 0.5rem;
+    }
+
+    .army-actions > .btn,
+    .army-actions .overflow-toggle {
+        width: 100%;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        justify-content: center;
+        white-space: nowrap;
+    }
+
+    /* A unit's card: its ⋯ at the top right */
+    .army-units > tbody > tr > td.col-remove {
+        position: absolute;
+        top: 0.3rem;
+        right: 0.3rem;
+        width: auto;
+        padding: 0;
+    }
+
+    .army-units > tbody > tr > td.army-unit-name {
+        padding-right: 3.25rem;
+    }
+
+    .army-units .overflow-toggle {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: var(--fs-lg);
+    }
+
+    /* Detachments as cards to tap */
+    .army-detachment-list {
+        grid-template-columns: minmax(0, 1fr);
+        max-height: none;
+        gap: 0.5rem;
+    }
+
+    .army-detachment {
+        align-items: center;
+        min-height: 48px;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--bg-tertiary);
+    }
+
+    .army-detachment.chosen {
+        border-color: var(--accent);
+    }
+
+    /* Analytics: the conditions as chips and segmented buttons, like the Simulator's */
+    .condition-toggles.toggle-group {
+        width: 100%;
+    }
+
+    .condition-rerolls .btn-group.segmented {
+        width: 100%;
+    }
+
+    /* Analytics: the army summary's figures two to a row */
+    .analysis-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+
+    .analysis-stat {
+        padding: 0.7rem 0.75rem;
+        min-width: 0;
+    }
+
+    .analysis-stat .analysis-value {
+        font-size: var(--fs-xl);
+        overflow-wrap: anywhere;
+    }
+
+    .matchups-actions.action-bar .overflow-toggle {
+        min-width: 48px;
+        min-height: 48px;
+        padding: 0 0.9rem;
+    }
+
+    /* Match view: the six characteristics on one row; the tabs one row that scrolls */
+    .match-stats {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.35rem;
+    }
+
+    .match-stats > .match-stat {
+        min-width: 0;
+    }
+
+    .match-stats > .match-save {
+        grid-column: span 3;
+        min-width: 0;
+    }
+
+    .match-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 3px;
+        border-radius: 10px;
+        background: var(--bg-tertiary);
+    }
+
+    .match-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .match-tab {
+        flex: 1 0 auto;
+        justify-content: center;
+        white-space: nowrap;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        font-size: var(--fs-md);
+    }
+
+    .match-tab .fa-solid {
+        margin-right: 0.25em;
+    }
+
+    /* The Data tab: one faction chosen, its name isn't repeated on every row */
+    body:has(#filter-faction option:checked:not([value=""])) #units-table tr > :nth-child(2),
+    body:has(#filter-weapon-faction option:checked:not([value=""])) #weapons-table tr > :nth-child(2) {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet-scrim,
+    .info-popover,
+    .overflow-items,
+    .header-nav,
+    .army-add,
+    .modal-content,
+    .matchups-detail-panel,
+    .play-sheet,
+    .toast {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+
+/* Phones: the version on a line of its own at the top of the footer */
+@media (max-width: 600px) {
+    .footer-version {
+        float: none;
+        display: block;
+        margin: 0 0 var(--space-2);
     }
 }

@@ -24,10 +24,11 @@ from ..settings import update_settings
 from . import battlefields, game_file, mission_state, missions, relay_client, view
 from .connections import (DEFAULT_RELAY_URL, RELAY, Refused, clean_code, connect, game_data, kind_of, player_name,
                           put_online, relay, relay_url)
-from .game import ActionError, charge_options, fight_options, measure, shooting_options
+from .game import ActionError, attack_preview, charge_options, fight_options, measure, score, shooting_options
 from .geometry import FOOTPRINTS, footprint_corners
 from .session import (CLOSED, MOVED_ON, NOT_NOW, NOT_YOURS, REFUSED, RELAY_REFUSED, UNREACHABLE, GameSession, Notifier,
                       forget, needs_update)
+from .seats import waiting_on
 from .snapshot import freeze_army
 
 
@@ -84,6 +85,25 @@ def game_response(session, state=None, **extra):
 
 
 MAX_IMPORT = 10 * 1024 * 1024  # Bytes: the largest game file opened
+
+
+STATUS_GAMES = 8  # The games list says where the most recent games stand (each needs its state: replayed, or cached)
+
+
+def game_status(saved):
+    """Where a game stands, for the games list: {'round', 'phase', 'score', 'your_move'} ('your_move' only for a game
+    this copy plays one side of), or {'joining': True} while it waits for the other player's army. {} if it can't be
+    read (a game from a newer app)."""
+    try:
+        session = GameSession(saved)
+        if session.waiting_for_army():
+            return {'joining': True}
+        state = session.state()
+        turn, seat = state['turn'], session.seat
+        return {'round': turn.get('round'), 'phase': turn['phase'], 'score': score(state),
+                'your_move': (seat in waiting_on(state)) if seat is not None else None}
+    except Exception:  # noqa: BLE001  (the list still opens: this game just shows no status)
+        return {}
 
 
 def read_seat(value):
@@ -208,7 +228,8 @@ def register_play_routes(app):
         games = access.listed(SavedGame, query.order_by(SavedGame.updated_at.desc(), SavedGame.id.desc()))
         return jsonify([{'id': g.id, 'name': g.name, 'players': [a['name'] if a else 'joining online' for a in g.armies],
                          'seat': connect(g).seat(), 'connection': kind_of(g),
-                         'updated_at': (g.updated_at or g.created_at).isoformat()} for g in games])
+                         'updated_at': (g.updated_at or g.created_at).isoformat(),
+                         **(game_status(g) if i < STATUS_GAMES else {})} for i, g in enumerate(games)])
 
     @app.route('/api/play/games', methods=['POST'])
     def api_create_game():
@@ -356,6 +377,31 @@ def register_play_routes(app):
         if not isinstance(action, dict):
             return jsonify({'error': 'Send the action as a JSON object.'}), 400
         return answer(session, session.act(action))
+
+    @app.route('/api/play/games/<int:game_id>/check', methods=['POST'])
+    def api_check_move(game_id):
+        """Whether a move would be allowed now, without making it (session.GameSession.check): {'ok', 'error'}. The
+        board asks while a unit is dragged, to show the move as allowed or not before it's dropped."""
+        session = session_for(game_id)
+        error = session.check(request.get_json(silent=True))
+        return jsonify({'ok': error is None, 'error': error})
+
+    @app.route('/api/play/games/<int:game_id>/preview', methods=['POST'])
+    def api_attack_preview(game_id):
+        """What shooting or fighting with a unit would likely do (game.attack_preview), before it's rolled:
+        {'unit', 'kind': 'shoot' | 'fight', 'weapons': as the action's}."""
+        session = session_for(game_id)
+        body = request.get_json(silent=True) or {}
+        if session.waiting_for_army():
+            return jsonify({'error': "The other player hasn't joined with their army yet."}), 409
+        kind = 'fight' if body.get('kind') == 'fight' else 'shoot'
+        weapons = body.get('weapons')
+        if weapons is not None and not isinstance(weapons, list):
+            return jsonify({'error': 'Send the weapons as a list.'}), 400
+        try:
+            return jsonify(attack_preview(session.state(), body.get('unit'), weapons, kind))
+        except ActionError as error:
+            return jsonify({'error': str(error)}), 400
 
     @app.route('/api/play/games/<int:game_id>/undo', methods=['POST'])
     def api_undo(game_id):

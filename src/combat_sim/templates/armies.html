@@ -6,11 +6,11 @@
 <div class="page-header">
     <h2><i class="fa-solid fa-chess-rook" aria-hidden="true"></i> Armies</h2>
     <div class="header-actions">
-        <button class="btn btn-secondary" id="import-army-btn" title="Open a list someone shared as a code"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Import code</button>
-        <button class="btn btn-secondary" id="new-army-btn"><i class="fa-solid fa-plus" aria-hidden="true"></i> New army</button>
+        <button class="btn btn-secondary" id="import-army-btn" data-command="Import an army code" title="Open a list someone shared as a code"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Import code</button>
+        <button class="btn btn-secondary" id="new-army-btn" data-command="New army"><i class="fa-solid fa-plus" aria-hidden="true"></i> New army</button>
     </div>
 </div>
-<p class="data-note">Build an army list, then send it to Analytics as your attackers or defenders. Points come from
+<p class="data-note" data-read-more>Build an army list, then send it to Analytics as your attackers or defenders. Points come from
     BSData; the list is checked against the points limit, unit sizes and which units each leader can lead.</p>
 
 <div class="armies-layout">
@@ -58,9 +58,12 @@
             <span class="army-disposition-note" id="army-disposition-note"></span>
         </div>
 
+        {# Phones: stays at the top of the screen while the list scrolls, with a bar filling up to the limit #}
         <div class="army-points" id="army-points"><span class="army-points-total">0 pts</span>
             <span class="army-enhancement-count" id="army-enhancement-count"></span>
-            <span class="army-saved-state" id="army-saved-state"></span></div>
+            <span class="army-saved-state" id="army-saved-state"></span>
+            <button type="button" class="army-points-problems" id="army-points-problems" hidden></button>
+            <span class="army-points-meter" aria-hidden="true"><span class="army-points-fill" id="army-points-fill"></span></span></div>
         <ul class="army-problems" id="army-problems"></ul>
         <ul class="army-problems army-import-notes" id="army-import-notes"></ul>
 
@@ -73,22 +76,43 @@
         </div>
 
         <div class="army-actions">
-            <button class="btn btn-primary" id="save-army-btn"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save</button>
-            <button class="btn btn-secondary" id="match-btn" title="Save, then open every datasheet, rule and stratagem of this army for the table"><i class="fa-solid fa-book-open" aria-hidden="true"></i> Match view</button>
-            <button class="btn btn-secondary" id="attackers-btn" title="Save, then open Analytics with this army as the attackers"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i> Analyse as attackers</button>
-            <button class="btn btn-secondary" id="defenders-btn" title="Save, then open Analytics with this army as the defenders"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Analyse as defenders</button>
-            <button class="btn btn-secondary" id="text-btn"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Copy as text</button>
-            <button class="btn btn-secondary" id="share-btn" title="A code another player can import to get this exact list"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Share code</button>
+            <button class="btn btn-primary" id="save-army-btn" data-command="Save army"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save</button>
+            <button class="btn btn-secondary" id="match-btn" data-command="Match view of this army" title="Save, then open every datasheet, rule and stratagem of this army for the table"><i class="fa-solid fa-book-open" aria-hidden="true"></i> Match view</button>
+            {# Phones: the rest in an action sheet behind More #}
+            <div class="overflow">
+                <button type="button" class="btn btn-secondary overflow-toggle" aria-haspopup="true" aria-expanded="false"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i> More</button>
+                <div class="overflow-items" role="menu" aria-label="More for this army">
+                    <button class="btn btn-secondary" id="attackers-btn" data-command="Analyse this army as attackers" title="Save, then open Analytics with this army as the attackers"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i> Analyse as attackers</button>
+                    <button class="btn btn-secondary" id="defenders-btn" data-command="Analyse this army as defenders" title="Save, then open Analytics with this army as the defenders"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Analyse as defenders</button>
+                    <button class="btn btn-secondary" id="text-btn" data-command="Copy this army as text"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Copy as text</button>
+                    <button class="btn btn-secondary" id="share-btn" data-command="Share this army as a code" title="A code another player can import to get this exact list"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Share code</button>
+                    <button type="button" class="btn btn-secondary overflow-cancel">Cancel</button>
+                </div>
+            </div>
+            {# Wider screens: copying and sharing the list in one menu (on a phone they're in the sheet above) #}
+            <div class="dropdown desktop-only">
+                <button type="button" class="btn btn-secondary dropdown-toggle" aria-haspopup="true" aria-expanded="false"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Export <i class="fa-solid fa-chevron-down dropdown-caret" aria-hidden="true"></i></button>
+                <div class="dropdown-menu" role="menu">
+                    <button type="button" role="menuitem" data-click="text-btn"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Copy as text</button>
+                    <button type="button" role="menuitem" data-click="share-btn"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Share code</button>
+                </div>
+            </div>
         </div>
     </section>
 
-    <aside class="card army-add">
-        <h3>Add units</h3>
+    {# Phones: a sheet over the page, opened by the floating Add units button; it stays open while units are added #}
+    <aside class="card army-add" id="army-add" aria-label="Add units">
+        <div class="army-add-head">
+            <h3>Add units</h3>
+            <button type="button" class="btn btn-primary army-add-done" id="army-add-done">Done</button>
+        </div>
         <input type="text" id="unit-search" class="filter-input" placeholder="Search this faction's units">
         <label class="checkbox-label"><input type="checkbox" id="unit-legends"> Show Legends</label>
         <div class="army-unit-picker" id="unit-picker"><p class="empty-message">Choose a faction first</p></div>
     </aside>
 </div>
+<button type="button" class="fab" id="add-units-fab"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add units</button>
+<div class="sheet-scrim army-add-scrim" id="army-add-scrim" hidden></div>
 
 <div class="modal" id="wargear-modal">
     <div class="modal-content modal-large">

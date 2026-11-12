@@ -7,32 +7,32 @@
     <!-- Conditions Bar -->
     <section class="conditions-bar card">
         <div class="conditions-inline">
-            <div class="condition-toggles">
-                <label class="toggle-inline">
+            <div class="condition-toggles toggle-group">
+                <label class="toggle">
                     <input type="checkbox" id="mat-half-range"> Half Range
                 </label>
-                <label class="toggle-inline">
+                <label class="toggle">
                     <input type="checkbox" id="mat-charged"> Charged
                 </label>
-                <label class="toggle-inline">
+                <label class="toggle">
                     <input type="checkbox" id="mat-stationary"> Stationary
                 </label>
-                <label class="toggle-inline" title="Target in cover: the attacker's BS is worsened by 1 (unless Ignores Cover / Psychic)">
+                <label class="toggle" title="Target in cover: the attacker's BS is worsened by 1 (unless Ignores Cover / Psychic)">
                     <input type="checkbox" id="mat-cover"> Cover
                 </label>
-                <label class="toggle-inline" title="Attackers damaged: -1 to hit">
+                <label class="toggle" title="Attackers damaged: -1 to hit">
                     <input type="checkbox" id="mat-damaged"> Attacker Damaged
                 </label>
             </div>
             <div class="condition-rerolls">
                 <span class="reroll-label">Hits:</span>
-                <select id="mat-reroll-hits" class="select-small">
+                <select id="mat-reroll-hits" class="select-small" data-segmented="Re-roll hits">
                     <option value="none">None</option>
                     <option value="ones">1s</option>
                     <option value="all">All</option>
                 </select>
                 <span class="reroll-label">Wounds:</span>
-                <select id="mat-reroll-wounds" class="select-small">
+                <select id="mat-reroll-wounds" class="select-small" data-segmented="Re-roll wounds">
                     <option value="none">None</option>
                     <option value="ones">1s</option>
                     <option value="all">All</option>
@@ -61,7 +61,7 @@
                 <button class="toggle-btn active" data-type="both">Both</button>
                 <button class="toggle-btn" data-type="melee">Melee</button>
             </div>
-            <button class="btn btn-primary btn-add-unit" id="btn-add-attacker">+ Add Unit</button>
+            <button class="btn btn-secondary btn-add-unit" id="btn-add-attacker" data-command="Add an attacker unit"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Unit</button>
         </div>
         <div class="roster-scroll">
             <table class="roster-table" id="attacker-table">
@@ -95,7 +95,7 @@
                 <button class="toggle-btn active" data-mode="real">Real units</button>
                 <button class="toggle-btn" data-mode="generic">Generic profiles</button>
             </div>
-            <button class="btn btn-primary btn-add-unit" id="btn-add-defender">+ Add Unit</button>
+            <button class="btn btn-secondary btn-add-unit" id="btn-add-defender" data-command="Add a defender unit"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Unit</button>
         </div>
         <div class="roster-scroll">
             <table class="roster-table" id="defender-table">
@@ -109,7 +109,7 @@
     <section class="card roster-card">
         <div class="roster-header">
             <h2><i class="fa-solid fa-scroll" aria-hidden="true"></i> Rules &amp; Stratagems</h2>
-            <span class="rules-hint">Ticked entries apply to every unit of their faction (core stratagems to every unit), in the phases they list.</span>
+            <span class="rules-hint" data-read-more>Ticked entries apply to every unit of their faction (core stratagems to every unit), in the phases they list.</span>
         </div>
         <div class="matchup-rules">
             <div class="matchup-rules-column">
@@ -126,10 +126,17 @@
     </section>
 
     <!-- Actions -->
-    <div class="matchups-actions">
-        <button class="btn btn-primary" id="btn-run-matrix"><i class="fa-solid fa-play" aria-hidden="true"></i> Run Matrix</button>
-        <button class="btn btn-secondary" id="btn-save-comparison"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save Comparison</button>
-        <button class="btn btn-secondary" id="btn-load-comparison"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Load Comparison</button>
+    {# Phones: a bar fixed at the bottom of the screen; saving and loading in an action sheet #}
+    <div class="matchups-actions action-bar">
+        <div class="overflow">
+            <button type="button" class="btn btn-secondary overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Save or load a comparison"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></button>
+            <div class="overflow-items" role="menu" aria-label="Comparisons">
+                <button class="btn btn-secondary" id="btn-save-comparison"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save Comparison</button>
+                <button class="btn btn-secondary" id="btn-load-comparison"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Load Comparison</button>
+                <button type="button" class="btn btn-secondary overflow-cancel">Cancel</button>
+            </div>
+        </div>
+        <button class="btn btn-primary" id="btn-run-matrix" data-command="Run matrix"><i class="fa-solid fa-play" aria-hidden="true"></i> Run Matrix</button>
     </div>
 
     <!-- Matrix Grid -->

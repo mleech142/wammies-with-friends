@@ -25,63 +25,599 @@ if (document.querySelector('meta[name="app-hosted"]') && !/^\/(login|welcome|joi
     };
 }
 
-/** The header's menu button (phones and narrow windows, docs/phone-plan.md): opens and closes the links. */
-(() => {
-    const toggle = document.getElementById('nav-toggle');
-    const nav = document.getElementById('header-nav');
-    if (!toggle || !nav) return;
-    const show = open => {
-        toggle.setAttribute('aria-expanded', String(open));
-        nav.classList.toggle('open', open);
-        toggle.querySelector('i').className = open ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
-    };
-    toggle.addEventListener('click', () => show(!nav.classList.contains('open')));
-    document.addEventListener('click', e => { if (nav.classList.contains('open') && !e.target.closest('#header-nav, #nav-toggle')) show(false); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && nav.classList.contains('open')) { show(false); toggle.focus(); } });
+/** Short buzz on a phone that has it (Android; iOS has no vibration API): a long-press that worked, a run started. */
+const Haptics = {
+    tap() { try { if (navigator.vibrate && matchMedia('(pointer: coarse)').matches) navigator.vibrate(10); } catch (err) { /* not allowed */ } },
+};
+
+/**
+ * Sheets that slide up from the bottom of a phone's screen (the More menu, action sheets, tips, Analytics' cell detail,
+ * Play's unit sheet): a dimmed page behind (tap it to close), and a drag down on the handle or the top of the sheet
+ * closes it, as phone apps do.
+ */
+const Sheets = (() => {
+    /** Drag `sheet` down to close it (calls close()): from its handle, or anywhere while it is scrolled to the top. */
+    function swipeToClose(sheet, close) {
+        let start = null;
+        sheet.addEventListener('touchstart', e => {
+            if (e.touches.length !== 1) return;
+            const fromHandle = e.target.closest('.sheet-handle');
+            if (!fromHandle && sheet.scrollTop > 0) return;
+            if (!fromHandle && e.target.closest('input, select, textarea, .table-scroll, .matrix-scroll, .js-plotly-plot')) return;
+            start = { y: e.touches[0].clientY, t: Date.now() };
+        }, { passive: true });
+        sheet.addEventListener('touchmove', e => {
+            if (!start) return;
+            const dy = e.touches[0].clientY - start.y;
+            if (dy <= 0) { sheet.style.transform = ''; return; }
+            sheet.style.transition = 'none';
+            sheet.style.transform = `translateY(${dy}px)`;
+        }, { passive: true });
+        const end = e => {
+            if (!start) return;
+            const dy = (e.changedTouches?.[0]?.clientY ?? start.y) - start.y;
+            const fast = dy > 40 && Date.now() - start.t < 250;
+            start = null;
+            sheet.style.transition = '';
+            sheet.style.transform = '';
+            if (dy > 90 || fast) close();
+        };
+        sheet.addEventListener('touchend', end);
+        sheet.addEventListener('touchcancel', end);
+    }
+
+    /** A grip at the top of `sheet` (once), for a phone user to drag. */
+    function addHandle(sheet) {
+        if (sheet.querySelector(':scope > .sheet-handle')) return;
+        const handle = document.createElement('div');
+        handle.className = 'sheet-handle';
+        handle.setAttribute('aria-hidden', 'true');
+        sheet.prepend(handle);
+    }
+
+    return { swipeToClose, addHandle };
 })();
 
 /**
- * Explanations a phone can't hover for: a button made by Core.infoButton(text) shows its text in a small pop-over
- * when tapped (or clicked), until the next tap anywhere. With a mouse its title still shows on hover.
+ * The More tab (phones and tablets) and the header's menu button: open and close the header's links, which show as
+ * a sheet over the bottom of the screen there.
  */
-const InfoPopover = (() => {
-    let box = null, owner = null;
+(() => {
+    const nav = document.getElementById('header-nav');
+    const scrim = document.getElementById('nav-scrim');
+    const toggles = ['nav-toggle', 'more-tab'].map(id => document.getElementById(id)).filter(Boolean);
+    if (!nav || !toggles.length) return;
+    Sheets.addHandle(nav);
+    const show = open => {
+        toggles.forEach(t => t.setAttribute('aria-expanded', String(open)));
+        nav.classList.toggle('open', open);
+        if (scrim) scrim.hidden = !open;
+        const icon = document.querySelector('#nav-toggle i');
+        if (icon) icon.className = open ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+    };
+    toggles.forEach(t => t.addEventListener('click', e => { e.stopPropagation(); show(!nav.classList.contains('open')); }));
+    document.addEventListener('click', e => { if (nav.classList.contains('open') && !e.target.closest('#header-nav, #nav-toggle, #more-tab')) show(false); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && nav.classList.contains('open')) { show(false); toggles[0].focus(); } });
+    Sheets.swipeToClose(nav, () => show(false));
+})();
+
+/**
+ * Tips: what a hover title says, for fingers and for clicks. Anything with a `title` (or `data-tip`) explains itself:
+ *   - tap or click it when it is plain text (a keyword, a column heading, a badge): its explanation opens;
+ *   - press and hold it when tapping does something else (a button, a tick row, a dropdown): the same, and the tap
+ *     that ends the hold is swallowed so the button isn't pressed;
+ *   - the ⓘ buttons (Core.infoButton) open theirs on a tap, as before.
+ * A short tip is a bubble beside what was touched; on a phone a long one, or one with a name of its own (a keyword),
+ * is a sheet at the bottom of the screen with the name as its heading, as look-ups in phone apps are. With a mouse
+ * the title still shows on hover too. Not on the Play board (its own long-press shows a datasheet) or charts.
+ */
+const Tips = (() => {
+    const PHONE = window.matchMedia('(max-width: 600px)');
+    const TIP = '[data-tip], [title]:not([title=""])';
+    const INTERACTIVE = 'a[href], button, input, select, textarea, label, summary, option, [role="button"], [role="tab"], [contenteditable]';
+    // A tap explains plain text only, and nothing inside these, which have a click of their own
+    const TAP_TEXT = 'span, abbr, dfn, th, small, em, strong, b, i, sup, li, code, h3, h4';
+    const OWN_CLICK = '.matrix-cell, .matrix-row-header, .play-unit, .play-die, [data-unit], [data-no-tip], svg, .js-plotly-plot';
+    let box = null, scrim = null, owner = null, press = null, swallowClick = false;
+
+    function textOf(el) {
+        return el.dataset.info || el.dataset.tip || el.getAttribute('title') || el.dataset.tipTitle || '';
+    }
+
+    /** Its own name, when short and not the start of the explanation itself (a keyword, a column heading). */
+    function headingOf(el, text) {
+        if (el.classList.contains('info-btn')) return '';
+        const own = (el.dataset.tipHeading || el.textContent || '').replace(/\s+/g, ' ').trim();
+        return own && own.length <= 40 && own !== text && !text.startsWith(own) ? own : '';
+    }
+
+    function make() {
+        box = document.createElement('div');
+        box.id = 'info-popover';
+        box.setAttribute('role', 'tooltip');
+        box.hidden = true;
+        scrim = document.createElement('div');
+        scrim.className = 'sheet-scrim tip-scrim';
+        scrim.hidden = true;
+        document.body.append(scrim, box);
+        Sheets.swipeToClose(box, hide);
+    }
+
     function hide() {
-        if (box) box.hidden = true;
+        if (!box) return;
+        box.hidden = true;
+        scrim.hidden = true;
         if (owner) owner.setAttribute('aria-expanded', 'false');
         owner = null;
     }
-    function show(button) {
-        if (!box) {
-            box = document.createElement('div');
-            box.className = 'info-popover';
-            box.setAttribute('role', 'tooltip');
-            box.id = 'info-popover';
-            document.body.appendChild(box);
+
+    function show(el) {
+        const text = textOf(el);
+        if (!text) return;
+        if (!box) make();
+        // Its hover title would show over the bubble: kept aside (and still read from there) once it has been opened
+        if (el.hasAttribute('title') && !el.classList.contains('info-btn')) { el.dataset.tipTitle = el.title; el.removeAttribute('title'); }
+        if (owner && owner !== el) owner.setAttribute('aria-expanded', 'false');
+        owner = el;
+        el.setAttribute('aria-expanded', 'true');
+        const heading = headingOf(el, text);
+        const asSheet = PHONE.matches && (!!heading || text.length > 110);
+        box.className = 'info-popover' + (asSheet ? ' tip-sheet' : '');
+        box.replaceChildren();
+        if (asSheet) Sheets.addHandle(box);
+        if (heading && asSheet) {
+            const h = document.createElement('div');
+            h.className = 'tip-heading';
+            h.textContent = heading;
+            box.append(h);
         }
-        owner = button;
-        button.setAttribute('aria-expanded', 'true');
-        box.textContent = button.dataset.info;
+        const body = document.createElement('div');
+        body.className = 'tip-body';
+        body.textContent = text;
+        box.append(body);
+        box.style.left = box.style.top = box.style.maxWidth = '';
         box.hidden = false;
-        const r = button.getBoundingClientRect(), width = document.documentElement.clientWidth;
-        const boxWidth = Math.min(320, width - 16);
-        box.style.maxWidth = boxWidth + 'px';
-        box.style.left = Math.max(8, Math.min(r.left + r.width / 2 - boxWidth / 2, width - boxWidth - 8)) + window.scrollX + 'px';
-        box.style.top = r.bottom + 6 + window.scrollY + 'px';
+        scrim.hidden = !asSheet;
+        if (asSheet) return;
+        // A bubble: under what was touched (above it when there's no room), its arrow pointing at it
+        const r = el.getBoundingClientRect(), width = document.documentElement.clientWidth;
+        box.style.maxWidth = Math.min(320, width - 16) + 'px';
+        const shown = box.getBoundingClientRect();
+        const left = Math.max(8, Math.min(r.left + r.width / 2 - shown.width / 2, width - shown.width - 8));
+        const above = r.bottom + 10 + shown.height > window.innerHeight && r.top - 10 - shown.height > 0;
+        box.classList.toggle('above', above);
+        box.style.setProperty('--arrow-x', Math.max(12, Math.min(r.left + r.width / 2 - left, shown.width - 12)) + 'px');
+        box.style.left = left + window.scrollX + 'px';
+        box.style.top = (above ? r.top - 10 - shown.height : r.bottom + 10) + window.scrollY + 'px';
     }
+
+    /** What a tap on `target` explains: plain text with a tip, not inside anything with a click of its own. */
+    function tapTarget(target) {
+        const el = target.closest(TIP);
+        if (!el || !el.matches(TAP_TEXT) || el.closest(OWN_CLICK) || el.closest(INTERACTIVE)) return null;
+        return el;
+    }
+
+    // Taps and clicks: ⓘ buttons and plain text with a tip
     document.addEventListener('click', e => {
-        const button = e.target.closest('.info-btn');
-        if (button) {
+        if (swallowClick) {  // The tap that ends a long-press: not a press of the button under it
+            swallowClick = false;
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (box && !box.hidden && (e.target === scrim || box.contains(e.target))) {
+            e.stopPropagation();
+            if (e.target === scrim) hide();
+            return;
+        }
+        const el = e.target.closest('.info-btn') || tapTarget(e.target);
+        if (el) {
             e.preventDefault();
             e.stopPropagation();  // Not the row's own click (ticking a rule, opening a card)
-            if (button === owner) hide(); else show(button);
+            if (el === owner) hide(); else show(el);
             return;
         }
         if (owner) hide();
     }, true);
+
+    // Press and hold (touch and pen): anything with a tip, buttons and rows included
+    document.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'mouse' || !e.isPrimary) return;
+        const el = e.target.closest(TIP);
+        if (!el || e.target.closest('svg, .js-plotly-plot, #play-board, input:not([type="checkbox"]):not([type="radio"]), textarea')) return;
+        press = { el, x: e.clientX, y: e.clientY, timer: setTimeout(() => {
+            press = null;
+            swallowClick = true;
+            setTimeout(() => { swallowClick = false; }, 800);  // No click followed (the finger slid off): forget it
+            Haptics.tap();
+            show(el);
+        }, 480) };
+    }, true);
+    const cancel = () => { if (press) { clearTimeout(press.timer); press = null; } };
+    document.addEventListener('pointermove', e => { if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) cancel(); }, true);
+    document.addEventListener('pointerup', cancel, true);
+    document.addEventListener('pointercancel', cancel, true);
+    document.addEventListener('contextmenu', e => { if (swallowClick || press) e.preventDefault(); }, true);
+
     document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
-    window.addEventListener('scroll', hide, { passive: true });
-    return { hide };
+    window.addEventListener('scroll', () => { if (box && !box.hidden && !box.classList.contains('tip-sheet')) hide(); }, { passive: true });
+    return { show, hide };
+})();
+const InfoPopover = Tips;  // Its old name
+
+/**
+ * Action sheets (phones): less-used buttons behind one "More" button (class overflow, see style.css). On a wider
+ * screen the group shows its buttons in place, as before; on a phone they open as a list at the bottom of the screen.
+ * The buttons keep their ids and handlers: a tap on one does what it always did, then the sheet closes.
+ */
+const ActionSheets = (() => {
+    let open = null, scrim = null;
+    function close() {
+        if (!open) return;
+        open.classList.remove('open');
+        open.querySelector('.overflow-toggle')?.setAttribute('aria-expanded', 'false');
+        open = null;
+        if (scrim) scrim.hidden = true;
+    }
+    function show(group) {
+        close();
+        if (!scrim) {
+            scrim = document.createElement('div');
+            scrim.className = 'sheet-scrim overflow-scrim';
+            document.body.appendChild(scrim);
+        }
+        open = group;
+        group.classList.add('open');
+        group.querySelector('.overflow-toggle')?.setAttribute('aria-expanded', 'true');
+        const items = group.querySelector('.overflow-items');
+        if (items) {
+            Sheets.addHandle(items);
+            if (!items.dataset.swipe) { items.dataset.swipe = '1'; Sheets.swipeToClose(items, close); }
+        }
+        scrim.hidden = false;
+    }
+    document.addEventListener('click', e => {
+        const toggle = e.target.closest('.overflow-toggle');
+        if (toggle) {
+            e.preventDefault();
+            const group = toggle.closest('.overflow');
+            group === open ? close() : show(group);
+            return;
+        }
+        if (!open) return;
+        if (e.target === scrim || e.target.closest('.overflow-cancel')) { close(); return; }
+        // A button in the sheet: it has done its job (this runs after its own handlers); close the sheet
+        if (e.target.closest('.overflow-items button, .overflow-items a')) setTimeout(close, 0);
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    return { close };
+})();
+
+/**
+ * A button that started something slow (a simulation, a save): disabled, with a spinner in place of its icon, until
+ * the work is done. Busy.during(button, promise) returns the promise.
+ */
+const Busy = (() => {
+    function during(button, promise) {
+        if (!button) return promise;
+        button.classList.add('is-busy');
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        const done = () => {
+            button.classList.remove('is-busy');
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+        };
+        return Promise.resolve(promise).finally(done);
+    }
+    return { during };
+})();
+
+/**
+ * Dropdown menus on wider screens (class dropdown: a .dropdown-toggle and a .dropdown-menu). A menu item with
+ * data-click="id" presses that button, so a menu can offer buttons that live elsewhere on the page (such as those in
+ * a phone's action sheet) without copying their handlers.
+ */
+const Dropdowns = (() => {
+    let open = null;
+    function close() {
+        if (!open) return;
+        open.classList.remove('open');
+        open.querySelector('.dropdown-toggle')?.setAttribute('aria-expanded', 'false');
+        open = null;
+    }
+    document.addEventListener('click', e => {
+        const toggle = e.target.closest('.dropdown-toggle');
+        if (toggle) {
+            const menu = toggle.closest('.dropdown');
+            const wasOpen = menu === open;
+            close();
+            if (!wasOpen) {
+                open = menu;
+                menu.classList.add('open');
+                toggle.setAttribute('aria-expanded', 'true');
+                menu.querySelector('.dropdown-menu [role=menuitem]')?.focus();
+            }
+            return;
+        }
+        const item = e.target.closest('.dropdown-menu [role=menuitem]');
+        if (item && item.dataset.click) document.getElementById(item.dataset.click)?.click();
+        if (open && (item || !e.target.closest('.dropdown-menu'))) close();
+    });
+    document.addEventListener('keydown', e => {
+        if (!open) return;
+        const items = [...open.querySelectorAll('.dropdown-menu [role=menuitem]')];
+        const at = items.indexOf(document.activeElement);
+        if (e.key === 'Escape') { const toggle = open.querySelector('.dropdown-toggle'); close(); toggle?.focus(); }
+        else if (e.key === 'ArrowDown') { items[(at + 1) % items.length]?.focus(); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { items[(at - 1 + items.length) % items.length]?.focus(); e.preventDefault(); }
+    });
+    return { close };
+})();
+
+/**
+ * The command palette (Ctrl+K, or ⌘K on a Mac; also the search button in the header): jump to a page or a saved army,
+ * or do what the page offers (buttons marked data-command="What it does"), by typing a few letters of it. The pages
+ * come from the menu, so a player sees only those the menu shows them.
+ */
+const CommandPalette = (() => {
+    let box = null, input = null, list = null, items = [], shown = [], at = 0, armies = null, back = null;
+
+    function pageItems() {
+        return [...document.querySelectorAll('#header-nav a.nav-link')].map(a => ({
+            group: 'Go to', label: a.textContent.trim(), icon: a.querySelector('.fa-solid')?.className || 'fa-solid fa-arrow-right',
+            run: () => { location.href = a.href; },
+        }));
+    }
+
+    function actionItems() {
+        return [...document.querySelectorAll('[data-command]')].filter(el => !el.disabled).map(el => ({
+            group: 'This page', label: el.dataset.command, icon: el.querySelector('.fa-solid')?.className || 'fa-solid fa-bolt',
+            run: () => el.click(),
+        }));
+    }
+
+    function armyItems() {
+        return (armies || []).flatMap(a => {
+            const hint = [a.faction, a.total != null ? `${a.total} pts` : ''].filter(Boolean).join(' · ');
+            const go = url => () => { location.href = url; };
+            return [
+                { group: 'Armies', label: a.name, hint, icon: 'fa-solid fa-chess-rook', run: go(`/armies?army=${a.id}`) },
+                { group: 'Armies', label: `${a.name}: Match view`, hint, icon: 'fa-solid fa-book-open', run: go(`/armies/${a.id}/match`), use: true },
+                { group: 'Armies', label: `${a.name}: analyse as attackers`, hint, icon: 'fa-solid fa-crosshairs', run: go(`/analytics?army=${a.id}&side=attacker`), use: true },
+                { group: 'Armies', label: `${a.name}: analyse as defenders`, hint, icon: 'fa-solid fa-shield-halved', run: go(`/analytics?army=${a.id}&side=defender`), use: true },
+            ];
+        });
+    }
+
+    /** Every word typed is found in the label, hint or group, in any order */
+    function matches(item, words) {
+        const text = `${item.label} ${item.hint || ''} ${item.group}`.toLowerCase();
+        return words.every(w => text.includes(w));
+    }
+
+    function render() {
+        const words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+        // Before anything is typed, each army is offered once (not its three uses)
+        shown = items.filter(i => words.length ? matches(i, words) : !i.use);
+        at = Math.min(at, Math.max(0, shown.length - 1));
+        let group = null;
+        list.innerHTML = shown.length ? shown.map((item, i) => {
+            const head = item.group !== group ? `<li class="cmdk-group" role="presentation">${Core.escapeHtml(item.group)}</li>` : '';
+            group = item.group;
+            return `${head}<li class="cmdk-item ${i === at ? 'active' : ''}" role="option" id="cmdk-${i}" data-i="${i}" aria-selected="${i === at}">
+                <i class="${Core.escapeHtml(item.icon)}" aria-hidden="true"></i><span class="cmdk-label">${Core.escapeHtml(item.label)}</span>
+                ${item.hint ? `<span class="cmdk-hint">${Core.escapeHtml(item.hint)}</span>` : ''}</li>`;
+        }).join('') : '<li class="cmdk-empty">Nothing matches</li>';
+        input.setAttribute('aria-activedescendant', shown.length ? `cmdk-${at}` : '');
+        list.querySelector('.cmdk-item.active')?.scrollIntoView({ block: 'nearest' });
+    }
+
+    function build() {
+        box = document.createElement('div');
+        box.className = 'cmdk';
+        box.hidden = true;
+        box.innerHTML = `<div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Command palette">
+            <div class="cmdk-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input type="text" class="cmdk-input" placeholder="Go to a page, open an army or run an action…" autocomplete="off"
+                       role="combobox" aria-expanded="true" aria-controls="cmdk-list" aria-label="Command"></div>
+            <ul class="cmdk-list" id="cmdk-list" role="listbox"></ul>
+            <div class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> choose</span><span><kbd>Enter</kbd> go</span><span><kbd>Esc</kbd> close</span></div>
+        </div>`;
+        document.body.appendChild(box);
+        input = box.querySelector('.cmdk-input');
+        list = box.querySelector('.cmdk-list');
+        input.addEventListener('input', () => { at = 0; render(); });
+        input.addEventListener('keydown', e => {
+            const n = Math.max(1, shown.length);
+            if (e.key === 'ArrowDown') { at = (at + 1) % n; render(); e.preventDefault(); }
+            else if (e.key === 'ArrowUp') { at = (at - 1 + n) % n; render(); e.preventDefault(); }
+            else if (e.key === 'Enter') { choose(at); e.preventDefault(); }
+        });
+        list.addEventListener('mousemove', e => {
+            const li = e.target.closest('.cmdk-item');
+            if (li && +li.dataset.i !== at) { at = +li.dataset.i; render(); }
+        });
+        list.addEventListener('click', e => { const li = e.target.closest('.cmdk-item'); if (li) choose(+li.dataset.i); });
+        box.addEventListener('click', e => { if (e.target === box) close(); });
+    }
+
+    function choose(i) {
+        const item = shown[i];
+        if (!item) return;
+        close(false);
+        item.run();
+    }
+
+    function gather() {
+        items = [...actionItems(), ...pageItems(), ...armyItems()];
+    }
+
+    async function open() {
+        if (!box) build();
+        back = document.activeElement;
+        gather();
+        input.value = '';
+        at = 0;
+        box.hidden = false;
+        document.body.classList.add('cmdk-open');
+        render();
+        input.focus();
+        if (armies === null) {  // The saved armies, once per page (none for a visitor, who may not list them)
+            armies = [];
+            try {
+                const resp = await fetch('/api/armies');
+                if (resp.ok) armies = await resp.json();
+            } catch (err) { /* Offline: pages and actions only */ }
+            if (!box.hidden) { gather(); render(); }
+        }
+    }
+
+    function close(refocus = true) {
+        if (!box || box.hidden) return;
+        box.hidden = true;
+        document.body.classList.remove('cmdk-open');
+        if (refocus) back?.focus?.();
+    }
+
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+            if (!document.querySelector('#header-nav a.nav-link')) return;  // Logged out: nothing to offer
+            e.preventDefault();
+            box && !box.hidden ? close() : open();
+        } else if (e.key === 'Escape' && box && !box.hidden) {
+            e.stopPropagation();
+            close();
+        }
+    }, true);
+    document.addEventListener('DOMContentLoaded', () => {
+        const button = document.getElementById('cmdk-btn');
+        if (!button) return;
+        if (/Mac|iPhone|iPad/.test(navigator.platform)) button.querySelector('kbd').textContent = '⌘K';
+        button.addEventListener('click', open);
+    });
+    return { open, close };
+})();
+
+/** A short message over the bottom of the screen for a moment ("Added Gun Crew"), as phone apps confirm an action. */
+const Toast = (() => {
+    let el = null, timer = null;
+    /** kind 'error': the message is drawn as a problem (and stays longer) */
+    function show(text, kind) {
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'toast';
+            el.setAttribute('role', 'status');
+            document.body.appendChild(el);
+        }
+        el.textContent = text;
+        el.classList.toggle('toast-error', kind === 'error');
+        el.classList.remove('show');
+        void el.offsetWidth;  // Restart its animation
+        el.classList.add('show');
+        clearTimeout(timer);
+        timer = setTimeout(() => el.classList.remove('show'), kind === 'error' ? 4500 : 2200);
+    }
+    return { show };
+})();
+
+/**
+ * The Layout setting (Setup, Account and Play pages: a <select data-layout-setting>): phone, tablet, desktop or
+ * automatic. Saved as your preference, and applied at once (base.html's window.applyLayout, Core.layoutFor).
+ */
+document.querySelectorAll('select[data-layout-setting]').forEach(select => {
+    const root = document.documentElement;
+    select.value = root.dataset.layoutPref || 'auto';
+    select.addEventListener('change', async () => {
+        const response = await fetch('/api/preferences/layout', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout: select.value }),
+        }).catch(() => null);
+        if (!response || !response.ok) {
+            Toast.show('The layout could not be saved.', 'error');
+            return;
+        }
+        root.dataset.layoutPref = select.value;
+        document.querySelectorAll('select[data-layout-setting]').forEach(other => { other.value = select.value; });
+        if (window.applyLayout) window.applyLayout();  // Says 'layout-changed' if the layout is now another
+        Toast.show(`Layout: ${select.options[select.selectedIndex].text}`);
+    });
+});
+
+/**
+ * Segmented controls: a <select data-segmented> shows as a row of buttons (as the Simulator's re-rolls), the select
+ * kept, hidden, so the page's code reads and sets it as before. Call SegmentedSelect.sync(select) after setting its
+ * value in code.
+ */
+const SegmentedSelect = (() => {
+    function sync(select) {
+        const group = select.nextElementSibling;
+        if (!group || !group.classList.contains('segmented')) return;
+        group.querySelectorAll('.btn-option').forEach(b => {
+            const on = b.dataset.value === select.value;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-checked', String(on));
+        });
+    }
+    function build(select) {
+        if (select.dataset.segmentedBuilt) return;
+        select.dataset.segmentedBuilt = '1';
+        const group = document.createElement('div');
+        group.className = 'btn-group segmented';
+        group.setAttribute('role', 'radiogroup');
+        group.setAttribute('aria-label', select.dataset.segmented || select.getAttribute('aria-label') || '');
+        group.innerHTML = [...select.options].map(o =>
+            `<button type="button" class="btn-option" role="radio" data-value="${Core.escapeHtml(o.value)}">${Core.escapeHtml(o.textContent)}</button>`).join('');
+        select.classList.add('segmented-source');
+        select.after(group);
+        group.addEventListener('click', e => {
+            const b = e.target.closest('.btn-option');
+            if (!b || select.value === b.dataset.value) return;
+            select.value = b.dataset.value;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            sync(select);
+        });
+        select.addEventListener('change', () => sync(select));
+        sync(select);
+    }
+    document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('select[data-segmented]').forEach(build));
+    return { sync };
+})();
+
+/**
+ * Long explanations on a phone (data-read-more): two lines, then "More" for the rest, as app stores show
+ * descriptions. Wider screens show them whole (the button is hidden there).
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-read-more]').forEach(el => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'read-more-btn';
+        button.textContent = 'More';
+        button.setAttribute('aria-expanded', 'false');
+        button.addEventListener('click', () => {
+            const open = el.classList.toggle('expanded');
+            button.textContent = open ? 'Less' : 'More';
+            button.setAttribute('aria-expanded', String(open));
+        });
+        el.after(button);
+    });
+});
+
+/**
+ * Weapon abilities as chips that explain themselves (the keyword glossary's summary, from the server as
+ * `ability_hints` with a unit): tap one, or hover with a mouse.
+ */
+const AbilityHints = (() => {
+    const hints = new Map();
+    function add(map) { Object.entries(map || {}).forEach(([k, v]) => { if (v) hints.set(k, v); }); }
+    function chips(abilities, cls = 'kw-chip') {
+        return (abilities || []).map(a => {
+            const hint = hints.get(a);
+            return `<span class="${cls}"${hint ? ` title="${Core.escapeHtml(hint)}"` : ''}>${Core.escapeHtml(a)}</span>`;
+        }).join('');
+    }
+    return { add, chips };
 })();
 
 /**
@@ -613,6 +1149,7 @@ function themeColor(name) {
 async function loadWeaponsForUnit(unitId) {
     const response = await fetch(`/api/units/${unitId}`);
     const unitData = await response.json();
+    AbilityHints.add(unitData.ability_hints);
 
     // default_use: the server's default ticks (only the first "Weapon - Profile" variant of a gun); options start unticked
     state.attacker.weapons = Core.simulatorWeapons(unitData);
@@ -657,6 +1194,7 @@ function renderLeaderSelect(side) {
 async function attachAttackerLeader(leaderId) {
     const choice = state.attacker.leaders.find(l => l.id === leaderId) || null;
     const detail = choice ? await fetch(`/api/units/${choice.id}`).then(r => r.json()) : null;
+    AbilityHints.add(detail?.ability_hints);
     state.attacker.leader = choice;
     state.attacker.weapons = Core.withLeaderWeapons(state.attacker.weapons, detail);
     renderLeaderSelect('attacker');
@@ -727,7 +1265,7 @@ function renderWeaponList() {
     const firstOption = weapons.findIndex(w => w.option);
     const rows = weapons.map((w, idx) => {
         const abilities = w.abilities?.length
-            ? `<div class="weapon-row-abilities">${escapeHtml(w.abilities.join(', '))}</div>`
+            ? `<div class="weapon-row-abilities">${AbilityHints.chips(w.abilities)}</div>`
             : '';
         const optionsHeader = idx === firstOption
             ? `<tr class="weapon-options-header"><td colspan="${columns}">Wargear options (tick to swap in; set Qty)</td></tr>`
@@ -870,7 +1408,9 @@ function initSimulateButton() {
     const btn = document.getElementById('btn-simulate');
     if (!btn) return;
 
-    btn.addEventListener('click', runSimulation);
+    btn.addEventListener('click', () => { Haptics.tap(); Busy.during(btn, runSimulation()); });
+    document.getElementById('sim-bar-result')?.addEventListener('click', () =>
+        document.getElementById('results-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 }
 
 /**
@@ -881,7 +1421,7 @@ async function runSimulation() {
     const defender = state.defender.unit;
 
     if (!weapons.length || !defender) {
-        alert('Please tick at least one attacker weapon and select a defender unit');
+        Toast.show('Tick at least one attacker weapon and choose a defender first', 'error');
         return;
     }
 
@@ -932,7 +1472,7 @@ async function runSimulation() {
         }
     } catch (err) {
         console.error('Simulation error:', err);
-        alert('Error running simulation');
+        Toast.show('The simulation could not be run', 'error');
     }
 }
 
@@ -940,6 +1480,15 @@ async function runSimulation() {
  * Display simulation results
  */
 function displayResults(result) {
+    document.getElementById('results-panel')?.classList.add('has-result');
+    // Phones: the last result in the bar beside Run, a tap away from the full results
+    const barResult = document.getElementById('sim-bar-result');
+    if (barResult) {
+        barResult.hidden = false;
+        barResult.innerHTML = `<span class="bar-value">${escapeHtml(result.summary.average_damage)}</span><span class="bar-label">dmg</span>`
+            + `<span class="bar-value">${escapeHtml(result.summary.models_killed)}</span><span class="bar-label">killed</span>`
+            + '<i class="fa-solid fa-chevron-down" aria-hidden="true"></i>';
+    }
     // Summary (totals across the ticked weapons)
     document.getElementById('res-avg-damage').textContent = result.summary.average_damage;
     document.getElementById('res-models-killed').textContent = result.summary.models_killed;

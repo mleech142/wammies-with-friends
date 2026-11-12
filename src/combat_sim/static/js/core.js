@@ -1343,6 +1343,149 @@
         return [s.name, s.text, s.category, s.detachment, s.timing].some(x => String(x || '').toLowerCase().includes(words));
     }
 
+    // -------------------------------------------------------------------------
+    // Layouts: phone, tablet or desktop, from what the device can do (never its user-agent string)
+    // -------------------------------------------------------------------------
+
+    const LAYOUTS = ['phone', 'tablet', 'desktop'];
+
+    /**
+     * The layout for a device: the person's preference ('phone', 'tablet' or 'desktop'; 'auto' or nothing works it
+     * out), else a phone when the screen's short side is under 600px and it's used by touch with no hover (a finger,
+     * not a mouse), a tablet when it's touch otherwise, and a desktop when it has a mouse. The short side, not the
+     * window's width, so a phone held sideways is still a phone.
+     */
+    function layoutFor({ pref = 'auto', coarse = false, hoverNone = false, shortSide = 1000 } = {}) {
+        if (LAYOUTS.includes(pref)) return pref;
+        const touch = coarse && hoverNone;
+        if (touch && shortSide < 600) return 'phone';
+        return touch ? 'tablet' : 'desktop';
+    }
+
+    // -------------------------------------------------------------------------
+    // Play: the board turned, the log read back
+    // -------------------------------------------------------------------------
+
+    /**
+     * The board's drawing turned `rotation` degrees clockwise (0, 90, 180 or 270) for the screen: the SVG transform
+     * from board drawing units (inches, y down, `board` {width, depth}) to the view's, and the view's own size. At 90
+     * the board's long side runs down the screen (a phone held upright).
+     */
+    function playViewTransform(rotation, board) {
+        const W = board.width, D = board.depth;
+        const r = ((Number(rotation) || 0) % 360 + 360) % 360;
+        if (r === 90) return { rotation: 90, transform: `matrix(0 1 -1 0 ${D} 0)`, width: D, depth: W };
+        if (r === 180) return { rotation: 180, transform: `matrix(-1 0 0 -1 ${W} ${D})`, width: W, depth: D };
+        if (r === 270) return { rotation: 270, transform: `matrix(0 -1 1 0 0 ${W})`, width: D, depth: W };
+        return { rotation: 0, transform: '', width: W, depth: D };
+    }
+
+    /**
+     * How the board is turned unless the player turns it: upright on a phone held upright (the long side down the
+     * screen), and with this player's own side nearest them (the bottom, or the left when upright) when the app plays
+     * one side (`seat` 0 or 1; null: both, hot-seat, as the board is drawn).
+     */
+    function playDefaultRotation({ seat = null, portrait = false } = {}) {
+        const theirs = seat === 1;
+        if (portrait) return theirs ? 270 : 90;
+        return theirs ? 180 : 0;
+    }
+
+    /** An SVG transform that keeps text at (x, y) upright on a board turned `rotation` degrees ('' when not turned). */
+    function playUpright(rotation, x, y) {
+        return rotation ? `rotate(${-rotation} ${x} ${y})` : '';
+    }
+
+    const ACTION_VERBS = {
+        place: 'placing', move: 'move', advance: 'Advance roll', stationary: 'remaining stationary', reset_move: 'move reset',
+        charge: 'charge roll', charge_move: 'charge move', pile_in: 'pile in', consolidate: 'consolidation', overrun: 'overrun',
+        shoot: 'shooting', fight: 'fight', reserve: 'putting in reserves', ingress: 'arrival', scout: 'scout move',
+        embark: 'embarking', disembark: 'disembarking', stratagem: 'stratagem', rule: 'rule', effect: 'effect',
+        remove_effect: 'removed effect', orders: 'automatic replies', next_phase: 'phase change', end_deployment: 'end of deployment',
+        start_action: 'mission action',
+    };
+
+    /** What Undo would take back, for its button: "Undo: move Void Warriors". `name(id)` gives a unit's name. */
+    function playActionLabel(event, name) {
+        if (!event || !event.action) return 'Undo';
+        const a = event.action;
+        const verb = ACTION_VERBS[a.type] || String(a.type || 'action').replace(/_/g, ' ');
+        return `Undo: ${verb}${a.unit ? ' ' + name(a.unit) : ''}`;
+    }
+
+    /** The models killed since the current phase began (the last event that changed the turn): their IDs. */
+    function playCasualties(events) {
+        const dead = [];
+        for (let i = events.length - 1; i >= 0; i--) {
+            for (const [id, m] of Object.entries(events[i].models || {})) {
+                if (m && m.alive === false && !dead.includes(id)) dead.push(id);
+            }
+            if (events[i].turn) break;
+        }
+        return dead;
+    }
+
+    /** Where a model stood before event `index` (its last position in an earlier event), or null. */
+    function playLastPosition(events, index, modelId) {
+        for (let i = Math.min(index, events.length) - 1; i >= 0; i--) {
+            const m = (events[i].models || {})[modelId];
+            if (m && m.position) return m.position;
+        }
+        return null;
+    }
+
+    /**
+     * An attack event's totals per target, for the result shown on the board: [{target, attacks, hits, wounds,
+     * killed}] (Hazardous rolls left out), in the order the targets were first attacked.
+     */
+    function playAttackTotals(event) {
+        const totals = [];
+        for (const a of (event && event.attacks) || []) {
+            if (a.name === 'Hazardous') continue;
+            let t = totals.find(x => x.target === a.target);
+            if (!t) totals.push(t = { target: a.target, attacks: 0, hits: 0, wounds: 0, killed: 0 });
+            t.attacks += a.attacks || 0;
+            t.hits += a.hits || 0;
+            t.wounds += (a.wounds || 0) + (a.mortal || 0);
+            t.killed += (a.killed || []).length;
+        }
+        return totals;
+    }
+
+    /**
+     * What happened from event `from` on that `player` made (their events: `by`, else the acting unit's player), for
+     * the "since your last turn" recap: [{index, icon, text, units}] (`units`: the units involved, to show on the
+     * board). `unit(id)` gives {name, player} (or undefined); `players` the players' names.
+     */
+    function playRecap(events, from, player, unit, players) {
+        const name = id => (unit(id) || { name: id }).name;
+        const owner = event => event.by ?? (event.action && event.action.unit && unit(event.action.unit) || {}).player
+            ?? (event.action || {}).player;
+        const lines = [];
+        const add = (index, icon, text, units) => lines.push({ index, icon, text, units: units.filter(Boolean) });
+        for (let i = Math.max(0, from); i < events.length; i++) {
+            const event = events[i], a = event.action || {};
+            const vp = (event.vp || []).filter(v => v.player === player).reduce((n, v) => n + (v.vp || 0), 0);
+            if (vp) add(i, 'trophy', `${players[player]} scored ${vp} VP`, []);
+            if (owner(event) !== player) continue;
+            const moved = { normal: 'moved', advance: 'Advanced', fall_back: 'Fell Back' }[a.mode] || 'moved';
+            if (a.type === 'move') add(i, 'person-walking', `${name(a.unit)} ${moved}`, [a.unit]);
+            else if (a.type === 'shoot' || a.type === 'fight' || a.type === 'overwatch') {
+                const totals = playAttackTotals(event);
+                const killed = totals.reduce((n, t) => n + t.killed, 0);
+                const verb = a.type === 'fight' ? 'fought' : a.type === 'overwatch' ? 'fired Overwatch at' : 'shot';
+                add(i, a.type === 'fight' ? 'hand-fist' : 'crosshairs',
+                    `${name(a.unit)} ${verb} ${totals.map(t => name(t.target)).join(', ') || 'nothing'}: ${killed} killed`,
+                    [a.unit, ...totals.map(t => t.target)]);
+            } else if (a.type === 'charge') add(i, 'bolt', `${name(a.unit)} declared a charge (rolled ${(event.rolls[0] || {}).total ?? '?'}")`, [a.unit]);
+            else if (a.type === 'charge_move') add(i, 'bolt', `${name(a.unit)} charged ${(a.targets || []).map(name).join(', ')}`, [a.unit, ...(a.targets || [])]);
+            else if (a.type === 'stratagem') add(i, 'bolt', `${players[player]} used ${event.stratagem || 'a stratagem'}${event.unit ? ' on ' + name(event.unit) : ''}`, [event.unit]);
+            else if (['ingress', 'rapid_ingress', 'scout', 'disembark'].includes(a.type)) add(i, 'parachute-box', `${name(a.unit)} ${a.type === 'scout' ? 'made a scout move' : a.type === 'disembark' ? 'disembarked' : 'arrived from reserves'}`, [a.unit]);
+            else if (a.type === 'start_action') add(i, 'flag', `${name(a.unit)} started a mission action`, [a.unit]);
+        }
+        return lines;
+    }
+
     /** Where to go after logging in: `next` if it's a path on this site ('/armies'), else '/'. Never '//x' or
      * '/\x', which browsers read as another site. */
     function safeNextPath(next) {
@@ -1351,7 +1494,8 @@
     }
 
     return {
-        safeNextPath,
+        safeNextPath, LAYOUTS, layoutFor,
+        playViewTransform, playDefaultRotation, playUpright, playActionLabel, playCasualties, playLastPosition, playAttackTotals, playRecap,
         playFormation, playPivot, playTurn, playFit, playMoveLabel, playPath, playPathLength, playRouteBends, playZoom, playPan, playPinch, nearestWithin, playUnitCard, playUnitTags, playLineVp, playLogTurns, playDieFace, playResult, playMarker, playVpLine, playSetupPrompt, playSeatNotice, playWaitingNotice, playOnline, playInviteText, playInviteCode, PLAY_MATS, PLAY_MAT_STRENGTH, playMat, playRollOff, playPhaseTrack, playDiceGroups, playLuck, playAttackSummary, playShotLines, playCentre, playBounds, playInside, playFootprintPoints, playBattlefieldGroups, playSnap,
         escapeHtml, truncate, formatMetricValue, getHeatColor, keywordHintHtml,
         copyLabel, defenderLabel, weaponVisible, pointsFor, pointsLabel, scaleUnitSize,

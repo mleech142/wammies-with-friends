@@ -145,6 +145,48 @@ both players see the same one for the whole game with nothing stored, and it's s
 - Board controls should be designed so they can work with touch later (large targets, unit-level dragging), without making phones a target for the first versions.
 - **To reconsider: a hosted version** (testing list item 12, October 2026). The owner asked to scope a version people use in a browser, and later on a phone, with nothing to install (a Docker image or a hosted site). This reopens "not hosting the engine and BSData-derived content on a server" above, so it needs its own plan before anything is built: data licences (BSData and Wahapedia are downloaded by each user and never redistributed), accounts and per-user storage (the app is one user per install), hosting costs, upkeep and security, phone-sized pages, and Docker self-hosting as a possible first step. *Scope written (October 2026):* [hosted-version-scope.md](hosted-version-scope.md). The data licences rule out a site the owner hosts for everyone; the owner agreed Docker self-hosting with named players, the host approving players' edits, an image with each release, phones after (its sections 7 and 8: release 2.8).
 
+## Play UI/UX
+
+A review of the board as a game (November 2026, asked for by the owner: elevate the interface in line with similar
+games, never change the rules) and the work that followed it, on desktop and on phones. Built:
+
+- **The page is the game.** A game open (`body.play-game-mode`) hides the page header and footer; on a desktop the
+  board fills the window's height between the two army panels, the selected unit's **action bar** sits under the
+  board (its actions; its datasheet stays in its army's panel), and the **battle log** is a drawer (the log button or
+  L, with an unread count). Less-used tools are in a More menu (`.dropdown`): turn the board, tactical view, sound,
+  full screen, Correct the game, Save game file, controls.
+- **One colour for the game's buttons.** The accent orange was also Player 1's colour, so Fire, Fight, OK and Next
+  phase use a neutral `--play-cta`: orange only ever means Player 1.
+- **Previews before acting, from the server** (the page works out no odds): attacks (`game.attack_preview`, `POST
+  /api/play/games/<id>/preview`: models likely killed, the chance to kill one, to wipe the unit, and a led unit's
+  leader; the attacks are built as the action builds them, each wound going to models in the target's standing
+  order, rolled up to `PREVIEW_TRIALS` times with the Simulator's dice, never game dice, within
+  `simulation.affordable_trials`), shown in the action bar and on an enemy's hover card; charges (`charge_options`'
+  `reach` before the roll: each enemy within 12" with its distance and `charge_chance` on 2D6, and flying); moves
+  (`GameSession.check`, `POST .../check`: a dry run of the dragged move, so the unit shows red with the reason before
+  it's dropped, with each enemy's engagement range shaded while dragging).
+- **On the board:** valid targets outlined and the rest dimmed with the reason; the hovered weapon's range round its
+  models; nameplates with a bar of models (or wounds) left and the unit's state, the same size at every zoom; models
+  killed this phase marked where they fell; objectives with the OC in range now; the board's edge in the acting
+  player's colour; a tactical view without the battle mat (T, or held Alt); the board turned a quarter at a time (R).
+- **The turn as it goes:** a banner when the phase changes; an attack's result over the board (its attacks › hits ›
+  wounds › killed and dice, numbers rising from each target; a click closes it, "Fast dice" shows less); sounds made
+  in the page (no files; off with the sound button); a warning when Next phase would leave units that can still act
+  ("Show me" picks the next one); Tab picks the next unit that can act; Undo says what it takes back.
+- **Hot-seat:** a hand-over screen when the other player is to act (their turn, or a reaction), which a setting turns
+  off. **Two places:** coming back to a game, a recap of what the other player did since this device last showed it
+  (`Core.playRecap`; stepped through on the board with each model's path), a "Notify me" for a notice when it's your
+  move while the page is in the background, and the games list says whose move it is, the round and the score.
+- **Phones** (`[data-layout="phone"]`, worked out per device by `Core.layoutFor`, or the Layout preference): a game
+  screen with no site chrome; the board turned so its long side runs down a phone held upright, with your own side
+  nearest you when the app plays one side; the action bar under the board (beside it when held sideways); the armies
+  and the log as sheets from tabs; the datasheet on request; a dragged model held above the finger, and a move by
+  touch waits for Confirm (checked with the server first); Fire, Fight and Next phase need holding a moment on a
+  touch screen; double tap zooms in on a unit; a finger between two units asks which.
+
+Not built: push notifications with the app closed (they need a push service; notices work while the page is open),
+and a full replay animation of the other player's turn (the recap steps through it instead).
+
 ## Roadmap
 
 1. **Hot-seat** (two players on one PC):

@@ -193,6 +193,16 @@ def register(app):
         """Import the BSData folder again (after changing its files), ignoring the cache (a job)."""
         return job_answer(jobs.of(app).submit('bsdata', bsdata_reimport_job))
 
+    @app.route('/api/preferences/layout', methods=['POST'])
+    def api_layout_preference():
+        """Your layout: 'phone', 'tablet', 'desktop' or 'auto' (Core.layoutFor works it out from the device). From the
+        Setup, Account and Play pages; it is one of your own preferences (settings.PREFERENCES)."""
+        layout = str((request.get_json(silent=True) or {}).get('layout') or 'auto')
+        if layout not in ('auto', 'phone', 'tablet', 'desktop'):
+            return jsonify({'error': 'Choose automatic, phone, tablet or desktop.'}), 400
+        access.principal().set_preferences(layout=None if layout == 'auto' else layout)
+        return jsonify({'layout': layout})
+
     @app.route('/api/bsdata/skip-setup', methods=['POST'])
     @host_only
     def api_bsdata_skip_setup():

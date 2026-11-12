@@ -10,7 +10,7 @@ fields (its connection, whether Undo can be pressed). A game waiting for the oth
 from .. import contagion
 from ..simulation import invulnerable_only
 from . import mission_state, missions, tactical
-from .game import (MANUAL_EFFECTS, MARKER_MM, OBJECTIVE_RANGE, afflictions, allocation_groups, can_fly, contagion_ranges,
+from .game import (ENGAGEMENT_RANGE, MANUAL_EFFECTS, MARKER_MM, OBJECTIVE_RANGE, afflictions, allocation_groups, can_fly, contagion_ranges,
                    deployment_zone, disembark_options, embark_options, grant_options, has_contagion, infiltrators,
                    ingress_rules, move_characteristic, objective_control, objectives_in_range, outline, ready_units,
                    rerollable, score, scouts, stratagem_targets, terrain_areas, usable_now, window_options)
@@ -53,6 +53,7 @@ def board(state, armies, last_event=None):
             'objective_oc': {o['id']: objective_control(state, o) for o in state['objectives']},
             'unit_objectives': {u['id']: objectives_in_range(state, u) for u in state['units']},
             'objective_size': {'marker_mm': MARKER_MM, 'range': OBJECTIVE_RANGE},
+            'engagement_range': ENGAGEMENT_RANGE,  # Drawn round enemy models while a unit is dragged
             'manual_effects': [{'key': k, 'name': n, 'side': side} for k, (n, side, _) in MANUAL_EFFECTS.items()],
             'mission': mission(state), 'twist': twist(state),
             'usable': usable_now(state), 'stratagem_targets': stratagem_targets(state),

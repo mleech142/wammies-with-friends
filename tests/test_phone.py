@@ -139,7 +139,7 @@ def phone(browser):
 
 
 def open_menu(page):
-    page.click('#nav-toggle')
+    page.click('#more-tab')
 
 
 def pick_unit(page, field, text):
@@ -219,6 +219,8 @@ def cell_detail(page):
 
 
 def select_unit(page):
+    if not page.is_visible('#army-0'):  # The phone game screen: the army opens as a sheet from its tab
+        page.click('#phone-tabs [data-phone-tab="0"]')
     page.click('#army-0 .play-unit[data-unit="p1-u0"]')
     page.wait_for_timeout(300)
 
@@ -240,14 +242,18 @@ PAGES = {
     'data-weapons': ('/data', data_tab('Weapons', '#filter-weapon-faction')),
     'data-profiles': ('/data', data_tab('Target Profiles')),
     'data-keywords': ('/data', data_tab('Keywords')),
-    'data-add-faction': ('/data', click_then('button:has-text("+ Add Faction")')),
-    'data-add-stratagem': ('/data', click_then('button:has-text("+ Add Core Stratagem")')),
+    'data-add-faction': ('/data', click_then('button:has-text("Add Faction")')),
+    'data-add-stratagem': ('/data', click_then('button:has-text("Add Core Stratagem")')),
     'setup': ('/setup', None),
     'play': ('/play?game={game}', None),
     'play-selected': ('/play?game={game}', select_unit),
-    'play-games': ('/play', None),  # No game open: the Games pop-up
-    'play-battlefields': ('/play', click_then('#battlefields-btn')),
+    'play-empty': ('/play', None),  # No game open: the board's empty state
+    'play-games': ('/play', click_then('#play-empty-btn')),  # The Games pop-up
+    'play-battlefields': ('/play', lambda page: (page.click('#play-empty-btn'), click_then('#battlefields-btn')(page))),
     'menu': ('/setup', open_menu),
+    'armies-actions': ('/armies', lambda page: (open_army(page), page.tap('.army-actions .overflow-toggle'))),
+    'armies-add': ('/armies', lambda page: (open_army(page), page.tap('#add-units-fab'))),
+    'simulator-tip': ('/', lambda page: (simulate(page), page.tap('.weapon-table th[title="Models with this weapon"]'))),
 }
 
 
@@ -265,12 +271,19 @@ def test_the_page_fits_a_phone(name, server, phone, request):
 
 
 def test_a_desktop_window_keeps_the_full_menu(server, browser):
-    """A mouse at desktop width: the links in the header, no menu button."""
+    """A mouse at desktop width: the links in the header, no menu button, no tab bar, actions in place."""
     context = browser.new_context(viewport={'width': 1400, 'height': 900})
     page = context.new_page()
     page.goto(server[0] + '/setup', wait_until='networkidle')
     assert page.is_visible('.header-nav .nav-link[href="/analytics"]')
-    assert not page.is_visible('#nav-toggle')
+    assert not page.is_visible('#nav-toggle') and not page.is_visible('.tab-bar')
+    page.goto(server[0] + '/armies', wait_until='networkidle')
+    assert page.is_visible('#attackers-btn') and not page.is_visible('.army-actions .overflow-toggle') and not page.is_visible('#add-units-fab')
+    # Copying and sharing the list are in the Export menu
+    assert not page.is_visible('#share-btn')
+    page.click('.army-actions .dropdown-toggle')
+    assert page.is_visible('.dropdown-menu [data-click="share-btn"]')
+    assert page.is_visible('#unit-search')
     context.close()
 
 
@@ -295,17 +308,25 @@ if os.environ.get('PHONE_REPORT'):
               f"\n  small ({len(found['small'])}): {found['small'][:25]}\n  zooms ({len(found['zooms'])}): {found['zooms'][:10]}")
 
 
-def test_the_menu_opens_closes_and_goes_to_a_page(server, phone):
+def test_the_tab_bar_and_more_go_to_every_page(server, phone):
+    """Phones: the main pages in the tab bar at the bottom, the rest in the More sheet over it."""
     phone.goto(server[0] + '/setup', wait_until='networkidle')
-    assert not phone.is_visible('.header-nav .nav-link[href="/armies"]')
-    phone.tap('#nav-toggle')
-    assert phone.get_attribute('#nav-toggle', 'aria-expanded') == 'true'
-    assert phone.is_visible('.header-nav .nav-link[href="/armies"]')
-    phone.tap('main')  # A tap anywhere else closes it
-    assert not phone.is_visible('.header-nav .nav-link[href="/armies"]')
-    phone.tap('#nav-toggle')
-    phone.tap('.header-nav .nav-link[href="/armies"]')
+    assert not phone.is_visible('#nav-toggle')
+    assert phone.inner_text('.brand-page') == 'Setup'
+    assert phone.is_visible('.tab-bar a[href="/armies"]') and 'active' in phone.get_attribute('#more-tab', 'class')
+    assert not phone.is_visible('.header-nav .nav-link[href="/data"]')
+    phone.tap('#more-tab')
+    assert phone.get_attribute('#more-tab', 'aria-expanded') == 'true'
+    assert phone.is_visible('.header-nav .nav-link[href="/data"]')
+    assert not phone.is_visible('.header-nav .nav-link[href="/armies"]')  # In the tab bar already
+    phone.tap('#nav-scrim')  # A tap on the page behind closes it
+    assert not phone.is_visible('.header-nav .nav-link[href="/data"]')
+    phone.tap('#more-tab')
+    phone.tap('.header-nav .nav-link[href="/data"]')
+    phone.wait_for_url('**/data')
+    phone.tap('.tab-bar a[href="/armies"]')
     phone.wait_for_url('**/armies')
+    assert 'active' in phone.get_attribute('.tab-bar a[href="/armies"]', 'class')
 
 
 def test_an_info_button_explains_on_a_tap_without_ticking_its_row(server, phone):
@@ -330,10 +351,13 @@ def test_running_a_simulation_on_a_phone_shows_the_results(server, phone):
 
 
 def test_adding_a_unit_on_a_phone_keeps_the_picker_where_it_was(server, phone):
-    """Issue #26: the army's table grows above the picker. Scroll anchoring switched off, as in Safari, which has none."""
+    """Issue #26: the army's table grows while units are added. On a phone the picker is a sheet over the page, which
+    stays open and doesn't move; a toast says what was added. Scroll anchoring switched off, as in Safari."""
     phone.goto(server[0] + '/armies', wait_until='networkidle')
     open_army(phone)
     phone.add_style_tag(content='html, body, * { overflow-anchor: none !important; }')
+    assert not phone.is_visible('.unit-picker-item')
+    phone.tap('#add-units-fab')
     picked = phone.locator('.unit-picker-item').last
     picked.scroll_into_view_if_needed()
     top = picked.evaluate('el => el.getBoundingClientRect().top')
@@ -342,6 +366,9 @@ def test_adding_a_unit_on_a_phone_keeps_the_picker_where_it_was(server, phone):
     phone.wait_for_function(f"document.querySelectorAll('#army-units tr').length > {rows}")
     phone.wait_for_timeout(300)
     assert abs(picked.evaluate('el => el.getBoundingClientRect().top') - top) <= 2
+    assert phone.is_visible('.toast.show') and 'Added' in phone.inner_text('.toast')
+    phone.tap('#army-add-done')
+    assert not phone.is_visible('.unit-picker-item')
 
 
 def test_opening_a_saved_army_keeps_its_force_disposition(server, phone):
@@ -377,31 +404,68 @@ def test_the_matrix_on_a_phone_is_one_attacker_at_a_time(server, phone):
     assert phone.is_visible('.matchups-detail-panel')
 
 
-def test_play_on_a_phone_has_tabs_and_a_sheet_for_the_selected_unit(server, phone):
+def test_play_on_a_phone_is_a_game_screen(server, phone):
+    """The phone game screen: the board takes the screen (no site header or tab bar); the armies and the log open as
+    sheets from the tabs; a unit picked shows its actions under the board, and its datasheet on request."""
     address, ids = server
     phone.goto(f'{address}/play?game={ids["game"]}', wait_until='networkidle')
-    assert phone.is_visible('#army-0') and not phone.is_visible('#army-1') and not phone.is_visible('.play-log')  # Red to act
-    phone.tap('[data-phone-tab="1"]')
+    assert phone.evaluate('document.documentElement.dataset.layout') == 'phone'
+    assert not phone.is_visible('.header') and not phone.is_visible('.tab-bar')
+    assert phone.is_visible('#play-board') and not phone.is_visible('#army-0') and not phone.is_visible('.play-log')
+    phone.tap('#phone-tabs [data-phone-tab="1"]')
     assert phone.is_visible('#army-1') and not phone.is_visible('#army-0')
-    phone.tap('[data-phone-tab="log"]')
+    phone.tap('#phone-tabs [data-phone-tab="log"]')
     assert phone.is_visible('.play-log') and not phone.is_visible('#army-1')
-    phone.tap('[data-phone-tab="0"]')
+    phone.tap('#phone-tabs [data-phone-tab="log"]')  # The same tab again: closed
+    assert not phone.is_visible('.play-log')
+    phone.tap('#phone-tabs [data-phone-tab="0"]')
+    phone.tap('#army-0 .play-unit[data-unit="p1-u0"]')  # Picking a unit closes the army's sheet
+    assert not phone.is_visible('#army-0')
+    assert phone.is_visible('#action-bar') and 'Void Warriors' in phone.inner_text('#action-head')
     assert not phone.is_visible('#unit-sheet')
-    phone.tap('#army-0 .play-unit[data-unit="p1-u0"]')
-    assert phone.is_visible('#unit-sheet') and 'Void Warriors' in phone.inner_text('#unit-sheet')
+    phone.tap('#sheet-open')
+    assert phone.is_visible('#unit-sheet') and 'base 32mm' in phone.inner_text('#unit-sheet')
     phone.tap('#sheet-close')
-    assert not phone.is_visible('#unit-sheet')
+    assert not phone.is_visible('#unit-sheet') and phone.is_visible('#action-bar')  # Still selected
+    phone.tap('#action-close')
+    assert not phone.is_visible('#action-bar')
 
 
-def test_play_on_a_desktop_keeps_both_armies_beside_the_board(server, browser):
+def test_play_on_a_phone_held_sideways_is_still_a_phone(server, browser):
+    """Wider than 600px, but a phone: the phone game screen, the board in the first screen, the actions beside it."""
+    address, ids = server
+    context = browser.new_context(**dict(PHONE, viewport={'width': 844, 'height': 390}, screen={'width': 390, 'height': 844}))
+    page = context.new_page()
+    page.goto(f'{address}/play?game={ids["game"]}', wait_until='networkidle')
+    assert page.evaluate('document.documentElement.dataset.layout') == 'phone'
+    board = page.locator('#play-board').bounding_box()
+    assert board['y'] < 390 and board['height'] > 150  # On the first screen, not under the header
+    page.tap('#phone-tabs [data-phone-tab="0"]')
+    page.tap('#army-0 .play-unit[data-unit="p1-u0"]')
+    bar = page.locator('#action-bar').bounding_box()
+    board = page.locator('#play-board').bounding_box()
+    assert bar['x'] >= board['x'] + board['width'] - 1  # Beside the board
+    assert page.evaluate('document.documentElement.scrollWidth') <= 844
+    context.close()
+
+
+def test_play_on_a_desktop_fills_the_window_with_the_armies_beside_the_board(server, browser):
     address, ids = server
     context = browser.new_context(viewport={'width': 1400, 'height': 900})
     page = context.new_page()
     page.goto(f'{address}/play?game={ids["game"]}', wait_until='networkidle')
-    assert page.is_visible('#army-0') and page.is_visible('#army-1') and page.is_visible('.play-log')
-    assert not page.is_visible('#phone-tabs')
+    assert page.evaluate('document.documentElement.dataset.layout') == 'desktop'
+    assert page.is_visible('#army-0') and page.is_visible('#army-1')
+    assert not page.is_visible('#phone-tabs') and not page.is_visible('.play-log')  # The log is a drawer
+    assert page.evaluate('document.documentElement.scrollHeight') <= 900  # One screen: no scrolling to the board
     page.click('#army-0 .play-unit[data-unit="p1-u0"]')
-    assert page.is_visible('#army-detail-0 #unit-detail') and not page.is_visible('#unit-sheet')
+    assert page.is_visible('#army-detail-0 #unit-info') and page.is_visible('#action-bar') and not page.is_visible('#unit-sheet')
+    page.keyboard.press('l')
+    page.wait_for_timeout(400)
+    assert page.is_visible('.play-log')
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(400)
+    assert not page.is_visible('.play-log')
     context.close()
 
 
@@ -410,8 +474,9 @@ def test_play_on_a_desktop_keeps_both_armies_beside_the_board(server, browser):
 def board_to_screen(page, x, y):
     """A board point (inches, y up from the bottom edge) as a point on the screen."""
     return page.evaluate("""([x, y]) => { const svg = document.getElementById('play-board');
-        const depth = svg.viewBox.baseVal && 44; const pt = svg.createSVGPoint(); pt.x = x; pt.y = depth - y;
-        const p = pt.matrixTransform(svg.getScreenCTM()); return [p.x, p.y]; }""", [x, y])
+        const root = document.getElementById('board-root');  // The board's drawing, turned for the screen
+        const pt = svg.createSVGPoint(); pt.x = x; pt.y = 44 - y;
+        const p = pt.matrixTransform(root.getScreenCTM()); return [p.x, p.y]; }""", [x, y])
 
 
 def touch(cdp, kind, *points):
@@ -446,12 +511,14 @@ def test_the_play_board_by_touch(tmp_path_factory, browser):
         cdp = context.new_cdp_session(page)
         game = ids['game']
 
-        # Select Void Warriors, tap the board in Red's deployment zone (the bottom 12"), press OK
+        # Select Void Warriors (from Red's sheet), tap the board in Red's deployment zone (the bottom 12"), press OK
+        page.tap('#phone-tabs [data-phone-tab="0"]')
         page.tap('#army-0 .play-unit[data-unit="p1-u0"]')
-        page.wait_for_timeout(600)  # The board scrolls up above the unit's sheet
-        sheet_top = page.evaluate("document.getElementById('unit-sheet').getBoundingClientRect().top")
-        assert board_to_screen(page, 30, 0)[1] < sheet_top  # The whole board shows above it
-        tap(cdp, page, *board_to_screen(page, 30, 6))
+        page.wait_for_timeout(300)
+        board = page.locator('#play-board').bounding_box()
+        x, y = board_to_screen(page, 30, 6)
+        assert board['x'] <= x <= board['x'] + board['width'] and board['y'] <= y <= board['y'] + board['height']  # In view
+        tap(cdp, page, x, y)
         assert page.is_visible('#place-bar')
         page.tap('#place-ok')
         page.wait_for_load_state('networkidle')
@@ -460,7 +527,6 @@ def test_the_play_board_by_touch(tmp_path_factory, browser):
         assert all(before)
 
         # A tap that wobbles a few pixels on a model: no move, no setting up again
-        page.tap('#sheet-close') if page.is_visible('#sheet-close') else None
         x, y, r = model_box(page, 'p1-u0')
         tap(cdp, page, x, y, jitter=4)
         assert placed(page, game, 'p1-u0') == before and not page.is_visible('#place-bar')
@@ -476,13 +542,13 @@ def test_the_play_board_by_touch(tmp_path_factory, browser):
         assert placed(page, game, 'p1-u0') == before and not page.is_visible('#place-bar')
 
         # A finger just off a base still picks the model (nothing selected first)
-        if page.is_visible('#sheet-close'):
-            page.tap('#sheet-close')
-        assert not page.is_visible('#unit-sheet')
-        page.wait_for_timeout(600)
+        if page.is_visible('#action-close'):
+            page.tap('#action-close')
+        assert not page.is_visible('#action-bar')
+        page.wait_for_timeout(300)
         x, y, r = model_box(page, 'p1-u0')
         tap(cdp, page, x, y + r + 12)
-        assert page.is_visible('#unit-sheet') and 'Void Warriors' in page.inner_text('#unit-sheet')
+        assert page.is_visible('#action-bar') and 'Void Warriors' in page.inner_text('#action-head')
 
         # Two fingers apart: zoomed in about them; together again: back out
         width = lambda: page.evaluate("document.getElementById('play-board').viewBox.baseVal.width")  # noqa: E731
@@ -531,6 +597,7 @@ def test_one_model_at_a_time_and_spinning_it_by_touch(tmp_path_factory, browser)
 
         page.tap('#one-btn')
         assert page.get_attribute('#one-btn', 'aria-pressed') == 'true'
+        page.tap('#phone-tabs [data-phone-tab="0"]')
         page.tap('#army-0 .play-unit[data-unit="p1-u0"]')
         page.wait_for_timeout(600)
         x, y, r = model_box(page, 'p1-u0')
@@ -539,18 +606,31 @@ def test_one_model_at_a_time_and_spinning_it_by_touch(tmp_path_factory, browser)
         touch(cdp, 'touchEnd')
         x, y, r = model_box(page, 'p1-u0')  # Still under the fingers, bigger
         assert r > 8
+        # Drag it 1" forward (up the board, however the board is turned on screen): the finger ends a lift below where
+        # the model goes, as a dragged model is held above the finger (play.js LIFT_PX); the move waits for Confirm
+        first = page.evaluate("document.querySelector('#play-board .play-model[data-unit=p1-u0]').dataset.model")
+        units = page.evaluate(f"fetch('/api/play/games/{game}').then(r => r.json()).then(g => g.state.units)")
+        start = next(m['position'] for u in units if u['id'] == 'p1-u0' for m in u['models'] if m['id'] == first)
+        tx, ty = board_to_screen(page, start['x'], start['y'] + 1)
+        steps = 8
         touch(cdp, 'touchStart', (x, y))
-        for step in range(1, 7):  # 24 px: about 1"
-            touch(cdp, 'touchMove', (x, y - 4 * step))
+        for step in range(1, steps + 1):
+            touch(cdp, 'touchMove', (x + (tx - x) * step / steps, y + (ty + 52 - y) * step / steps))
         touch(cdp, 'touchEnd')
+        page.wait_for_timeout(500)
+        assert page.is_visible('#move-ok'), page.inner_text('#play-message')
+        assert placed(page, game, 'p1-u0') == before  # Not sent until Confirm
+        page.wait_for_selector('#move-ok:not([disabled])')
+        page.tap('#move-ok')
         page.wait_for_load_state('networkidle')
         page.wait_for_timeout(300)
         after = placed(page, game, 'p1-u0')
         moved = [i for i, (a, b) in enumerate(zip(after, before)) if a != b]
-        assert len(moved) == 1 and after[moved[0]]['y'] > before[moved[0]]['y'], page.inner_text('#play-message')  # Just it, forward
+        assert len(moved) == 1 and after[moved[0]]['y'] == pytest.approx(before[moved[0]]['y'] + 1, abs=0.3), \
+            page.inner_text('#play-message')  # Just it, 1" forward
 
-        page.wait_for_selector('#unit-sheet [data-spin]')
-        page.tap('#unit-sheet [data-spin="15"]')
+        page.wait_for_selector('#unit-detail [data-spin]')
+        page.tap('#unit-detail [data-spin="15"]')
         messages.append(page.inner_text('#play-message'))  # "Turning ...": the spin is waiting to be sent
         page.tap('#zoom-in-btn')  # Anything else: the spin is sent
         for _ in range(40):  # Until it is saved (a slow CI runner can take longer than a fixed pause)
@@ -562,3 +642,27 @@ def test_one_model_at_a_time_and_spinning_it_by_touch(tmp_path_factory, browser)
         assert spun['angle'] == 15 and (spun['x'], spun['y']) == (after[moved[0]]['x'], after[moved[0]]['y']), \
             {'messages': messages, 'errors': errors, 'spun': spun}
         context.close()
+
+
+def test_a_hover_title_explains_on_a_tap_or_a_long_press(server, phone):
+    """Tips (app.js): plain text with a title opens it on a tap, as a sheet with its name on a phone; a button with
+    a title opens it on a long-press, and the tap that ends the press doesn't press the button."""
+    phone.goto(server[0] + '/', wait_until='networkidle')
+    phone.evaluate("""() => document.querySelector('main').insertAdjacentHTML('afterbegin',
+        `<span id="kw" title="Each time an attack is made with this weapon, an unmodified hit roll of 6 scores a critical hit.">Lethal Hits</span>
+         <button id="pressed" title="Saves the army, then opens the Match view" onclick="this.dataset.clicked = 1">Match view</button>`)""")
+    phone.tap('#kw')
+    assert phone.is_visible('#info-popover.tip-sheet')
+    assert phone.inner_text('#info-popover .tip-heading') == 'Lethal Hits'
+    assert 'critical hit' in phone.inner_text('#info-popover .tip-body')
+    phone.mouse.click(180, 100)  # The dimmed page behind closes it
+    assert not phone.is_visible('#info-popover')
+    box = phone.locator('#pressed').bounding_box()
+    cdp = phone.context.new_cdp_session(phone)
+    point = {'x': box['x'] + box['width'] / 2, 'y': box['y'] + box['height'] / 2, 'id': 0}
+    cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point]})
+    phone.wait_for_timeout(700)
+    cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+    phone.wait_for_timeout(200)
+    assert phone.is_visible('#info-popover') and 'Match view' in phone.inner_text('#info-popover')
+    assert phone.get_attribute('#pressed', 'data-clicked') is None

@@ -21,7 +21,7 @@
 .play-objective.on-terrain .play-objective-marker { stroke: var(--success); stroke-width: 0.18; }
 .play-editor-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.5rem 0; align-items: center; }
 .play-editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; margin: 0.4rem 0; }
-.play-editor-grid label { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--text-secondary); }
+.play-editor-grid label { display: flex; flex-direction: column; font-size: var(--fs-sm); color: var(--text-secondary); }
 .play-editor-grid .filter-select, .play-editor-grid .filter-input { width: 100%; min-width: 0; }
 #bf-list .play-game-open { display: block; width: 100%; margin-bottom: 0.25rem; }
 #bf-list .play-game-open.active { border-color: var(--accent); background: var(--accent-tint); }
@@ -31,10 +31,10 @@
 .play-path { fill: none; stroke: var(--player); stroke-opacity: 0.55; stroke-width: 0.06; stroke-dasharray: 0.3 0.2; }
 
 /* Battlefields list: maps, Event Companion layouts by pairing (A, B, C), saved */
-.play-bf-group { margin: 0.6rem 0 0.3rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+.play-bf-group { margin: 0.6rem 0 0.3rem; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
 .play-bf-layouts { margin: 0.6rem 0; }
-.play-bf-layouts summary { cursor: pointer; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
-.play-bf-pairing { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; padding: 0.2rem 0; font-size: 0.8rem; }
+.play-bf-layouts summary { cursor: pointer; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+.play-bf-pairing { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; padding: 0.2rem 0; font-size: var(--fs-sm); }
 .play-bf-letters { display: inline-flex; gap: 0.2rem; flex-shrink: 0; }
 .play-bf-letters .btn-small { min-width: 1.8rem; padding: 0.15rem 0.4rem; }
 .play-bf-letters .btn-small.active { border-color: var(--accent); background: var(--accent-tint); }
@@ -46,14 +46,14 @@
 .play-mission-player.play-p2 { --player: var(--play-p2); }
 .play-mission-player summary { cursor: pointer; display: flex; justify-content: space-between; gap: 0.5rem; }
 .play-mission-vp { font-weight: 700; white-space: nowrap; }
-.play-mission-lines { list-style: none; margin: 0.3rem 0 0; padding: 0; font-size: 0.82rem; }
+.play-mission-lines { list-style: none; margin: 0.3rem 0 0; padding: 0; font-size: var(--fs-sm); }
 .play-mission-lines li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; padding: 0.2rem 0; border-top: 1px solid var(--border); }
 .play-mission-lines li span:first-child { flex: 1 1 60%; }
 .play-mission-lines li small { flex-basis: 100%; color: var(--text-secondary); }
 .play-mission-lines li.later { opacity: 0.6; }
 .play-mission-now { color: var(--success); font-weight: 600; white-space: nowrap; }
 .play-mission-later { color: var(--text-secondary); font-style: italic; white-space: nowrap; }
-.play-mission-choice { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.4rem; margin: 0.3rem 0; border: 1px solid var(--warning); border-radius: 6px; font-size: 0.85rem; }
+.play-mission-choice { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.4rem; margin: 0.3rem 0; border: 1px solid var(--warning); border-radius: var(--radius-md); font-size: var(--fs-sm); }
 .play-unit-group.condemned .play-unit-outline { stroke: var(--error); stroke-width: 0.24; stroke-dasharray: 0.4 0.25; }
 .play-vp-line { color: var(--success); }
 
@@ -66,13 +66,13 @@
 .play-secondary-choice > div.play-p2 { --player: var(--play-p2); }
 .play-secondary-head { margin-top: 0.5rem; font-weight: 600; }
 .play-secondary-card { margin-top: 0.3rem; }
-.play-secondary-card > strong { font-size: 0.85rem; }
-.play-secondary-card .play-mission-vp { float: right; font-size: 0.85rem; }
+.play-secondary-card > strong { font-size: var(--fs-sm); }
+.play-secondary-card .play-mission-vp { float: right; font-size: var(--fs-sm); }
 
 /* Mission actions and operation markers */
-.play-mission-actions { margin-bottom: 0.6rem; padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; }
-.play-mission-actions h4 { margin: 0 0 0.3rem; font-size: 0.85rem; }
-.play-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem; font-size: 0.85rem; }
+.play-mission-actions { margin-bottom: 0.6rem; padding: 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.play-mission-actions h4 { margin: 0 0 0.3rem; font-size: var(--fs-sm); }
+.play-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem; font-size: var(--fs-sm); }
 .play-action-row .filter-select { max-width: 100%; }
 .play-marker rect { fill: var(--player); stroke: #fff; stroke-width: 0.06; }
 .play-marker.play-p1 { --player: var(--play-p1); }
@@ -86,11 +86,11 @@
 .play-card-buttons { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0.25rem 0; }
 .play-card-buttons .btn-small.active { border-color: var(--accent); background: var(--accent-tint); }
 .play-secondary-card.held > strong { opacity: 0.7; }
-.play-guards { display: grid; grid-template-columns: 1fr; gap: 0.2rem; font-size: 0.8rem; }
+.play-guards { display: grid; grid-template-columns: 1fr; gap: 0.2rem; font-size: var(--fs-sm); }
 .play-guards label { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; }
 
 /* The game's twist, beside its name */
-.play-twist { font-size: 0.75rem; padding: 0.1rem 0.45rem; border: 1px solid var(--warning); border-radius: 999px; color: var(--warning); cursor: help; }
+.play-twist { font-size: var(--fs-xs); padding: 0.1rem 0.45rem; border: 1px solid var(--warning); border-radius: var(--radius-pill); color: var(--warning); cursor: help; }
 #new-mirrored { margin-top: 0.3rem; }
 
 /* Deployment: a unit placed provisionally, until OK */
@@ -109,7 +109,7 @@
 .page-header #games-btn { margin-left: auto; }
 .play-modal-actions { display: flex; align-items: center; gap: 0.75rem; }
 .play-games-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; padding: 1.25rem 1.5rem; }
-.play-games-body h4 { margin: 0 0 0.6rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+.play-games-body h4 { margin: 0 0 0.6rem; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
 .play-games-body #game-list { max-height: 60vh; overflow-y: auto; }
 .modal-content.play-bf-modal { max-width: 1500px; width: 96%; }
 .play-bf-modal .play-bf-layout { padding: 1rem; }
@@ -117,6 +117,13 @@
 @media (max-width: 1400px) {
     .play-layout.play-layout-game { grid-template-columns: 250px minmax(0, 1fr) 250px; }
 }
+
+/* No game open: only the board card, holding the empty state (the armies, board and log come with a game) */
+.play-empty { display: none; }
+.play-layout.play-layout-game.no-game { grid-template-columns: minmax(0, 1fr); }
+.no-game > .play-army,
+.no-game .play-board-card > :not(.play-empty) { display: none !important; }
+.no-game .play-empty { display: flex; min-height: 360px; }
 @media (max-width: 1100px) {
     .play-layout.play-layout-game { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     .play-layout-game .play-board-card { grid-column: 1 / -1; order: -1; }
@@ -133,35 +140,35 @@
     background: linear-gradient(270deg, color-mix(in srgb, var(--player) 35%, transparent), transparent); border-radius: 0 8px 8px 0; }
 .play-side { align-items: center; }
 .play-side.active { box-shadow: inset 0 0 0 2px var(--player), 0 0 12px color-mix(in srgb, var(--player) 45%, transparent); }
-.play-side-name { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
-.play-side-cp { font-size: 0.75rem; color: var(--text-secondary); }
+.play-side-name { font-size: var(--fs-base); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.play-side-cp { font-size: var(--fs-xs); color: var(--text-secondary); }
 .play-scorebox { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.1rem 1.3rem;
     background: var(--bg-primary); border: 1px solid var(--border); clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%); }
-.play-score { font-size: 1.6rem; font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.play-score { font-size: var(--fs-xl); font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .play-score span { margin: 0 0.4rem; color: var(--text-muted); }
 .play-pips { display: flex; gap: 0.3rem; margin: 0.1rem 0 0.15rem; }
 .play-pip { width: 0.5rem; height: 0.5rem; border-radius: 50%; border: 1px solid var(--text-muted); }
 .play-pip.done { background: var(--text-muted); }
 .play-pip.now { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 6px var(--accent); }
 .play-steps { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 0.75rem; margin-top: 0.45rem; }
-.play-steps-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; font-size: 0.85rem; color: var(--text-secondary); }
+.play-steps-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; font-size: var(--fs-sm); color: var(--text-secondary); }
 .play-steps-left strong { color: var(--text-secondary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .play-steps .play-phases[hidden] { display: none; }
 .play-steps .play-turn { grid-column: 2; }
 .play-steps .play-phases:not([hidden]) + .play-turn { grid-column: auto; grid-row: 2; grid-column: 1 / -1; justify-self: center; }
 .play-steps .play-toolbar-actions { grid-column: 3; justify-self: end; }
-.play-icon-btn { background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 8px;
-    padding: 0.35rem 0.55rem; cursor: pointer; font-size: 0.85rem; }
+.play-icon-btn { background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-lg);
+    padding: 0.35rem 0.55rem; cursor: pointer; font-size: var(--fs-sm); }
 .play-icon-btn:hover:not(:disabled) { color: var(--text-primary); border-color: var(--accent); }
 .play-icon-btn:disabled { opacity: 0.4; cursor: default; }
 .play-icon-btn.active { border-color: var(--accent); background: var(--accent-tint); color: var(--text-primary); }
 .play-hud .play-message { margin: 0.4rem auto 0; width: fit-content; max-width: 90%; text-align: center; background: var(--bg-tertiary);
-    border: 1px solid var(--border); border-radius: 999px; padding: 0.2rem 0.8rem; }
+    border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 0.2rem 0.8rem; }
 .play-hud .play-message:empty { display: none; }
 .play-board-wrap { position: relative; }
 .play-go { position: absolute; right: 1.2rem; bottom: 1.2rem; z-index: 5; display: inline-flex; align-items: center; gap: 0.5rem;
-    background: var(--accent); color: var(--on-accent); border: none; border-radius: 999px; padding: 0.65rem 1.2rem;
-    font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: var(--radius-pill); padding: 0.65rem 1.2rem;
+    font-weight: 700; font-size: var(--fs-base); cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
 .play-go:hover { background: var(--accent-hover); }
 .play-go[hidden] { display: none; }
 
@@ -175,26 +182,26 @@
     background: linear-gradient(90deg, color-mix(in srgb, var(--player) 55%, transparent), color-mix(in srgb, var(--player) 15%, transparent)); }
 .play-army.play-p2 .play-army-head { background: linear-gradient(270deg, color-mix(in srgb, var(--player) 55%, transparent), color-mix(in srgb, var(--player) 15%, transparent)); }
 .play-army-name { font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; min-width: 0; overflow-wrap: anywhere; }
-.play-army-name small { display: block; font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 0.72rem; color: var(--text-secondary); }
+.play-army-name small { display: block; font-weight: 500; text-transform: none; letter-spacing: 0; font-size: var(--fs-xs); color: var(--text-secondary); }
 .play-army-stats { display: flex; gap: 0.7rem; align-items: baseline; }
 .play-army-cp, .play-army-vp { font-weight: 800; font-variant-numeric: tabular-nums; }
-.play-army-cp { font-size: 1rem; color: var(--text-secondary); }
-.play-army-vp { font-size: 1.5rem; }
-.play-army-cp small, .play-army-vp small { font-size: 0.6rem; margin-left: 0.15rem; color: var(--text-muted); }
-.play-army-split { grid-column: 1 / -1; font-size: 0.72rem; color: var(--text-secondary); }
+.play-army-cp { font-size: var(--fs-base); color: var(--text-secondary); }
+.play-army-vp { font-size: var(--fs-xl); }
+.play-army-cp small, .play-army-vp small { font-size: var(--fs-2xs); margin-left: 0.15rem; color: var(--text-muted); }
+.play-army-split { grid-column: 1 / -1; font-size: var(--fs-xs); color: var(--text-secondary); }
 .play-army-detail:empty, .play-army-detail:has(> #unit-detail:empty) { display: none; }
 .play-army-detail { padding: 0.55rem 0.75rem; background: var(--bg-tertiary); border-top: 1px solid var(--border); }
 .play-army-sec { border-top: 1px solid color-mix(in srgb, var(--player) 25%, var(--border)); }
 .play-army-sec[hidden] { display: none; }
-.play-army-sec > summary { cursor: pointer; padding: 0.4rem 0.75rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+.play-army-sec > summary { cursor: pointer; padding: 0.4rem 0.75rem; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.08em; color: var(--player); display: flex; justify-content: space-between; }
 .play-army-sec > div { padding: 0 0.75rem 0.6rem; }
 .play-army-count { color: var(--text-muted); font-weight: 600; letter-spacing: 0; }
 .play-army .play-player { margin-bottom: 0; }
 .play-army .play-player-stratagems { margin: 0; }
-.play-army .play-player-stratagems select { width: auto; font-size: 0.8rem; padding: 0.1rem 0.3rem; }
+.play-army .play-player-stratagems select { width: auto; font-size: var(--fs-sm); padding: 0.1rem 0.3rem; }
 .play-mission-block { margin-bottom: 0.5rem; }
-.play-mission-block h6 { margin: 0.2rem 0 0.1rem; font-size: 0.85rem; display: flex; justify-content: space-between; gap: 0.5rem; }
+.play-mission-block h6 { margin: 0.2rem 0 0.1rem; font-size: var(--fs-sm); display: flex; justify-content: space-between; gap: 0.5rem; }
 .play-mission-block .play-hint { margin: 0 0 0.2rem; }
 
 /* Each army panel scrolls on its own beside the board */
@@ -208,9 +215,9 @@
 /* Badges on a unit's row: Ready, Battle-shocked, objectives in range, effects, Destroyed */
 .play-unit-name { display: block; }
 .play-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0.2rem 0 0.1rem; }
-.play-tag { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.05rem 0.4rem; border-radius: 999px; font-size: 0.65rem;
+.play-tag { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.05rem 0.4rem; border-radius: var(--radius-pill); font-size: var(--fs-2xs);
     font-weight: 700; letter-spacing: 0.03em; line-height: 1.5; background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
-.play-tag i { font-size: 0.6rem; }
+.play-tag i { font-size: var(--fs-2xs); }
 .play-tag.ready { background: var(--success); border-color: var(--success); color: var(--on-accent); text-transform: uppercase; }
 .play-tag.shocked { border-color: var(--warning); color: var(--warning); text-transform: uppercase; }
 .play-tag.afflicted { border-color: var(--plague, #7a9a2e); color: var(--plague, #7a9a2e); text-transform: uppercase; }
@@ -228,25 +235,25 @@
 .play-mission-lines li > span:first-child { flex: none; }
 .play-mission-lines li > small { grid-column: 2 / -1; }
 .play-line-vp { grid-row: span 2; display: flex; flex-direction: column; align-items: center; justify-content: center; align-self: start; min-height: 1.9rem;
-    padding: 0.15rem 0; border-radius: 6px; font-size: 0.9rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums;
+    padding: 0.15rem 0; border-radius: var(--radius-md); font-size: var(--fs-md); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums;
     color: var(--text-primary); background: color-mix(in srgb, var(--player) 22%, var(--bg-tertiary));
     border: 1px solid color-mix(in srgb, var(--player) 50%, var(--border)); }
-.play-line-vp small { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+.play-line-vp small { font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
 
 /* While a request that changes the game is going: no clicks or drags, and after a moment a "Working…" pill */
 .play-layout-game.play-busy { cursor: progress; }
 .play-layout-game.play-busy > * { pointer-events: none; }
 .play-working { position: absolute; left: 50%; top: 1rem; transform: translateX(-50%); z-index: 6; display: none; align-items: center; gap: 0.5rem;
-    padding: 0.35rem 0.9rem; border-radius: 999px; font-weight: 700; font-size: 0.85rem; background: var(--bg-primary);
+    padding: 0.35rem 0.9rem; border-radius: var(--radius-pill); font-weight: 700; font-size: var(--fs-sm); background: var(--bg-primary);
     border: 1px solid var(--accent); color: var(--text-primary); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
 .play-busy-shown .play-working { display: inline-flex; }
 .play-busy-shown .play-go { opacity: 0.6; }
 
 /* The battle log: sections by round, player and phase; attack cards (who, how many died, each weapon's
    Attacks > Hits > Wounds > Killed and its dice); an icon on every other line */
-.play-log h3 { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
+.play-log h3 { display: flex; align-items: center; gap: 0.5rem; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--text-secondary); }
-.play-log-heading { --player: var(--text-muted); margin: 0.9rem 0 0.35rem; font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+.play-log-heading { --player: var(--text-muted); margin: 0.9rem 0 0.35rem; font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.08em; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; }
 .play-log-heading.play-p1 { --player: var(--play-p1); }
 .play-log-heading.play-p2 { --player: var(--play-p2); }
@@ -255,8 +262,8 @@
 #dice-log > .play-log-heading:first-child { margin-top: 0.2rem; }
 .play-log-entry { border-top: none; padding: 0; margin-bottom: 0.35rem; }
 .play-log-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.7rem; height: 1.7rem;
-    border-radius: 50%; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); font-size: 0.75rem; }
-.play-log-roll { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.35rem 0.5rem; border-radius: 8px; }
+    border-radius: 50%; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); font-size: var(--fs-xs); }
+.play-log-roll { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.35rem 0.5rem; border-radius: var(--radius-lg); }
 .play-log-roll:hover { background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent); }
 .play-log-text { flex: 1; min-width: 0; padding-top: 0.2rem; display: flex; flex-direction: column; gap: 0.2rem; }
 .play-log-text .play-dice { vertical-align: middle; margin: 0 0.15rem; }
@@ -272,38 +279,38 @@
 .play-log-verb { color: var(--text-secondary); margin: 0 0.2rem; }
 .play-log-target { --player: var(--play-p1); color: color-mix(in srgb, var(--player) 70%, var(--text-primary)); }
 .play-log-target.play-p2 { --player: var(--play-p2); }
-.play-log-kills { display: flex; align-items: baseline; gap: 0.25rem; padding: 0.1rem 0.6rem; border-radius: 999px;
+.play-log-kills { display: flex; align-items: baseline; gap: 0.25rem; padding: 0.1rem 0.6rem; border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--error) 22%, transparent); border: 1px solid color-mix(in srgb, var(--error) 60%, transparent); }
-.play-log-kills b { font-size: 1.15rem; font-weight: 900; font-variant-numeric: tabular-nums; }
-.play-log-kills small { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+.play-log-kills b { font-size: var(--fs-lg); font-weight: 900; font-variant-numeric: tabular-nums; }
+.play-log-kills small { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
 .play-log-kills.none { background: transparent; border-color: var(--border); opacity: 0.7; }
 .play-log-body { padding: 0.15rem 0.6rem 0.5rem; }
 .play-log-weapon { padding: 0.5rem 0 0.35rem; border-top: 1px solid color-mix(in srgb, var(--player) 20%, var(--border)); }
 .play-log-weapon:first-child { border-top: none; }
 .play-log-weapon-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin-bottom: 0.35rem; }
-.play-log-weapon-name small { color: var(--text-muted); font-size: 0.75rem; }
+.play-log-weapon-name small { color: var(--text-muted); font-size: var(--fs-xs); }
 
 .play-funnel { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.4rem; }
-.play-funnel > i { font-size: 0.6rem; color: var(--text-muted); }
-.play-stage { display: inline-flex; align-items: baseline; gap: 0.3rem; padding: 0.1rem 0.55rem; border-radius: 6px;
+.play-funnel > i { font-size: var(--fs-2xs); color: var(--text-muted); }
+.play-stage { display: inline-flex; align-items: baseline; gap: 0.3rem; padding: 0.1rem 0.55rem; border-radius: var(--radius-md);
     background: var(--bg-secondary); border: 1px solid var(--border); }
-.play-stage b { font-size: 1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-.play-stage small { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+.play-stage b { font-size: var(--fs-base); font-weight: 800; font-variant-numeric: tabular-nums; }
+.play-stage small { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
 .play-stage.zero { opacity: 0.55; }
 .play-stage.killed { border-color: color-mix(in srgb, var(--error) 70%, transparent); background: color-mix(in srgb, var(--error) 18%, var(--bg-secondary)); }
 
 .play-dice-row { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); align-items: center; gap: 0.15rem 0.6rem; margin-top: 0.25rem; }
-.play-dice-label { width: auto; display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--text-secondary); }
-.play-dice-label em { font-style: normal; font-size: 0.68rem; font-weight: 700; padding: 0 0.3rem; border-radius: 4px;
+.play-dice-label { width: auto; display: flex; align-items: center; gap: 0.35rem; font-size: var(--fs-xs); color: var(--text-secondary); }
+.play-dice-label em { font-style: normal; font-size: var(--fs-2xs); font-weight: 700; padding: 0 0.3rem; border-radius: var(--radius-sm);
     background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); }
-.play-dice-note { grid-column: 2; color: var(--text-muted); font-size: 0.72rem; }
+.play-dice-note { grid-column: 2; color: var(--text-muted); font-size: var(--fs-xs); }
 .play-dice { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
 
 /* A die: pips on a 3 by 3 grid */
 .play-die { position: relative; display: inline-grid; width: 1.55rem; height: 1.55rem; padding: 0.22rem; border-radius: 5px; box-sizing: border-box;
     grid-template: repeat(3, 1fr) / repeat(3, 1fr); grid-template-areas: "p0 p1 p2" "p3 p4 p5" "p6 p7 p8"; place-items: center;
     background: linear-gradient(145deg, #3a3a3e, #26262a); border: 1px solid #4a4a50; color: var(--text-muted);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4); opacity: 1; font-size: 0.8rem; font-weight: 700; }
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4); opacity: 1; font-size: var(--fs-sm); font-weight: 700; }
 .play-die > i { width: 0.26rem; height: 0.26rem; border-radius: 50%; background: currentColor; }
 .play-die > span { grid-area: 1 / 1 / -1 / -1; }
 .play-die.success { background: linear-gradient(145deg, #f1ece0, #cfc8b8); border-color: #fffaf0; color: #1d1d1f; }
@@ -311,7 +318,7 @@
     color: #1d1d1f; box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
 .play-die.fail { opacity: 0.45; }
 .play-die.value { background: linear-gradient(145deg, #4a4a52, #34343a); border-color: var(--text-secondary); color: var(--text-primary); }
-.play-die-reroll { position: absolute; top: -0.4rem; right: -0.35rem; font-style: normal; font-size: 0.6rem; line-height: 1; padding: 0.05rem 0.15rem;
+.play-die-reroll { position: absolute; top: -0.4rem; right: -0.35rem; font-style: normal; font-size: var(--fs-2xs); line-height: 1; padding: 0.05rem 0.15rem;
     border-radius: 50%; background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-secondary); }
 
 /* Rolls just made: the entry slides in and its dice tumble in one after another */
@@ -335,9 +342,9 @@
 
 /* The board's hover card: a unit's datasheet beside the pointer */
 .play-card { position: fixed; z-index: 60; pointer-events: none; width: min(440px, calc(100vw - 16px)); max-height: 80vh;
-             overflow: hidden; padding: 0.6rem 0.75rem; border-radius: 8px; background: var(--bg-secondary);
-             border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 0.8rem; line-height: 1.35; }
-.play-card-unit { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.35rem; }
+             overflow: hidden; padding: 0.6rem 0.75rem; border-radius: var(--radius-lg); background: var(--bg-secondary);
+             border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: var(--fs-sm); line-height: 1.35; }
+.play-card-unit { font-weight: 700; font-size: var(--fs-md); margin-bottom: 0.35rem; }
 .play-card.wide { width: min(880px, calc(100vw - 16px)); }
 .play-card-parts { display: grid; grid-template-columns: 1fr; gap: 0.5rem 0.9rem; }
 .play-card.wide .play-card-parts { grid-template-columns: 1fr 1fr; }
@@ -345,97 +352,432 @@
 .play-card.wide .play-card-part:nth-child(2) { border-top: 0; padding-top: 0; border-left: 1px solid var(--border); padding-left: 0.9rem; }
 .play-card.wide .play-card-part:nth-child(n+3) { grid-column: 2; border-left: 1px solid var(--border); padding-left: 0.9rem; }
 .play-card.wide .play-card-part:first-child { grid-row: span 9; }
-.play-card-part h4 { margin: 0 0 0.3rem; font-size: 0.85rem; }
-.play-card-tag { font-size: 0.7rem; font-weight: 600; padding: 0 0.35rem; border-radius: 4px; margin-left: 0.25rem;
+.play-card-part h4 { margin: 0 0 0.3rem; font-size: var(--fs-sm); }
+.play-card-tag { font-size: var(--fs-xs); font-weight: 600; padding: 0 0.35rem; border-radius: var(--radius-sm); margin-left: 0.25rem;
                  background: var(--accent-tint); color: var(--text-primary); }
 .play-card-qty { color: var(--text-secondary); font-weight: 400; }
 .play-card-stats { display: flex; flex-wrap: wrap; gap: 0.25rem 0.6rem; margin-bottom: 0.35rem; }
 .play-card-stats b { color: var(--text-secondary); font-weight: 600; margin-right: 0.15rem; }
 .play-card-weapons { width: 100%; border-collapse: collapse; margin-bottom: 0.35rem; }
-.play-card-weapons th { color: var(--text-secondary); font-weight: 600; text-align: center; font-size: 0.7rem; }
+.play-card-weapons th { color: var(--text-secondary); font-weight: 600; text-align: center; font-size: var(--fs-xs); }
 .play-card-weapons th:first-child, .play-card-weapons td:first-child { text-align: left; }
 .play-card-weapons td { text-align: center; padding: 0.1rem 0.2rem; border-top: 1px solid var(--border); vertical-align: top; }
-.play-card-keywords { color: var(--text-secondary); font-size: 0.72rem; margin: 0.1rem 0 0; }
+.play-card-keywords { color: var(--text-secondary); font-size: var(--fs-xs); margin: 0.1rem 0 0; }
 .play-card-ability { margin: 0.2rem 0; }
 .play-card-ability p { display: inline; margin: 0; }
 .play-card-ability p + p { display: block; margin-top: 0.2rem; }
 .play-card-rules { margin: 0.25rem 0 0; }
 .play-card-note { color: var(--text-secondary); font-style: italic; margin: 0.25rem 0 0; }
 
-.play-turn-label { align-self: center; color: var(--text-secondary); font-size: 0.8rem; margin-right: 0.15rem; }
+.play-turn-label { align-self: center; color: var(--text-secondary); font-size: var(--fs-sm); margin-right: 0.15rem; }
 
 /* Luck notices: an attack's rarest roll, 1 in 20 or rarer */
-.play-luck { margin-top: 0.3rem; padding: 0.2rem 0.45rem; border-radius: 4px; font-size: 0.78rem; font-weight: 600;
+.play-luck { margin-top: 0.3rem; padding: 0.2rem 0.45rem; border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 600;
              display: flex; gap: 0.4rem; align-items: center; }
 .play-luck.hot { background: rgba(240, 140, 40, 0.16); color: #f4a24c; }
 .play-luck.cold { background: rgba(80, 160, 230, 0.16); color: #7cbcf0; }
 
 /* Command Re-roll: the bar above the log, and the dice that can be picked */
 .play-reroll-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding: 0.35rem 0.5rem;
-                   border: 1px solid var(--accent); border-radius: 6px; background: var(--accent-tint); font-size: 0.85rem; }
+                   border: 1px solid var(--accent); border-radius: var(--radius-md); background: var(--accent-tint); font-size: var(--fs-sm); }
 .play-die.pickable { cursor: pointer; outline: 2px solid var(--accent); outline-offset: 1px; animation: play-pick 1.2s ease-in-out infinite; }
 .play-die.pickable:focus-visible { outline-width: 3px; }
 @keyframes play-pick { 50% { outline-color: transparent; } }
 @media (prefers-reduced-motion: reduce) { .play-die.pickable { animation: none; } }
-.play-log-redo { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem; display: flex; gap: 0.4rem; align-items: center; }
+.play-log-redo { font-size: var(--fs-sm); color: var(--text-secondary); margin-bottom: 0.4rem; display: flex; gap: 0.4rem; align-items: center; }
 
-/* Phones (docs/phone-plan.md, step f): the board on top, then the armies and the battle log as tabs; the selected
-   unit's details in a sheet over the bottom of the screen. */
+/* --- The game screen (Play UI/UX: docs/play-mode-design.md, "Play UI/UX") ---------------------------------------
+   A game open makes the page the game: the board fills the window, the selected unit's actions sit in a bar under
+   it, and the battle log is a drawer. Phones ([data-layout="phone"], base.html's Core.layoutFor) get their own game
+   screen at the end. */
+
+:root {
+    --play-cta: #ece4d0;           /* The game's main buttons: neither player's colour (orange is Player 1's) */
+    --play-cta-hover: #fffaf0;
+    --play-on-cta: #1d1d16;
+    --header-h: 64px;              /* play.js measures the site header */
+}
+
 .play-phone-tabs,
-.play-sheet {
-    display: none;
-}
-
-@media (max-width: 600px) {
-    .play-layout.play-layout-game { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
-    .play-layout-game .play-board-card { padding: 0.6rem; }
-    .play-hud .play-versus { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
-    .play-side { padding: 0.2rem 0.5rem; gap: 0.3rem; }
-    .play-side-name { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .play-scorebox { padding: 0.1rem 0.8rem; }
-
-    /* The steps: title, phases, then the turn and the tools, each a row of its own */
-    .play-steps { grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
-    .play-steps > *,
-    .play-steps .play-turn,
-    .play-steps .play-toolbar-actions,
-    .play-steps .play-phases:not([hidden]) + .play-turn { grid-column: 1; grid-row: auto; justify-self: stretch; }
-    .play-steps .play-turn { text-align: center; }
-    .play-steps .play-toolbar-actions { display: flex; justify-content: center; gap: 0.4rem; }
-    .play-phases { overflow-x: auto; }
-
-    /* Next phase: under the board, not over the small board's deployment zone */
-    .play-go { position: static; display: flex; justify-content: center; width: 100%; margin-top: 0.5rem; }
-    .play-go[hidden] { display: none; }
-    .play-phone-tabs { display: flex; margin: 0.6rem 0 0; }
-    .play-phone-tabs .toggle-btn { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    /* Only the chosen tab's content */
-    .play-layout-game[data-phone-tab="0"] #army-1,
-    .play-layout-game[data-phone-tab="0"] .play-log,
-    .play-layout-game[data-phone-tab="1"] #army-0,
-    .play-layout-game[data-phone-tab="1"] .play-log,
-    .play-layout-game[data-phone-tab="log"] .play-army { display: none; }
-
-    .play-sheet {
-        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1400;
-        max-height: 40vh; overflow-y: auto;
-        padding: 0.75rem max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
-        background: var(--bg-tertiary); border-top: 2px solid var(--accent); border-radius: 12px 12px 0 0;
-        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
-    }
-    .play-sheet:has(#unit-detail:not(:empty)) { display: block; }
-    .play-games-body { padding: 1rem 0.25rem; }
-    .play-bf-modal .play-bf-layout { padding: 0.5rem 0; }
-    .play-sheet-close { float: right; background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; }
-    /* Room under the page so the sheet never hides its end */
-    .play-layout-game:has(.play-sheet #unit-detail:not(:empty)) { padding-bottom: 60vh; }
-}
-
-/* Touch screens: the board's zoom buttons and One model switch (play.js, step g) */
+.play-sheet,
+.play-log-close { display: none; }
 .play-icon-btn.touch-only { display: none; }
+.play-icon-btn { position: relative; text-decoration: none; }
+.play-icon-btn:disabled { cursor: default; }
+/* The More menu (Dropdowns, app.js): under its button, right-aligned */
+.play-more { position: relative; display: inline-block; }
+.play-more .dropdown-menu { right: 0; left: auto; top: calc(100% + var(--space-1)); bottom: auto; min-width: 15rem; z-index: 1500; }
+.play-more .dropdown-menu kbd { margin-left: auto; font-size: var(--fs-2xs); }
 @media (pointer: coarse) {
     .play-bf-letters .btn-small { min-width: 44px; }
     .play-icon-btn.touch-only { display: inline-block; }
     .play-steps .play-toolbar-actions { flex-wrap: wrap; }
 }
+@media (max-width: 600px) {
+    .play-layout.play-layout-game { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+    .play-games-body { padding: 1rem 0.25rem; }
+    .play-bf-modal .play-bf-layout { padding: 0.5rem 0; }
+}
+
+/* The game's main buttons (Fire, Fight, OK, Next phase): one neutral colour, so orange only ever means Player 1 */
+.play-layout-game .btn-primary,
+.play-go {
+    background: var(--play-cta); color: var(--play-on-cta); border-color: var(--play-cta);
+}
+.play-layout-game .btn-primary:hover:not(:disabled),
+.play-go:hover { background: var(--play-cta-hover); }
+.play-layout-game .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Hold to confirm (touch): the button fills while held */
+.play-hold { position: relative; overflow: hidden; }
+.play-go { overflow: hidden; }  /* Absolute already (it sits on the board): a containing block for its fill */
+.play-hold::before, .play-go::before {
+    content: ''; position: absolute; inset: 0; transform-origin: left; transform: scaleX(0);
+    background: color-mix(in srgb, var(--play-on-cta) 22%, transparent); pointer-events: none;
+}
+.play-hold.holding::before, .play-go.holding::before { transform: scaleX(1); transition: transform 0.55s linear; }
+
+/* --- Desktop and tablet: the page is the game -------------------------------------------------------------------- */
+.play-game-mode .page-header,
+.play-game-mode .footer { display: none; }
+#games-tool-btn { display: none; }
+.play-game-mode #games-tool-btn { display: inline-block; }
+@media (min-width: 1101px) {
+    html:not([data-layout="phone"]) .play-game-mode .main-content { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+    html:not([data-layout="phone"]) .play-game-mode .play-layout-game {
+        height: calc(100dvh - var(--header-h) - 1.5rem); align-items: stretch; grid-template-rows: minmax(0, 1fr);
+    }
+    html:not([data-layout="phone"]) .play-game-mode .play-army { position: static; max-height: 100%; overflow-y: auto; }
+    html:not([data-layout="phone"]) .play-game-mode .play-board-card {
+        display: flex; flex-direction: column; min-height: 0; height: 100%; margin: 0; padding: var(--space-3);
+    }
+    html:not([data-layout="phone"]) .play-game-mode .play-arena { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+    html:not([data-layout="phone"]) .play-game-mode .play-board-wrap { flex: 1 1 0; min-height: 240px; }
+    html:not([data-layout="phone"]) .play-game-mode .play-board { height: 100%; aspect-ratio: auto; }
+    html:not([data-layout="phone"]) .play-game-mode .play-action-bar { flex: none; max-height: 36vh; overflow-y: auto; }
+    html:not([data-layout="phone"]) .play-game-mode .play-hud { margin-bottom: var(--space-2); }
+}
+
+/* The board: its edge glows in the colour of whoever is acting */
+.play-board-wrap { border-radius: var(--radius-lg); transition: box-shadow 0.3s; }
+.play-board-wrap[data-acting="0"] { box-shadow: 0 0 0 2px color-mix(in srgb, var(--play-p1) 70%, transparent), 0 0 22px color-mix(in srgb, var(--play-p1) 30%, transparent); }
+.play-board-wrap[data-acting="1"] { box-shadow: 0 0 0 2px color-mix(in srgb, var(--play-p2) 70%, transparent), 0 0 22px color-mix(in srgb, var(--play-p2) 30%, transparent); }
+.play-score-kind { display: block; font-size: var(--fs-2xs); font-weight: 600; text-align: center; color: var(--text-muted);
+                   text-transform: uppercase; letter-spacing: 0.08em; line-height: 1; }
+.play-badge-count { position: absolute; top: -6px; right: -6px; min-width: 1.1rem; height: 1.1rem; padding: 0 0.25rem; border-radius: var(--radius-pill);
+                    background: var(--play-cta); color: var(--play-on-cta); font-size: var(--fs-2xs); font-weight: 800; line-height: 1.1rem; }
+
+/* The selected unit's action bar, under the board */
+.play-action-bar { margin-top: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--border);
+                   border-radius: var(--radius-lg); background: var(--bg-tertiary); }
+.play-action-bar[hidden] { display: none; }
+.play-action-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-1); }
+.play-action-unit { --player: var(--play-p1); display: flex; align-items: baseline; gap: var(--space-2); min-width: 0;
+                    border-left: 3px solid var(--player); padding-left: var(--space-2); }
+.play-action-unit.play-p2 { --player: var(--play-p2); }
+.play-action-unit strong { font-family: var(--font-display); font-size: var(--fs-lg); letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.play-action-unit small { color: var(--text-secondary); white-space: nowrap; }
+.play-action-tools { display: flex; gap: var(--space-1); align-items: center; }
+.play-sheet-open { display: none; }
+.play-actions .play-move-modes { margin: var(--space-1) 0; }
+.play-hint-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: var(--space-1); }
+.play-hint-line kbd { font-size: var(--fs-2xs); }
+.play-actions .play-shooting { display: grid; gap: var(--space-2); margin-bottom: 0; }
+.play-actions .play-weapons { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-1) var(--space-3); }
+.play-actions .play-weapon { border-bottom: none; padding: 0.2rem 0; }
+.play-actions .play-weapon.none { opacity: 0.6; }
+.play-actions .play-shooting .btn { margin-top: 0; width: auto; justify-self: start; min-width: 10rem; }
+
+/* Attack previews: models likely killed, the chances (the server rolls them: game.attack_preview) */
+.play-preview:empty { display: none; }
+.play-preview { display: grid; gap: var(--space-1); }
+.play-preview-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); padding: 0.35rem var(--space-2);
+                     border-radius: var(--radius-md); background: var(--bg-secondary); border: 1px solid var(--border); font-size: var(--fs-sm); }
+.play-preview-target { font-weight: 700; }
+.play-preview-target i { color: var(--error); }
+.play-preview-kills b { font-size: var(--fs-lg); font-variant-numeric: tabular-nums; }
+.play-preview-kills small, .play-chance small { color: var(--text-secondary); }
+.play-chance { display: inline-flex; align-items: center; gap: 0.3rem; font-variant-numeric: tabular-nums; }
+.play-chance-bar, .play-odds-bar { display: inline-block; width: 3rem; height: 0.4rem; border-radius: var(--radius-pill); background:
+    linear-gradient(90deg, var(--success) var(--odds), color-mix(in srgb, var(--text-muted) 35%, transparent) var(--odds)); }
+.play-card-preview { margin: -0.1rem 0 0.5rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--border); }
+.play-card-preview .play-preview-line { margin-top: 0.3rem; }
+
+/* Charge odds before the roll */
+.play-odds { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; font-size: var(--fs-sm); }
+.play-odds li { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 3rem auto; align-items: center; gap: var(--space-2); }
+.play-odds li small { color: var(--text-secondary); }
+.play-odds .play-odds-bar { width: 100%; }
+
+/* Ending a phase with units that could still act */
+.play-confirm { position: absolute; right: 1.2rem; bottom: 4.6rem; z-index: 7; max-width: min(26rem, calc(100% - 2rem)); padding: var(--space-3);
+                border: 1px solid var(--warning); border-radius: var(--radius-lg); background: var(--bg-secondary);
+                box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); font-size: var(--fs-sm); }
+.play-confirm[hidden] { display: none; }
+.play-confirm p { margin: 0 0 var(--space-2); }
+.play-confirm .play-pending-actions { margin: 0; flex-wrap: wrap; }
+
+/* The phase banner, across the board for a moment */
+.play-phase-banner { --player: var(--text-secondary); position: absolute; left: 0; right: 0; top: 38%; z-index: 6; pointer-events: none;
+    padding: 0.6rem 1rem; text-align: center; font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); opacity: 0;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--player) 70%, rgba(0, 0, 0, 0.4)) 20%,
+                color-mix(in srgb, var(--player) 70%, rgba(0, 0, 0, 0.4)) 80%, transparent); }
+.play-phase-banner.play-p1 { --player: var(--play-p1); }
+.play-phase-banner.play-p2 { --player: var(--play-p2); }
+.play-phase-banner.show { animation: play-banner 1.5s ease-out both; }
+@keyframes play-banner { 0% { opacity: 0; transform: scaleY(0.4); } 12% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .play-phase-banner.show { animation: play-banner-fade 1.5s linear both; } }
+@keyframes play-banner-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* An attack's result over the board: its funnel and dice (tap to close) */
+.play-result { --player: var(--play-p1); position: absolute; left: 50%; top: 0.8rem; transform: translateX(-50%); z-index: 8;
+               width: min(34rem, calc(100% - 1.5rem)); max-height: 70%; overflow: auto; padding: var(--space-3);
+               border: 1px solid color-mix(in srgb, var(--player) 60%, var(--border)); border-radius: var(--radius-lg);
+               background: color-mix(in srgb, var(--player) 8%, var(--bg-secondary)); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); cursor: pointer; }
+.play-result.play-p2 { --player: var(--play-p2); }
+.play-result[hidden] { display: none; }
+.play-result-head { margin-bottom: var(--space-2); }
+.play-result .play-funnel { margin-bottom: var(--space-1); }
+.play-result-dice { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: center; gap: var(--space-2); margin-top: 0.2rem; font-size: var(--fs-xs); color: var(--text-secondary); }
+.play-result-dice em { font-style: normal; font-weight: 700; color: var(--text-primary); }
+.play-result-skip { display: block; margin-top: var(--space-2); color: var(--text-muted); text-align: right; }
+.play-result.fast .play-result-skip { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+    .play-result.fresh { animation: play-result-in 0.3s ease-out both; }
+    .play-result.fresh .play-die { animation: play-die-in 0.4s cubic-bezier(0.3, 1.5, 0.6, 1) both; animation-delay: calc(var(--i) * 30ms + 100ms); }
+}
+@keyframes play-result-in { from { opacity: 0; transform: translate(-50%, -8px); } }
+
+/* Numbers rising from a unit on the board */
+.play-float { position: absolute; z-index: 7; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--font-display);
+              font-size: var(--fs-2xl); font-weight: 800; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8); white-space: nowrap; }
+.play-float.kill { color: #ff6b5b; }
+.play-float.miss { color: var(--text-secondary); font-size: var(--fs-lg); }
+@media (prefers-reduced-motion: no-preference) { .play-float { animation: play-float 1.6s ease-out both; } }
+@keyframes play-float { from { opacity: 0; transform: translate(-50%, -20%); } 15% { opacity: 1; } to { opacity: 0; transform: translate(-50%, -260%); } }
+
+/* Coming back to a game: what the other player did since */
+.play-recap { position: absolute; left: 0.8rem; top: 0.8rem; z-index: 8; width: min(22rem, calc(100% - 1.6rem)); max-height: calc(100% - 1.6rem);
+              overflow: auto; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-lg);
+              background: var(--bg-secondary); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); font-size: var(--fs-sm); }
+.play-recap[hidden] { display: none; }
+.play-recap-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
+.play-recap-lines { margin: 0 0 var(--space-2); padding-left: 1.4rem; display: grid; gap: 0.2rem; }
+.play-recap-lines li { cursor: pointer; padding: 0.1rem 0.3rem; border-radius: var(--radius-sm); }
+.play-recap-lines li.current { background: var(--accent-tint); color: var(--text-primary); }
+.play-recap-lines i { color: var(--text-muted); width: 1rem; }
+.play-recap .play-pending-actions { margin: 0; }
+.play-recap-path { stroke: #fff; stroke-width: 0.12; stroke-dasharray: 0.4 0.25; stroke-opacity: 0.85; pointer-events: none; }
+.play-recap-from { fill: none; stroke: #fff; stroke-width: 0.08; stroke-opacity: 0.7; pointer-events: none; }
+
+/* Hot-seat: handing the device over */
+.play-pass { --player: var(--play-p1); position: absolute; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center;
+             background: color-mix(in srgb, var(--player) 18%, rgba(10, 10, 8, 0.92)); border-radius: var(--radius-lg); }
+.play-pass.play-p2 { --player: var(--play-p2); }
+.play-pass[hidden] { display: none; }
+.play-pass-card { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-6); text-align: center; }
+.play-pass-card > i { font-size: var(--fs-3xl); color: var(--player); }
+.play-pass-card p { margin: 0; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; font-size: var(--fs-sm); }
+.play-pass-card strong { font-family: var(--font-display); font-size: var(--fs-3xl); color: var(--player); line-height: 1; }
+.play-pass-card small { color: var(--text-secondary); }
+
+/* The battle log as a drawer (desktop and tablet) */
+@media (min-width: 1101px) {
+    html:not([data-layout="phone"]) .play-game-mode .play-log {
+        position: fixed; top: var(--header-h); right: 0; bottom: 0; z-index: 1200; width: min(420px, 92vw); margin: 0;
+        padding: var(--space-3) var(--space-4); overflow-y: auto; background: var(--bg-secondary); border-left: 1px solid var(--border);
+        box-shadow: -12px 0 32px rgba(0, 0, 0, 0.45); transform: translateX(105%); transition: transform 0.22s ease-out; visibility: hidden;
+    }
+    html:not([data-layout="phone"]) .play-game-mode.play-log-open .play-log { transform: none; visibility: visible; }
+    html:not([data-layout="phone"]) .play-game-mode .play-log-close { display: inline-block; margin-left: auto; background: none; border: none;
+        color: var(--text-secondary); cursor: pointer; font-size: var(--fs-lg); }
+}
+@media (max-width: 1100px) { #log-btn { display: none; } }  /* The log is under the board there */
+.play-log-entry[data-units]:not([data-units=""]) { cursor: pointer; }
+
+/* --- On the board --------------------------------------------------------------------------------------------- */
+.play-board.tactical .play-mat { display: none; }
+.play-board.tactical .play-mat-dim { opacity: 1; }
+.play-board.tactical .play-terrain.dense { fill-opacity: 0.85; stroke-width: 0.14; }
+.play-board.tactical .play-terrain.light { fill-opacity: 0.5; stroke-width: 0.12; }
+.play-terrain.dense { stroke-width: 0.12; }
+.play-hatch-line { stroke: rgba(0, 0, 0, 0.35); stroke-width: 0.12; }
+
+/* Nameplates: drawn in pixels (scaled to the zoom by play.js), upright */
+.play-nameplate { pointer-events: auto; transition: opacity 0.15s; }
+.play-nameplate.dragging { opacity: 0.2; }
+.play-plate-bg { fill: rgba(16, 16, 12, 0.78); stroke: var(--play-p1); stroke-width: 1; stroke-opacity: 0.7; }
+.play-nameplate.play-p2 .play-plate-bg { stroke: var(--play-p2); }
+.play-nameplate.selected .play-plate-bg { stroke-opacity: 1; stroke-width: 1.6; }
+.play-plate-name { fill: #f4efe2; font-size: 10.5px; font-weight: 700; text-anchor: middle; font-family: var(--font-body); }
+.play-plate-track { fill: rgba(255, 255, 255, 0.15); }
+.play-plate-health { fill: #5fbf72; }
+.play-plate-health.low { fill: #e0a03c; }
+.play-plate-status { fill: var(--text-secondary); font-size: 11px; font-weight: 800; }
+.play-plate-status.shocked { fill: var(--warning); }
+
+/* What the selected unit can attack, and what not */
+.play-unit-group.valid-target .play-unit-outline { stroke: #7fd38c; stroke-opacity: 0.95; stroke-width: 0.26; stroke-dasharray: 0.5 0.25; }
+.play-unit-group.invalid-target, .play-nameplate.invalid-target { opacity: 0.5; }
+.play-unit-group.hovered .play-unit-outline { stroke: #fff; stroke-opacity: 0.9; stroke-width: 0.3; }
+.play-unit-group.bad .play-unit-outline { stroke: var(--error); stroke-opacity: 1; stroke-width: 0.3; }
+.play-unit-group.bad .play-model { fill: color-mix(in srgb, var(--error) 50%, var(--player)); }
+.play-unit-group.good .play-unit-outline { stroke: #7fd38c; stroke-opacity: 1; }
+.play-unit-group.flash .play-unit-outline { animation: play-flash 1.4s ease-out 1; }
+@keyframes play-flash { 0%, 40% { stroke: #fff; stroke-opacity: 1; stroke-width: 0.5; } 100% { stroke-width: 0.24; } }
+@media (prefers-reduced-motion: reduce) { .play-unit-group.flash .play-unit-outline { animation: none; stroke: #fff; } }
+.play-unit.hovered { border-color: var(--text-secondary); }
+.play-range-ring { fill: var(--player); fill-opacity: 0.04; stroke: var(--player); stroke-opacity: 0.6; stroke-width: 0.07; stroke-dasharray: 0.5 0.3; pointer-events: none; }
+.play-nogo { fill: var(--error); opacity: 0.16; pointer-events: none; }
+.play-charge-reach { fill: #f2c14e; opacity: 0.08; pointer-events: none; }
+.play-odds-label { font-size: 1.1px; font-weight: 800; text-anchor: middle; dominant-baseline: central; paint-order: stroke;
+                   stroke: rgba(0, 0, 0, 0.85); stroke-width: 0.25px; pointer-events: none; }
+.play-odds-label.good { fill: #7fd38c; }
+.play-odds-label.fair { fill: #f2c14e; }
+.play-odds-label.poor { fill: #ff8a7a; }
+.play-casualty { pointer-events: auto; }
+.play-casualty-base { fill: rgba(0, 0, 0, 0.35); stroke: var(--play-p1); stroke-opacity: 0.5; stroke-width: 0.05; stroke-dasharray: 0.12 0.1; }
+.play-casualty.play-p2 .play-casualty-base { stroke: var(--play-p2); }
+.play-casualty path { stroke: #ff6b5b; stroke-width: 0.12; stroke-linecap: round; stroke-opacity: 0.8; }
+.play-oc-bg { fill: rgba(16, 16, 12, 0.85); stroke: var(--text-muted); stroke-width: 0.05; }
+.play-oc-bg.play-p1 { stroke: var(--play-p1); }
+.play-oc-bg.play-p2 { stroke: var(--play-p2); }
+.play-oc-text { fill: #f4efe2; font-size: 0.55px; font-weight: 700; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.play-measure.kept line { stroke-opacity: 0.6; }
+.play-check-bad { color: var(--error); }
+.play-check-ok { color: var(--success); font-weight: 600; }
+
+/* The hover card pinned (double-click): it stays, and can be closed */
+.play-card.pinned { pointer-events: auto; overflow-y: auto; border-color: var(--text-secondary); }
+.play-card-close { float: right; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: var(--fs-lg); }
+
+/* Games: whose move, where each stands; the new-game form's colours and battlefield */
+.play-your-move { display: inline-block; margin-right: var(--space-2); padding: 0 0.45rem; border-radius: var(--radius-pill);
+                  background: var(--play-cta); color: var(--play-on-cta); font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase;
+                  letter-spacing: 0.04em; vertical-align: 0.1em; }
+.play-game-status { color: var(--text-secondary); }
+.play-swatch { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; vertical-align: -0.05em; }
+.play-swatch.play-p1 { background: var(--play-p1); }
+.play-swatch.play-p2 { background: var(--play-p2); }
+.play-games-body label small { color: var(--text-muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.play-bf-preview { margin-top: var(--space-2); }
+.play-mini-board { display: block; width: 100%; max-width: 22rem; border-radius: var(--radius-md); background: var(--bg-tertiary); }
+.play-mini-zone { opacity: 0.25; }
+.play-mini-zone.attacker { fill: #c9bfa5; }
+.play-mini-zone.defender { fill: #6d6650; }
+.play-mini-objective { fill: var(--bg-tertiary); stroke: var(--text-primary); stroke-width: 0.18; }
+
+/* The controls pop-up */
+.modal-content.play-help { max-width: 760px; }
+.play-help-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4) var(--space-6); padding: var(--space-4) var(--space-6); }
+.play-help-body h4 { margin: 0 0 var(--space-2); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+.play-keys { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.3rem var(--space-3); margin: 0; font-size: var(--fs-sm); }
+.play-keys dt { white-space: nowrap; font-weight: 600; }
+.play-keys dd { margin: 0; color: var(--text-secondary); }
+@media (pointer: coarse) { .play-help .desktop-keys { display: none; } }
+
+/* --- Phones: the game screen ------------------------------------------------------------------------------------
+   The page's chrome goes; the board card takes the screen: the scoreboard and tools across the top, the board, the
+   selected unit's actions, then the armies and log as tabs that open in a sheet. Held sideways, the actions sit
+   beside the board. */
+[data-layout="phone"] .play-phone-tabs { display: flex; }
+[data-layout="phone"] .play-game-mode .header,
+[data-layout="phone"] .play-game-mode .tab-bar,
+[data-layout="phone"] .play-game-mode .footer,
+[data-layout="phone"] .play-game-mode .page-header { display: none !important; }
+[data-layout="phone"] .play-game-mode { --tabbar-h: 0px; padding-bottom: 0 !important; overflow: hidden; }
+[data-layout="phone"] .play-game-mode .main-content { padding: 0; }
+[data-layout="phone"] .play-game-mode .play-layout-game { display: block; padding: 0 !important; margin: 0; }
+[data-layout="phone"] .play-game-mode .play-board-card {
+    position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; margin: 0; border: none; border-radius: 0;
+    padding: max(0.35rem, env(safe-area-inset-top)) max(0.4rem, env(safe-area-inset-right)) max(0.35rem, env(safe-area-inset-bottom)) max(0.4rem, env(safe-area-inset-left));
+    height: 100dvh; background: var(--bg-primary); overflow: hidden;
+}
+[data-layout="phone"] .play-game-mode .play-board-card > * { margin-left: 0; margin-right: 0; flex: none; }
+[data-layout="phone"] .play-game-mode .play-hud { margin-bottom: 0.3rem; }
+[data-layout="phone"] .play-game-mode .play-versus { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+[data-layout="phone"] .play-game-mode .play-side { padding: 0.1rem 0.45rem; min-height: 1.8rem; gap: 0.3rem; }
+[data-layout="phone"] .play-game-mode .play-side-name { font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-layout="phone"] .play-game-mode .play-scorebox { padding: 0 0.7rem; }
+[data-layout="phone"] .play-game-mode .play-score { font-size: var(--fs-lg); }
+[data-layout="phone"] .play-game-mode .play-steps { display: flex; flex-wrap: nowrap; align-items: center; gap: 0.3rem; margin-top: 0.3rem; }
+[data-layout="phone"] .play-game-mode .play-steps-left #game-title,
+[data-layout="phone"] .play-game-mode .play-steps-left .play-twist,
+[data-layout="phone"] .play-game-mode #log-btn,
+[data-layout="phone"] .play-game-mode #help-btn { display: none; }
+[data-layout="phone"] .play-game-mode .play-steps-left { flex: none; min-width: auto; }
+[data-layout="phone"] .play-game-mode .play-phases { flex: none; gap: 0; }
+[data-layout="phone"] .play-game-mode .play-phase { width: auto; }
+[data-layout="phone"] .play-game-mode .play-phase-label { display: none; }
+[data-layout="phone"] .play-game-mode .play-phase-box { width: 1.9rem; height: 1.9rem; font-size: var(--fs-xs); }
+[data-layout="phone"] .play-game-mode .play-phase-link { width: 0.25rem; margin-top: 0.9rem; }
+[data-layout="phone"] .play-game-mode .play-turn { display: none; }
+[data-layout="phone"] .play-game-mode .play-steps .play-toolbar-actions {
+    flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: 0.25rem; overflow-x: auto;
+    scrollbar-width: none; margin-left: auto;
+}
+[data-layout="phone"] .play-game-mode .play-icon-btn { flex: none; min-width: 44px; min-height: 44px; padding: 0.2rem; }
+[data-layout="phone"] .play-game-mode .play-icon-btn[data-short]::after { content: none; }
+[data-layout="phone"] .play-game-mode .play-message { font-size: var(--fs-xs); margin-top: 0.25rem; }
+[data-layout="phone"] .play-game-mode .play-pending { margin-bottom: 0.3rem; padding: 0.35rem 0.5rem; font-size: var(--fs-sm); max-height: 30dvh; overflow: auto; }
+[data-layout="phone"] .play-game-mode .play-arena { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+[data-layout="phone"] .play-game-mode .play-board-wrap { flex: 1 1 0; min-height: 120px; }
+[data-layout="phone"] .play-game-mode .play-board { height: 100%; aspect-ratio: auto; border-radius: var(--radius-md); }
+[data-layout="phone"] .play-game-mode .play-go { position: absolute; right: 0.5rem; bottom: 0.5rem; width: auto; margin: 0; padding: 0.55rem 0.95rem;
+                                                    font-size: var(--fs-sm); }
+[data-layout="phone"] .play-game-mode .play-confirm { right: 0.5rem; bottom: 3.6rem; }
+[data-layout="phone"] .play-game-mode .play-action-bar { max-height: 38dvh; overflow-y: auto; margin-top: 0.35rem; padding: 0.4rem 0.6rem; }
+[data-layout="phone"] .play-game-mode .play-sheet-open { display: inline-flex; align-items: center; gap: 0.3rem; }
+[data-layout="phone"] .play-game-mode .play-actions .play-weapons { grid-template-columns: minmax(0, 1fr); }
+[data-layout="phone"] .play-game-mode .play-actions .play-shooting .btn { width: 100%; }
+[data-layout="phone"] .play-game-mode .play-phone-tabs { margin: 0.35rem 0 0; }
+[data-layout="phone"] .play-game-mode .play-phone-tabs .toggle-btn { flex: 1 1 0; min-width: 0; min-height: 44px; overflow: hidden;
+                                                                     text-overflow: ellipsis; white-space: nowrap; }
+/* The armies and the log: a sheet over the screen when their tab is tapped (again to close) */
+[data-layout="phone"] .play-game-mode .play-army,
+[data-layout="phone"] .play-game-mode .play-log {
+    position: fixed; left: 0; right: 0; bottom: var(--play-tabs-h, 0px); z-index: 1300; max-height: calc(100dvh - var(--play-tabs-h, 0px) - 3rem);
+    overflow-y: auto; margin: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6); display: none;
+}
+[data-layout="phone"] .play-game-mode .play-log { padding: var(--space-3); background: var(--bg-secondary); }
+[data-layout="phone"] .play-game-mode.play-panel-open .play-layout-game[data-phone-tab="0"] #army-0,
+[data-layout="phone"] .play-game-mode.play-panel-open .play-layout-game[data-phone-tab="1"] #army-1,
+[data-layout="phone"] .play-game-mode.play-panel-open .play-layout-game[data-phone-tab="log"] .play-log { display: block; }
+[data-layout="phone"] .play-game-mode.play-panel-open .play-log-close { display: inline-block; margin-left: auto; background: none; border: none;
+                                                                        color: var(--text-secondary); font-size: var(--fs-lg); min-width: 44px; min-height: 44px; }
+/* The selected unit's datasheet: a sheet, opened from the action bar */
+[data-layout="phone"] .play-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1400; max-height: 60dvh; overflow-y: auto; display: none;
+    padding: 0 max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+    background: var(--bg-tertiary); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+}
+[data-layout="phone"] .play-sheet.open:has(#unit-info:not(:empty)) { display: block; animation: sheet-up 0.22s ease-out; }
+[data-layout="phone"] .play-sheet-close { float: right; margin-top: 0.25rem; background: none; border: none; color: var(--text-secondary);
+                                          font-size: var(--fs-lg); cursor: pointer; min-width: 44px; min-height: 44px; }
+/* The dice moment: big, in the middle, tap to skip */
+[data-layout="phone"] .play-result:not(.fast) { top: 50%; transform: translate(-50%, -50%); width: calc(100% - 1rem); }
+[data-layout="phone"] .play-result.fresh:not(.fast) { animation: none; }
+[data-layout="phone"] .play-recap { width: calc(100% - 1rem); left: 0.5rem; top: 0.5rem; }
+/* No game open yet: the empty state in the page as usual (with the site's chrome) */
+[data-layout="phone"] .no-game .play-board-card { position: static; height: auto; }
+
+/* Held sideways: the actions beside the board, not under it, and the scoreboard and tools on one row */
+@media (orientation: landscape) {
+    [data-layout="phone"] .play-game-mode .play-arena { flex-direction: row; }
+    [data-layout="phone"] .play-game-mode .play-arena .play-action-bar { flex: none; width: min(42vw, 22rem); max-height: none; margin: 0 0 0 0.4rem; }
+    [data-layout="phone"] .play-game-mode .play-hud { display: flex; align-items: center; gap: 0.4rem; }
+    [data-layout="phone"] .play-game-mode .play-hud .play-versus { flex: none; width: 38%; }
+    [data-layout="phone"] .play-game-mode .play-hud .play-steps { flex: 1 1 auto; min-width: 0; margin-top: 0; }
+    [data-layout="phone"] .play-game-mode .play-hud .play-message { display: none; }
+}
+
+/* A finger between two units: which one? */
+.play-chooser { position: fixed; z-index: 1600; display: grid; gap: var(--space-1); width: 188px; padding: var(--space-2);
+                border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-secondary);
+                box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
+.play-chooser[hidden] { display: none; }
+.play-chooser small { color: var(--text-secondary); }
+.play-chooser button { --player: var(--play-p1); min-height: 44px; text-align: left; padding: 0 var(--space-3); border-radius: var(--radius-md);
+                       border: 1px solid var(--border); border-left: 4px solid var(--player); background: var(--bg-tertiary); color: var(--text-primary); }
+.play-chooser button.play-p2 { --player: var(--play-p2); }

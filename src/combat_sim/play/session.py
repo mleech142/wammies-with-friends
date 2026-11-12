@@ -245,6 +245,24 @@ class GameSession:
                     self.notifier.your_move(saved, seat)
         return Result(DONE, state=after)
 
+    # Moves the page may ask about while a unit is dragged: they roll no dice, so a dry run says all there is
+    CHECKABLE = ('place', 'move', 'charge_move', 'pile_in', 'consolidate', 'overrun', 'scout', 'ingress', 'rapid_ingress')
+
+    def check(self, action):
+        """Whether `action` would be allowed now, without making it: None if so, else why not. Only moves
+        (CHECKABLE); nothing is saved, sent or fetched."""
+        if not isinstance(action, dict) or action.get('type') not in self.CHECKABLE:
+            return 'Only moves can be checked.'
+        if needs_update(self.saved) or self.waiting_for_army() or not self.connection.plays():
+            return "You can't move in this game now."
+        state = self.state()
+        try:
+            check_seat(state, action, self.seat)
+            resolve_action(state, action, Dice())
+        except ActionError as error:
+            return str(error)
+        return None
+
     def _undo_rewind(self, state, action):
         """For accepting an Undo request: the game replayed to just before the action being taken back, else None."""
         pending = state.get('pending') or {}

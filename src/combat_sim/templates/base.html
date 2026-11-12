@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-layout-pref="{{ layout_pref }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -19,22 +19,50 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome-free-7.3.1/css/solid.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="{{ url_for('static', filename='js/core.js') }}"></script>
+    {# The layout (phone, tablet or desktop) from what the device can do and the person's preference: data-layout on
+       <html>, set before the page draws (Core.layoutFor; window.applyLayout() works it out again) #}
+    <script>(function (root) {
+        var has = function (query) { return window.matchMedia(query).matches; };
+        window.applyLayout = function () {
+            var before = root.dataset.layout;
+            root.dataset.layout = Core.layoutFor({ pref: root.dataset.layoutPref, coarse: has('(pointer: coarse)'),
+                hoverNone: has('(hover: none)'), shortSide: Math.min(screen.width, screen.height) });
+            if (before && before !== root.dataset.layout) document.dispatchEvent(new CustomEvent('layout-changed'));
+        };
+        window.applyLayout();
+        window.addEventListener('resize', window.applyLayout);
+    })(document.documentElement);</script>
     {% block head %}{% endblock %}
 </head>
-<body>
+{# The page's name for the phone header (the brand is shortened to its icon there, docs/phone-plan.md) #}
+{%- set path = request.path -%}
+{%- if path == '/' %}{% set page_name = 'Simulator' %}
+{%- elif path.startswith('/analytics') %}{% set page_name = 'Analytics' %}
+{%- elif path.endswith('/match') %}{% set page_name = 'Match view' %}
+{%- elif path.startswith('/armies') %}{% set page_name = 'Armies' %}
+{%- elif path.startswith('/play') %}{% set page_name = 'Play' %}
+{%- elif path.startswith('/data') %}{% set page_name = 'Data' %}
+{%- elif path.startswith('/setup') %}{% set page_name = 'Setup' %}
+{%- elif path.startswith('/proposals') %}{% set page_name = 'Proposals' %}
+{%- elif path.startswith('/players') %}{% set page_name = 'Players' %}
+{%- elif path.startswith('/account') %}{% set page_name = 'Account' %}
+{%- else %}{% set page_name = 'Wammies With Friends' %}{% endif -%}
+{%- set in_more = path.startswith('/data') or path.startswith('/setup') or path.startswith('/proposals') or path.startswith('/players') or path.startswith('/account') -%}
+{%- set show_tabs = not who.shared or user -%}
+<body class="{% if show_tabs %}has-tab-bar{% endif %}">
     <header class="header">
         <a href="/" class="header-brand">
-            <h1><i class="fa-solid fa-dice-d6" aria-hidden="true"></i> Wammies With Friends</h1>
+            <h1><i class="fa-solid fa-dice-d6" aria-hidden="true"></i> <span class="brand-name">Wammies With Friends</span><span class="brand-page" aria-hidden="true">{{ page_name }}</span></h1>
         </a>
         <button type="button" id="nav-toggle" class="nav-toggle" aria-controls="header-nav" aria-expanded="false" aria-label="Menu">
             <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
         <nav class="header-nav" id="header-nav">
             {% if not who.shared or user %}
-            <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}"><i class="fa-solid fa-dice-d6" aria-hidden="true"></i> Simulator</a>
-            <a href="/analytics" class="nav-link {% if request.path == '/analytics' %}active{% endif %}"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> Analytics</a>
-            <a href="/armies" class="nav-link {% if request.path.startswith('/armies') %}active{% endif %}"><i class="fa-solid fa-chess-rook" aria-hidden="true"></i> Armies</a>
-            {% if show_play %}<a href="/play" class="nav-link {% if request.path == '/play' %}active{% endif %}"><i class="fa-solid fa-chess-board" aria-hidden="true"></i> Play</a>{% endif %}
+            <a href="/" class="nav-link nav-primary {% if request.path == '/' %}active{% endif %}"><i class="fa-solid fa-dice-d6" aria-hidden="true"></i> Simulator</a>
+            <a href="/analytics" class="nav-link nav-primary {% if request.path == '/analytics' %}active{% endif %}"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> Analytics</a>
+            <a href="/armies" class="nav-link nav-primary {% if request.path.startswith('/armies') %}active{% endif %}"><i class="fa-solid fa-chess-rook" aria-hidden="true"></i> Armies</a>
+            {% if show_play %}<a href="/play" class="nav-link nav-primary {% if request.path == '/play' %}active{% endif %}"><i class="fa-solid fa-chess-board" aria-hidden="true"></i> Play</a>{% endif %}
             <a href="/data" class="nav-link {% if request.path == '/data' %}active{% endif %}"><i class="fa-solid fa-database" aria-hidden="true"></i> Data</a>
             {% if can_setup %}<a href="/setup" class="nav-link {% if request.path == '/setup' %}active{% endif %}"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Setup</a>{% endif %}
             {% if user %}<a href="/proposals" class="nav-link {% if request.path == '/proposals' %}active{% endif %}"><i class="fa-solid fa-inbox" aria-hidden="true"></i> Proposals{% if user.is_host and pending_proposals %} <span class="nav-badge">{{ pending_proposals }}</span>{% endif %}</a>{% endif %}
@@ -42,7 +70,9 @@
             {% if user %}<a href="/account" class="nav-link {% if request.path == '/account' %}active{% endif %}"><i class="fa-solid fa-user" aria-hidden="true"></i> {{ user.name }}</a>{% endif %}
             {% endif %}
             <span class="version">v{{ app_version }} · 11th Edition</span>
+            {% if show_tabs %}<button type="button" class="cmdk-btn desktop-only" id="cmdk-btn" title="Command palette: go to a page, open an army or run an action" aria-label="Command palette"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> <kbd>Ctrl K</kbd></button>{% endif %}
         </nav>
+        <div class="sheet-scrim nav-scrim" id="nav-scrim" hidden></div>
     </header>
 
     <main class="main-content">
@@ -50,12 +80,24 @@
     </main>
 
     <footer class="footer">
+        <span class="footer-version">Wammies With Friends v{{ app_version }} · 11th Edition</span>
         Unit data from <a href="https://github.com/BSData/wh40k-11e" target="_blank" rel="noopener">BSData</a>
         (community-maintained, not endorsed by Games Workshop){% if bsdata_label %} · {{ bsdata_label }}{% endif %}
         {% if wahapedia_label %}· Rules and stratagems powered by <a href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a>
         ({{ wahapedia_label }}){% endif %}
         {% if can_setup %}· <a href="/setup">{% if bsdata_label %}Change{% else %}Set up{% endif %}</a>{% endif %}
     </footer>
+
+    {# Phones and tablets: the main pages in a bar at the bottom of the screen, the rest under More (docs/phone-plan.md) #}
+    {% if show_tabs %}
+    <nav class="tab-bar" aria-label="Main">
+        <a href="/" class="tab {% if path == '/' %}active{% endif %}"{% if path == '/' %} aria-current="page"{% endif %}><i class="fa-solid fa-dice-d6" aria-hidden="true"></i><span>Simulator</span></a>
+        <a href="/analytics" class="tab {% if path == '/analytics' %}active{% endif %}"{% if path == '/analytics' %} aria-current="page"{% endif %}><i class="fa-solid fa-chart-simple" aria-hidden="true"></i><span>Analytics</span></a>
+        <a href="/armies" class="tab {% if path.startswith('/armies') %}active{% endif %}"{% if path.startswith('/armies') %} aria-current="page"{% endif %}><i class="fa-solid fa-chess-rook" aria-hidden="true"></i><span>Armies</span></a>
+        {% if show_play %}<a href="/play" class="tab {% if path == '/play' %}active{% endif %}"{% if path == '/play' %} aria-current="page"{% endif %}><i class="fa-solid fa-chess-board" aria-hidden="true"></i><span>Play</span></a>{% endif %}
+        <button type="button" class="tab {% if in_more %}active{% endif %}" id="more-tab" aria-controls="header-nav" aria-expanded="false"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span>More</span>{% if user and user.is_host and pending_proposals %}<span class="tab-dot" aria-label="{{ pending_proposals }} proposals waiting"></span>{% endif %}</button>
+    </nav>
+    {% endif %}
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     {% block scripts %}{% endblock %}

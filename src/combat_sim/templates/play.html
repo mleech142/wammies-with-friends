@@ -3,11 +3,11 @@
 {% block title %}Play - Wammies With Friends{% endblock %}
 
 {% block content %}
-{# Each army's panel, either side of the board: its scores, the selected unit, missions, units, stratagems #}
+{# Each army's panel, either side of the board: its scores, the selected unit's datasheet, missions, units, stratagems #}
 {% macro army_panel(p) %}
 <aside class="card play-army {{ 'play-p1' if p == 0 else 'play-p2' }}" id="army-{{ p }}" aria-label="Player {{ p + 1 }}'s army">
     <header class="play-army-head" id="army-head-{{ p }}"><span class="play-army-name">Player {{ p + 1 }}</span></header>
-    <div class="play-army-detail" id="army-detail-{{ p }}">{% if p == 0 %}<div id="unit-detail" class="play-detail"></div>{% endif %}</div>
+    <div class="play-army-detail" id="army-detail-{{ p }}">{% if p == 0 %}<div id="unit-info" class="play-detail"></div>{% endif %}</div>
     <details class="play-army-sec" id="army-missions-sec-{{ p }}" open hidden>
         <summary>Missions</summary><div id="army-missions-{{ p }}"></div></details>
     <details class="play-army-sec" open>
@@ -18,14 +18,23 @@
         <div id="army-strats-{{ p }}"></div></details>
 </aside>
 {% endmacro %}
+{# A button in the board's toolbar: an icon, its name as the tooltip (and under the icon on phones) #}
+{% macro tool(id, icon, label, short, extra='') %}<button class="play-icon-btn" id="{{ id }}" title="{{ label }}" aria-label="{{ label }}" data-short="{{ short }}" {{ extra|safe }}><i class="fa-solid fa-{{ icon }}" aria-hidden="true"></i></button>{% endmacro %}
 <div class="page-header">
     <h2><i class="fa-solid fa-chess-board" aria-hidden="true"></i> Play <span class="play-badge">Experimental</span></h2>
-    <button class="btn-small" id="games-btn"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Games</button>
+    <button class="btn-small" id="games-btn" data-command="Games: start, open or join"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Games</button>
 </div>
-<div class="play-layout play-layout-game" id="tab-games">
+<div class="play-layout play-layout-game no-game" id="tab-games">
     {{ army_panel(0) }}
 
     <section class="card play-board-card">
+        {# No game open: what Play is and one way in (the Games pop-up) #}
+        <div class="empty-state play-empty" id="play-empty">
+            <i class="fa-solid fa-chess-board" aria-hidden="true"></i>
+            <strong>No game open</strong>
+            <p>Start a game between two saved armies, open a saved game or game file, or join a friend's game with an invite code.</p>
+            <button type="button" class="btn btn-primary" id="play-empty-btn"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Choose a game</button>
+        </div>
         <div class="play-hud">
             <div class="play-versus">
                 <div class="play-side play-p1" id="hud-side-0"></div>
@@ -36,19 +45,43 @@
                 <div class="play-side play-p2 right" id="hud-side-1"></div>
             </div>
             <div class="play-steps">
-                <span class="play-steps-left"><strong id="game-title">Choose or start a game</strong>
+                <span class="play-steps-left">
+                    {{ tool('games-tool-btn', 'folder-open', 'Games: start, open or join', 'Games') }}
+                    <strong id="game-title">Choose or start a game</strong>
                     <span class="play-twist" id="twist-chip" hidden></span></span>
                 <div class="play-phases" id="phase-track" aria-label="Phases of this turn"></div>
                 <span class="play-turn" id="turn-banner"></span>
-                <span class="play-toolbar-actions">
-                    <button class="play-icon-btn" id="correct-btn" hidden title="Correct the game" aria-label="Correct the game"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i></button>
-                    <a class="play-icon-btn" id="file-btn" hidden title="Save game file" aria-label="Save game file"><i class="fa-solid fa-file-export" aria-hidden="true"></i></a>
-                    <button class="play-icon-btn" id="undo-btn" disabled title="Undo" aria-label="Undo"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></button>
-                    <button class="play-icon-btn" id="measure-btn" title="Measure (click two points or models)" aria-label="Measure"><i class="fa-solid fa-ruler" aria-hidden="true"></i></button>
-                    <button class="play-icon-btn touch-only" id="one-btn" aria-pressed="false" title="Move one model at a time" aria-label="Move one model at a time"><i class="fa-solid fa-user" aria-hidden="true"></i></button>
-                    <button class="play-icon-btn touch-only" id="zoom-in-btn" title="Zoom in" aria-label="Zoom in"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button>
-                    <button class="play-icon-btn touch-only" id="zoom-out-btn" title="Zoom out" aria-label="Zoom out"><i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i></button>
-                    <button class="play-icon-btn" id="fit-btn" title="Fit board" aria-label="Fit board"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i></button>
+                <span class="play-toolbar-actions" id="play-tools">
+                    <button class="play-icon-btn" id="undo-btn" disabled title="Undo (Ctrl+Z)" aria-label="Undo" data-short="Undo"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></button>
+                    {{ tool('next-unit-btn', 'forward', 'Next unit that can act (Tab)', 'Next unit') }}
+                    <button class="play-icon-btn" id="measure-btn" title="Measure (M): click two points or models" aria-label="Measure" data-short="Measure" aria-pressed="false"><i class="fa-solid fa-ruler" aria-hidden="true"></i></button>
+                    <button class="play-icon-btn touch-only" id="one-btn" aria-pressed="false" title="Move one model at a time" aria-label="Move one model at a time" data-short="One"><i class="fa-solid fa-user" aria-hidden="true"></i></button>
+                    <button class="play-icon-btn touch-only" id="zoom-in-btn" title="Zoom in" aria-label="Zoom in" data-short="Zoom +"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i></button>
+                    <button class="play-icon-btn touch-only" id="zoom-out-btn" title="Zoom out" aria-label="Zoom out" data-short="Zoom −"><i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i></button>
+                    <button class="play-icon-btn" id="fit-btn" title="Fit board (F)" aria-label="Fit board" data-short="Fit"><i class="fa-solid fa-expand" aria-hidden="true"></i></button>
+                    <button class="play-icon-btn" id="log-btn" title="Battle log (L)" aria-label="Battle log" data-short="Log" aria-pressed="false"><i class="fa-solid fa-scroll" aria-hidden="true"></i><span class="play-badge-count" id="log-unread" hidden></span></button>
+                    {# Less used: a menu (the buttons themselves stay, hidden, so keys and the menu share them) #}
+                    <span class="dropdown play-more">
+                        <button type="button" class="play-icon-btn dropdown-toggle" title="More" aria-label="More tools" aria-haspopup="true" aria-expanded="false" data-short="More"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i></button>
+                        <span class="dropdown-menu" role="menu" id="more-menu">
+                            <button type="button" role="menuitem" data-click="rotate-btn"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Turn the board <kbd>R</kbd></button>
+                            <button type="button" role="menuitem" data-click="tactical-btn" id="tactical-item"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Tactical view <kbd>T</kbd></button>
+                            <button type="button" role="menuitem" data-click="sound-btn" id="sound-item"><i class="fa-solid fa-volume-high" aria-hidden="true"></i> Sound: on</button>
+                            <button type="button" role="menuitem" data-click="full-btn" id="full-item"><i class="fa-solid fa-maximize" aria-hidden="true"></i> Full screen</button>
+                            <button type="button" role="menuitem" data-click="correct-btn" id="correct-item" hidden><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> Correct the game</button>
+                            <button type="button" role="menuitem" data-click="file-btn" id="file-item" hidden><i class="fa-solid fa-file-export" aria-hidden="true"></i> Save game file</button>
+                            <button type="button" role="menuitem" data-click="help-btn"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Controls and settings <kbd>?</kbd></button>
+                        </span>
+                    </span>
+                    <span class="play-tool-store" hidden>
+                        <button class="play-icon-btn" id="correct-btn" hidden title="Correct the game" aria-label="Correct the game"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i></button>
+                        <a class="play-icon-btn" id="file-btn" hidden title="Save game file" aria-label="Save game file"><i class="fa-solid fa-file-export" aria-hidden="true"></i></a>
+                        {{ tool('rotate-btn', 'rotate', 'Turn the board (R)', 'Turn') }}
+                        {{ tool('tactical-btn', 'layer-group', 'Tactical view: hide the battle mat (T, or hold Alt)', 'Tactical', 'aria-pressed="false"') }}
+                        {{ tool('sound-btn', 'volume-high', 'Sound on or off', 'Sound', 'aria-pressed="true"') }}
+                        {{ tool('help-btn', 'circle-question', 'Controls and shortcuts (?)', 'Help') }}
+                        {{ tool('full-btn', 'maximize', 'Full screen', 'Full screen') }}
+                    </span>
                 </span>
             </div>
             <div class="play-message" id="play-message" role="status"></div>
@@ -59,11 +92,29 @@
         <div class="play-pending play-setup" id="setup-bar" hidden></div>
         <div class="play-pending play-place" id="place-bar" hidden></div>
         <div class="play-correction" id="correction-panel" hidden></div>
-        <div class="play-board-wrap">
+        {# The board and the selected unit's actions: one under the other, or side by side on a phone held sideways #}
+        <div class="play-arena" id="play-arena">
+        <div class="play-board-wrap" id="board-wrap">
             <svg id="play-board" class="play-board" xmlns="http://www.w3.org/2000/svg" role="img"
                  aria-label="The battlefield, seen from above"></svg>
             <div class="play-working" role="status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Working…</div>
+            {# The phase changing: a banner across the board for a moment #}
+            <div class="play-phase-banner" id="phase-banner" aria-hidden="true"></div>
+            {# What an attack just did, over the board: its dice and result (tap to skip) #}
+            <div class="play-result" id="result-toast" role="status" hidden></div>
+            {# Coming back to a game played from two places: what the other player did since #}
+            <div class="play-recap" id="recap-panel" hidden></div>
+            {# A hot-seat game handing over to the other player #}
+            <div class="play-pass" id="pass-screen" hidden></div>
             <button class="play-go" id="phase-btn" hidden><span>Next phase</span> <i class="fa-solid fa-forward-step" aria-hidden="true"></i></button>
+            {# Ending a phase with units that could still act: are you sure? #}
+            <div class="play-confirm" id="phase-confirm" role="alertdialog" hidden></div>
+        </div>
+        {# The selected unit's actions, under the board (phones: along the bottom of the screen) #}
+        <div class="play-action-bar" id="action-bar" hidden>
+            <div class="play-action-head" id="action-head"></div>
+            <div id="unit-detail" class="play-actions"></div>
+        </div>
         </div>
         {# Phones: the armies and the log as tabs under the board (docs/phone-plan.md, step f) #}
         <div class="toggle-bar play-phone-tabs" id="phone-tabs" aria-label="Armies and battle log">
@@ -71,8 +122,9 @@
             <button class="toggle-btn" data-phone-tab="1" id="phone-tab-1">Player 2</button>
             <button class="toggle-btn" data-phone-tab="log"><i class="fa-solid fa-dice" aria-hidden="true"></i> Log</button>
         </div>
-        <div class="play-log">
-            <h3><i class="fa-solid fa-dice" aria-hidden="true"></i> Battle log</h3>
+        <div class="play-log" id="play-log">
+            <h3><i class="fa-solid fa-dice" aria-hidden="true"></i> Battle log
+                <button class="play-log-close" id="log-close" title="Close the battle log" aria-label="Close the battle log"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></h3>
             <div id="dice-log"><p class="empty-message">No dice rolled yet</p></div>
         </div>
     </section>
@@ -122,11 +174,11 @@
             <p class="play-hint">Another player on this copy: each of you plays your own army and side, here, with no relay.</p>
         </div>
         <div class="form-group">
-            <label for="new-red">Player 1</label>
+            <label for="new-red"><span class="play-swatch play-p1" aria-hidden="true"></span> Player 1 <small>(orange, deploys at the bottom)</small></label>
             <select id="new-red" class="filter-select"></select>
         </div>
         <div class="form-group">
-            <label for="new-blue">Player 2</label>
+            <label for="new-blue"><span class="play-swatch play-p2" aria-hidden="true"></span> Player 2 <small>(blue, deploys at the top)</small></label>
             <select id="new-blue" class="filter-select"></select>
         </div>
         <p class="play-hint play-matchup" id="new-matchup"></p>
@@ -139,6 +191,7 @@
         <div class="form-group">
             <label for="new-battlefield">Battlefield</label>
             <select id="new-battlefield" class="filter-select"></select>
+            <div class="play-bf-preview" id="new-bf-preview" aria-live="polite"></div>
         </div>
         <div class="form-group">
             <label for="new-seat">This PC plays</label>
@@ -155,6 +208,57 @@
         </div>
         <button class="btn btn-primary" id="new-game-btn"><i class="fa-solid fa-plus" aria-hidden="true"></i> Start game</button>
         <p class="play-hint" id="new-game-hint"></p>
+            </section>
+        </div>
+    </div>
+</div>
+
+{# Controls and shortcuts: what the help button (or ?) shows #}
+<div class="modal" id="help-modal">
+    <div class="modal-content play-help">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Controls</h3>
+            <button class="modal-close" data-close="help-modal" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <div class="play-help-body">
+            <section>
+                <h4>Board</h4>
+                <dl class="play-keys">
+                    <dt>Click a unit</dt><dd>Select it (its actions appear under the board)</dd>
+                    <dt>Drag a unit</dt><dd>Move it; the ghost turns red where the move isn't allowed</dd>
+                    <dt class="desktop-keys"><kbd>Shift</kbd> + drag</dt><dd class="desktop-keys">Move one model</dd>
+                    <dt class="desktop-keys"><kbd>Shift</kbd> + wheel</dt><dd class="desktop-keys">Spin a model on the spot (free)</dd>
+                    <dt>Drag empty board</dt><dd>Pan; the wheel or a pinch zooms</dd>
+                    <dt>Hover a model</dt><dd>Its datasheet; double-click to pin it</dd>
+                    <dt>Hover an enemy</dt><dd>With your unit selected in the Shooting or Fight phase: what attacking it would likely do</dd>
+                    <dt>Press and hold</dt><dd>On a touch screen: a model's datasheet</dd>
+                </dl>
+            </section>
+            <section class="desktop-keys">
+                <h4>Keys</h4>
+                <dl class="play-keys">
+                    <dt><kbd>Tab</kbd></dt><dd>Next unit that can act</dd>
+                    <dt><kbd>Enter</kbd></dt><dd>Next phase (asks first if units can still act)</dd>
+                    <dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Undo</dd>
+                    <dt><kbd>Q</kbd> / <kbd>E</kbd></dt><dd>Turn the selected unit 15°</dd>
+                    <dt><kbd>M</kbd></dt><dd>Measure</dd>
+                    <dt><kbd>F</kbd></dt><dd>Fit the board</dd>
+                    <dt><kbd>R</kbd></dt><dd>Turn the board</dd>
+                    <dt><kbd>T</kbd> or hold <kbd>Alt</kbd></dt><dd>Tactical view (no battle mat)</dd>
+                    <dt><kbd>L</kbd></dt><dd>Battle log</dd>
+                    <dt><kbd>Esc</kbd></dt><dd>Cancel, close, deselect</dd>
+                    <dt><kbd>?</kbd></dt><dd>This list</dd>
+                </dl>
+            </section>
+            <section>
+                <h4>Settings</h4>
+                <label class="setup-row"><input type="checkbox" id="fast-dice"> Fast dice: show results without the dice moment</label>
+                <label class="setup-row"><input type="checkbox" id="pass-setting" checked> Hot-seat: a hand-over screen between players' turns</label>
+                <label class="setup-row">Layout
+                    <select id="layout-setting" class="filter-select" data-layout-setting>
+                        <option value="auto">Automatic</option><option value="phone">Phone</option>
+                        <option value="tablet">Tablet</option><option value="desktop">Desktop</option>
+                    </select></label>
             </section>
         </div>
     </div>

@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
+{# Wide screens: the inputs on the left, the results kept in view on the right #}
+<div class="sim-workbench">
+<div class="sim-inputs">
 <div class="combat-grid">
     <!-- Attacker Panel -->
     <section class="card attacker-panel">
@@ -9,7 +12,7 @@
         <div class="form-group">
             <div class="label-row">
                 <label for="attacker-unit">Unit</label>
-                <label class="filter-check" title="Include Legends units in the search"><input type="checkbox" id="attacker-legends"> Show Legends</label>
+                <label class="filter-check" title="Include Legends units in the search"><input type="checkbox" id="attacker-legends"> Legends</label>
             </div>
             <div class="autocomplete-wrapper">
                 <input type="text" class="autocomplete-input" id="attacker-unit"
@@ -59,7 +62,7 @@
         <div class="form-group">
             <div class="label-row">
                 <label for="defender-unit">Unit</label>
-                <label class="filter-check" title="Include Legends units in the search"><input type="checkbox" id="defender-legends"> Show Legends</label>
+                <label class="filter-check" title="Include Legends units in the search"><input type="checkbox" id="defender-legends"> Legends</label>
             </div>
             <div class="autocomplete-wrapper">
                 <input type="text" class="autocomplete-input" id="defender-unit"
@@ -166,14 +169,18 @@
         </div>
     </div>
 
-    <div class="simulate-actions">
-        <button class="btn btn-primary" id="btn-simulate"><i class="fa-solid fa-play" aria-hidden="true"></i> Run Simulation</button>
+    {# Phones: a bar fixed at the bottom of the screen, the last result beside Run (a tap on it shows the results) #}
+    <div class="simulate-actions action-bar">
+        <button type="button" class="action-bar-result" id="sim-bar-result" hidden aria-label="Show the results"></button>
+        <button class="btn btn-primary" id="btn-simulate" data-command="Run simulation"><i class="fa-solid fa-play" aria-hidden="true"></i> <span class="run-label-full">Run Simulation</span><span class="run-label-short">Run</span></button>
     </div>
 </section>
+</div>
 
 <!-- Results Panel -->
 <section class="card results-panel" id="results-panel">
     <h2><i class="fa-solid fa-chart-column" aria-hidden="true"></i> Results</h2>
+    <p class="results-empty"><i class="fa-solid fa-dice" aria-hidden="true"></i> <span>Choose an attacker and a defender, then press <strong>Run</strong>.</span></p>
 
     <div class="results-summary">
         <div class="result-card">
@@ -220,6 +227,7 @@
         </div>
     </div>
 </section>
+</div>
 
 <!-- Hidden data -->
 <script>

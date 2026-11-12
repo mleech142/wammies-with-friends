@@ -350,7 +350,9 @@ def test_charge_options_say_whether_a_unit_can_charge_and_what_it_can_reach():
     from combat_sim.play.game import charge_options
     other = (model('Other', 1), (40, 30))  # 22" away
     state = battle([SQUAD], [MOB, other])
-    assert charge_options(state, 'p1-squad') == {'reason': None, 'roll': None, 'targets': {}}
+    # Before the roll: each enemy unit within 12" with the chance a 2D6 roll reaches it (the Other is too far)
+    assert charge_options(state, 'p1-squad') == {'reason': None, 'roll': None, 'targets': {},
+                                                 'reach': {'p2-mob': {'distance': 6.74, 'chance': 58}}}
     state, _ = act(state, {'type': 'charge', 'unit': 'p1-squad'}, 3, 5)
     options = charge_options(state, 'p1-squad')
     assert options['roll'] == 8 and options['targets'] == {'p2-mob': {'ok': True, 'distance': 6.74}}

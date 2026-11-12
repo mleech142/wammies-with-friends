@@ -6,6 +6,7 @@ detachments, enhancements, and the keyword check.
 from flask import jsonify, request
 
 from ..engagement import MAX_MODELS
+from ..match_view import hint_for, keyword_hints
 from ..models import Detachment, Enhancement, Faction, FactionRule, Keyword, MeleeWeapon, RangedWeapon, Stratagem, Unit, db
 from ..simulation import check_keywords, keyword_name
 from ..wargear import default_used
@@ -67,6 +68,11 @@ def register(app):
             data[f'{weapon_type}_options'] = [weapons[i].to_dict() for i in ids if i in weapons]
         # Points for every unit size the pages offer (index = model count), from Unit.points_for
         data['points_by_model_count'] = [None] + [unit.points_for(n) for n in range(1, MAX_UNIT_SIZE + 1)]
+        # What each weapon ability means (the keyword glossary's summary), for the pages to show on a tap or hover
+        hints = keyword_hints()
+        abilities = {a for kind in ('ranged', 'melee') for key in (f'{kind}_weapons', f'{kind}_options')
+                     for w in data[key] for a in w.get('abilities') or []}
+        data['ability_hints'] = {a: hint for a in sorted(abilities) if (hint := hint_for(a, hints))}
         return jsonify(data)
 
     @app.route('/api/rules/available')

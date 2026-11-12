@@ -113,6 +113,7 @@ def create_app(config=None):
                 'pending_proposals': (Proposal.query.filter_by(status='pending').count()
                                       if who.shared and who.is_host else 0),
                 'show_play': bool(who.preferences().get('show_play')),
+                'layout_pref': who.preferences().get('layout') or 'auto',  # Core.layoutFor, set on <html> by base.html
                 'wahapedia_label': reference.wahapedia_label(app)}
 
     if config:

@@ -1046,3 +1046,87 @@ test('playSeatNotice: a same-copy game is not "online" and needs no game file', 
                    connection: { kind: 'same_copy', online: true, joined: true, names: ['Pat', 'Sam'] } };
     assert.deepEqual(Core.playSeatNotice(game), { text: 'You play Blue · waiting for Red (Pat)', mine: false, send: false, invite: null });
 });
+
+// --- Layouts and the Play board's view (Play UI/UX work) -------------------------------------------------
+
+test('layoutFor picks a phone by the short side and touch, and a preference wins', () => {
+    assert.equal(Core.layoutFor({ coarse: true, hoverNone: true, shortSide: 390 }), 'phone');
+    assert.equal(Core.layoutFor({ coarse: true, hoverNone: true, shortSide: 390, pref: 'auto' }), 'phone');  // Held sideways too
+    assert.equal(Core.layoutFor({ coarse: true, hoverNone: true, shortSide: 820 }), 'tablet');
+    assert.equal(Core.layoutFor({ coarse: true, hoverNone: false, shortSide: 390 }), 'desktop');  // A touch laptop with a mouse
+    assert.equal(Core.layoutFor({ shortSide: 390 }), 'desktop');
+    assert.equal(Core.layoutFor({ coarse: true, hoverNone: true, shortSide: 390, pref: 'desktop' }), 'desktop');
+    assert.equal(Core.layoutFor({ pref: 'phone' }), 'phone');
+});
+
+test('playViewTransform turns the board and swaps the view size when upright', () => {
+    const board = { width: 60, depth: 44 };
+    assert.deepEqual(Core.playViewTransform(0, board), { rotation: 0, transform: '', width: 60, depth: 44 });
+    const upright = Core.playViewTransform(90, board);
+    assert.equal(upright.width, 44);
+    assert.equal(upright.depth, 60);
+    // matrix(0 1 -1 0 D 0): board (x, y) -> (D - y, x); the board's long side runs down the screen
+    const apply = (t, x, y) => { const [a, b, c, d, e, f] = t.transform.match(/-?[\d.]+/g).map(Number); return [a * x + c * y + e, b * x + d * y + f]; };
+    assert.deepEqual(apply(upright, 60, 0), [44, 60]);
+    assert.deepEqual(apply(Core.playViewTransform(180, board), 0, 0), [60, 44]);
+    assert.deepEqual(apply(Core.playViewTransform(270, board), 0, 0), [0, 60]);
+    assert.equal(Core.playViewTransform(-90, board).rotation, 270);
+});
+
+test('playDefaultRotation keeps your own side nearest you', () => {
+    assert.equal(Core.playDefaultRotation({ seat: null }), 0);
+    assert.equal(Core.playDefaultRotation({ seat: 1 }), 180);
+    assert.equal(Core.playDefaultRotation({ seat: 0, portrait: true }), 90);
+    assert.equal(Core.playDefaultRotation({ seat: 1, portrait: true }), 270);
+    assert.equal(Core.playUpright(0, 1, 2), '');
+    assert.equal(Core.playUpright(90, 1, 2), 'rotate(-90 1 2)');
+});
+
+test('playActionLabel says what Undo takes back', () => {
+    const name = id => ({ u1: 'Void Warriors' }[id] || id);
+    assert.equal(Core.playActionLabel({ action: { type: 'move', unit: 'u1' } }, name), 'Undo: move Void Warriors');
+    assert.equal(Core.playActionLabel({ action: { type: 'next_phase' } }, name), 'Undo: phase change');
+    assert.equal(Core.playActionLabel(null, name), 'Undo');
+});
+
+test('playCasualties lists models killed since the phase began', () => {
+    const events = [
+        { models: { a: { alive: false } }, action: { type: 'shoot' } },
+        { turn: { phase: 'shooting' }, models: {}, action: { type: 'next_phase' } },
+        { models: { b: { alive: false, wounds_left: 0 }, c: { alive: true, wounds_left: 1 } }, action: { type: 'shoot' } },
+    ];
+    assert.deepEqual(Core.playCasualties(events), ['b']);
+});
+
+test('playLastPosition finds where a model stood before an event', () => {
+    const events = [
+        { models: { m: { position: { x: 1, y: 1 } } } },
+        { models: {} },
+        { models: { m: { position: { x: 5, y: 5 } } } },
+    ];
+    assert.deepEqual(Core.playLastPosition(events, 2, 'm'), { x: 1, y: 1 });
+    assert.deepEqual(Core.playLastPosition(events, 3, 'm'), { x: 5, y: 5 });
+    assert.equal(Core.playLastPosition(events, 0, 'm'), null);
+});
+
+test('playAttackTotals sums an attack per target, leaving out Hazardous', () => {
+    const event = { attacks: [
+        { name: 'Gun', target: 't', attacks: 4, hits: 3, wounds: 2, mortal: 1, killed: ['x'] },
+        { name: 'Gun', target: 't', attacks: 2, hits: 1, wounds: 0, killed: [] },
+        { name: 'Hazardous', target: 'me', killed: ['y'] },
+    ] };
+    assert.deepEqual(Core.playAttackTotals(event), [{ target: 't', attacks: 6, hits: 4, wounds: 3, killed: 1 }]);
+});
+
+test('playRecap tells what the other player did since you last looked', () => {
+    const units = { r: { name: 'Raiders', player: 1 }, g: { name: 'Guards', player: 0 } };
+    const events = [
+        { action: { type: 'move', unit: 'g', mode: 'normal' }, by: 0 },
+        { action: { type: 'move', unit: 'r', mode: 'advance' }, by: 1, rolls: [] },
+        { action: { type: 'shoot', unit: 'r' }, by: 1, rolls: [], attacks: [{ name: 'Gun', target: 'g', attacks: 2, hits: 1, wounds: 1, killed: ['g1'] }] },
+        { action: { type: 'next_phase' }, by: 1, rolls: [], vp: [{ player: 1, vp: 5 }] },
+    ];
+    const lines = Core.playRecap(events, 1, 1, id => units[id], ['Red', 'Blue']);
+    assert.deepEqual(lines.map(l => l.text), ['Raiders Advanced', 'Raiders shot Guards: 1 killed', 'Blue scored 5 VP']);
+    assert.deepEqual(lines[1].units, ['r', 'g']);
+});

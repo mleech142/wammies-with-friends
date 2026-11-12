@@ -148,6 +148,22 @@
                 <span class="match-roster-points">${u.points ?? '-'}</span></button>`;
         }).join('')).join('');
         applySearch();
+        watchRoster();
+    }
+
+    /** The unit being read (the topmost on screen) is marked in the roster beside it, as documentation sites do. */
+    let rosterWatch = null;
+    function watchRoster() {
+        if (rosterWatch) rosterWatch.disconnect();
+        if (!('IntersectionObserver' in window)) return;
+        const shown = new Set();
+        rosterWatch = new IntersectionObserver(entries => {
+            entries.forEach(e => e.isIntersecting ? shown.add(e.target) : shown.delete(e.target));
+            const top = [...shown].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
+            document.querySelectorAll('.match-roster-item.current').forEach(b => b.classList.remove('current'));
+            if (top) document.querySelector(`.match-roster-item[data-uid="${CSS.escape(top.dataset.uid)}"]`)?.classList.add('current');
+        }, { rootMargin: '-80px 0px -55% 0px' });
+        document.querySelectorAll('#match-units .match-unit').forEach(el => rosterWatch.observe(el));
     }
 
     function unitCard(u) {

@@ -21,11 +21,17 @@
     const STEP_NAMES = { pile_in: 'Pile in', fight: 'Fight', consolidate: 'Consolidate' };
     const SHORT_MOVE = 3;  // Pile-in and consolidation moves, as the server sends them in errors
     const SKIES = 2;  // Inches off a move or charge when a Fly unit takes to the skies (game.SKIES)
-    const PHONE = window.matchMedia('(max-width: 600px)');  // Armies and log as tabs, the unit in a sheet (play.css)
+    // The phone game screen (play.css: [data-layout="phone"]): the board fills the screen, the selected unit's actions
+    // along the bottom, its datasheet and the armies in sheets. The layout is base.html's (Core.layoutFor), from what
+    // the device can do and the person's preference; 'layout-changed' says when it changes.
+    const PHONE = { get matches() { return document.documentElement.dataset.layout === 'phone'; } };
+    const stored = (key, fallback) => { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch (e) { return fallback; } };
+    const store = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private window */ } };
     // Touch screens (docs/phone-plan.md, step g): a finger must move this far (px) before a tap becomes a drag; held
     // still this long (ms) on a model it shows the unit's card; it picks a model whose edge is this near (px)
     const TOUCH = window.matchMedia('(pointer: coarse)');
     const TAP_SLOP = 8, PRESS_MS = 500, FINGER_REACH = 22;
+    const LIFT_PX = 52;  // A finger's dragged models go this far above it, so the finger doesn't hide them
     const touches = new Map();  // pointerId -> {x, y}: the fingers on the board now
     const OPEN = 'open';  // New-game form: this army is the other player's, chosen when they join online
 
@@ -51,6 +57,22 @@
         fightWeapon: {},  // The melee weapon chosen for each part, part -> weapon
         fightTarget: {},  // The enemy unit each part attacks, part -> unit id
         correcting: false,  // The "Correct the game" panel is open
+        rotation: null,  // How the board is turned for this screen (0, 90, 180, 270); null: Core.playDefaultRotation
+        tactical: false,  // Tactical view: the battle mat hidden, terrain drawn strongly (T, or held Alt)
+        logOpen: false,  // The battle log drawer (desktop) is open
+        logRead: 0,  // Events in the log when it was last open (the button's unread count)
+        sound: stored('play-sound', true),  // Dice and turn sounds
+        fastDice: stored('play-fast-dice', false),  // Results without the dice moment
+        passScreen: stored('play-pass-screen', true),  // Hot-seat: a hand-over screen between the players' turns
+        measures: [],  // Measurements kept on the board, each like state.measure, until Measure is turned off
+        preview: null,  // The selected unit's attack preview: {key (what it's for), targets (game.attack_preview)}
+        rangeFor: null,  // The weapon ('part:weapon') whose range is drawn round the shooter (its row is hovered)
+        check: null,  // The dragged unit's move as the server would take it: {ok, error}
+        pendingMove: null,  // Touch: a move dropped but not sent until Confirm: {action, unitId, positions}
+        recap: null,  // What the other player did since you last looked: {lines, step}
+        lastTurn: null,  // The turn as last drawn ('round:player:phase:step'), to announce a new one
+        lastActor: null,  // Who was acting when last drawn (hot-seat hand-over)
+        pinned: false,  // The hover card is pinned (double-click), and stays until closed
     };
     const $ = id => document.getElementById(id);
 
@@ -59,6 +81,7 @@
     async function init() {
         $('new-game-btn').addEventListener('click', newGame);
         $('games-btn').addEventListener('click', () => openModal('games-modal'));
+        $('play-empty-btn').addEventListener('click', () => openModal('games-modal'));
         document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
         document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); }));
         $('new-red').addEventListener('change', loadMatchup);
@@ -72,14 +95,70 @@
         $('undo-btn').addEventListener('click', undo);
         $('fit-btn').addEventListener('click', () => { fitView(); drawBoard(); });
         $('measure-btn').addEventListener('click', () => toggleMeasure());
-        $('phase-btn').addEventListener('click', nextPhase);
+        holdToConfirm($('phase-btn'), requestNextPhase, 'Hold for the next phase');
         $('correct-btn').addEventListener('click', () => { state.correcting = !state.correcting; renderCorrection(); });
-        document.querySelectorAll('[data-phone-tab]').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('#phone-tabs [data-phone-tab]').forEach(b => b.addEventListener('click', () => {
+            // The phone game screen: a tab opens its army (or the log) as a sheet; the same tab again closes it
+            const open = document.body.classList.contains('play-panel-open');
+            const same = state.phoneTab === b.dataset.phoneTab;
             state.phoneTab = b.dataset.phoneTab;
+            document.body.classList.toggle('play-panel-open', !(open && same));
             renderHud();
         }));
-        $('sheet-close').addEventListener('click', () => { if (state.selected) select(state.selected); });
-        PHONE.addEventListener('change', () => { if (state.game) renderDetail(); });
+        const closePanel = () => { document.body.classList.remove('play-panel-open'); renderHud(); };
+        [$('army-0'), $('army-1'), $('play-log')].forEach(panel => {
+            Sheets.addHandle(panel);
+            Sheets.swipeToClose(panel, closePanel);
+        });
+        // The datasheet sheet (phones) closes back to the unit's actions; the unit stays selected
+        $('sheet-close').addEventListener('click', () => $('unit-sheet').classList.remove('open'));
+        Sheets.addHandle($('unit-sheet'));
+        Sheets.swipeToClose($('unit-sheet'), () => $('unit-sheet').classList.remove('open'));
+        // The Automatic replies stay open or closed while the army list is redrawn
+        document.addEventListener('toggle', e => {
+            const group = e.target.closest && e.target.closest('[data-orders-group]');
+            if (group) (state.ordersOpen = state.ordersOpen || {})[group.dataset.ordersGroup] = group.open;
+        }, true);
+        document.addEventListener('layout-changed', () => {
+            state.rotation = null;  // The default for the new layout
+            if (state.game) { fitView(); render(); }
+        });
+        window.addEventListener('resize', () => { measureChrome(); scaleLabels(); });
+        if (window.matchMedia) matchMedia('(orientation: portrait)').addEventListener('change', () => {
+            if (state.game && state.rotation == null) { fitView(); drawBoard(); }
+        });
+        measureChrome();
+        $('games-tool-btn').addEventListener('click', () => openModal('games-modal'));
+        $('next-unit-btn').addEventListener('click', nextReadyUnit);
+        $('rotate-btn').addEventListener('click', () => turnBoard());
+        $('tactical-btn').addEventListener('click', () => setTactical(!state.tactical));
+        $('log-btn').addEventListener('click', () => toggleLog());
+        $('log-close').addEventListener('click', () => { toggleLog(false); document.body.classList.remove('play-panel-open'); renderHud(); });
+        $('help-btn').addEventListener('click', () => openModal('help-modal'));
+        $('full-btn').addEventListener('click', toggleFullScreen);
+        $('sound-btn').addEventListener('click', () => {
+            state.sound = !state.sound;
+            store('play-sound', state.sound);
+            renderSound();
+            if (state.sound) Sound.play('tick');
+        });
+        renderSound();
+        $('fast-dice').checked = state.fastDice;
+        $('fast-dice').addEventListener('change', e => { state.fastDice = e.target.checked; store('play-fast-dice', state.fastDice); });
+        $('pass-setting').checked = state.passScreen;
+        $('pass-setting').addEventListener('change', e => { state.passScreen = e.target.checked; store('play-pass-screen', state.passScreen); });
+        $('new-battlefield').addEventListener('change', previewBattlefield);
+        $('dice-log').addEventListener('click', e => {  // A log entry shows its units on the board
+            const entry = e.target.closest('[data-units]');
+            if (entry && !e.target.closest('button, [data-reroll]')) flashUnits(entry.dataset.units.split(' ').filter(Boolean));
+        });
+        // The army lists and the board point at each other: a unit hovered in one lights up in the other
+        $('tab-games').addEventListener('pointerover', e => {
+            const row = e.target.closest('.play-unit[data-unit]');
+            highlightUnit(row ? row.dataset.unit : null);
+        });
+        $('tab-games').addEventListener('pointerleave', () => highlightUnit(null));
+        wireOverlays();
         const board = $('play-board');
         board.addEventListener('wheel', zoom, { passive: false });
         board.addEventListener('pointerdown', pointerDown);
@@ -89,10 +168,16 @@
         board.addEventListener('contextmenu', e => e.preventDefault());  // Right-drag pans
         board.addEventListener('pointerover', hoverModel);
         board.addEventListener('pointerout', e => {
-            if (e.pointerType === 'touch') return;  // A lifted finger: a held card stays until the next tap
+            if (e.pointerType === 'touch' || state.pinned) return;  // A lifted finger: a held card stays until the next tap
             if (!e.relatedTarget || !e.relatedTarget.closest('[data-model]')) hideCard();
         });
-        document.addEventListener('pointerdown', e => { if (!e.target.closest('#play-card, #play-board')) hideCard(); });
+        board.addEventListener('dblclick', e => {  // Pin a model's card; on a touch screen, zoom in on its unit
+            const target = e.target.closest('[data-model]');
+            if (!target) return;
+            if (state.lastPointer === 'touch') return zoomToUnit(unitById(target.dataset.unit));
+            showCard(target.dataset.unit, { x: e.clientX, y: e.clientY }, true);
+        });
+        document.addEventListener('pointerdown', e => { if (!e.target.closest('#play-card, #play-board')) hideCard(true); });
         $('zoom-in-btn').addEventListener('click', () => zoomBy(1 / 1.4));
         $('zoom-out-btn').addEventListener('click', () => zoomBy(1.4));
         $('one-btn').addEventListener('click', () => {
@@ -105,17 +190,23 @@
         });
         board.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });  // No auto-scroll on middle-drag
         document.addEventListener('battlefields-changed', e => fillBattlefields(e.detail));
+        document.addEventListener('keyup', e => { if (e.key === 'Alt' && state.altTactical) { state.altTactical = false; setTactical(false); } });
+        window.addEventListener('blur', () => { if (state.altTactical) { state.altTactical = false; setTactical(false); } });
         document.addEventListener('keydown', e => {
             const open = [...document.querySelectorAll('.modal.show')];
             if (e.key === 'Escape' && open.length) {  // Escape closes the pop-up on top
-                closeModal((open.find(m => m.id === 'battlefields-modal') || open[0]).id);
+                closeModal((open.find(m => m.id === 'battlefields-modal') || open.find(m => m.id === 'help-modal') || open[0]).id);
                 return;
             }
             if (e.key === 'Escape' && state.measure && !open.length) {
                 toggleMeasure(false);
                 return;
             }
-            const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName);
+            const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+            if (!open.length && !typing && state.game && !e.metaKey && shortcut(e)) {
+                e.preventDefault();
+                return;
+            }
             const mover = state.selected && unitById(state.selected);
             if (!open.length && !typing && !state.placing && mover && canTurn(mover) && ['q', 'e'].includes(e.key.toLowerCase())) {
                 turnUnit(mover, e.key.toLowerCase() === 'q' ? 15 : -15);
@@ -135,7 +226,7 @@
         await loadMatchup();
         const id = new URLSearchParams(location.search).get('game');
         if (id) await openGame(id);
-        else openModal('games-modal');  // Nothing open yet: choose or start a game
+        // Nothing open yet: the board's empty state offers the Games pop-up
     }
 
     // --- Games -------------------------------------------------------------------------
@@ -220,14 +311,31 @@
             `<option value="${b.key}">${escapeHtml(g.kind === 'layout' ? b.name : b.label)}${g.kind === 'saved' && b.terrain ? ` (${b.terrain} terrain)` : ''}</option>`).join('')}</optgroup>`).join('');
         if (matchupChanged && (layouts.length || (state.matchup && state.matchup.open))) select.value = 'pairing:random';
         else if ([...select.options].some(o => o.value === current)) select.value = current;
+        previewBattlefield();
     }
 
     async function loadGames() {
         const games = await fetch('/api/play/games').then(r => r.json()).catch(() => []);
+        const when = iso => {  // "5 minutes ago", "yesterday", or the date
+            const seconds = (Date.now() - new Date(iso + (iso.endsWith('Z') || /[+-]\d\d:\d\d$/.test(iso) ? '' : 'Z')).getTime()) / 1000;
+            if (!isFinite(seconds)) return '';
+            if (seconds < 90) return 'just now';
+            if (seconds < 3600) return `${Math.round(seconds / 60)} minutes ago`;
+            if (seconds < 86400) return `${Math.round(seconds / 3600)} hours ago`;
+            if (seconds < 172800) return 'yesterday';
+            return new Date(iso).toLocaleDateString();
+        };
+        const status = g => {
+            if (g.joining) return '<span class="play-game-status">waiting for them to join</span>';
+            if (!g.phase) return '';
+            const where = g.phase === 'ended' ? 'finished' : g.round ? `round ${g.round}, ${PHASE_NAMES[g.phase] || g.phase}` : PHASE_NAMES[g.phase] || g.phase;
+            return `<span class="play-game-status">${escapeHtml(where)}${g.score ? ` · ${g.score[0]}–${g.score[1]}` : ''}</span>`;
+        };
         $('game-list').innerHTML = games.length ? games.map(g => `
             <div class="play-game-row ${state.game && state.game.id === g.id ? 'active' : ''}">
-                <button class="play-game-open" data-id="${g.id}">${escapeHtml(g.name)}
-                    <small>${escapeHtml(g.players.join(' vs '))}${g.seat == null ? '' : ` · you play ${escapeHtml(g.players[g.seat])}`}</small></button>
+                <button class="play-game-open" data-id="${g.id}">${g.your_move ? '<span class="play-your-move">Your move</span>' : ''}${escapeHtml(g.name)}
+                    <small>${escapeHtml(g.players.join(' vs '))}${g.seat == null ? '' : ` · you play ${escapeHtml(g.players[g.seat])}`}</small>
+                    <small>${status(g)}${g.updated_at ? ` <span class="play-game-when">· ${escapeHtml(when(g.updated_at))}</span>` : ''}</small></button>
                 <button class="btn-icon" data-delete="${g.id}" title="Delete game" aria-label="Delete ${escapeHtml(g.name)}">
                     <i class="fa-solid fa-trash" aria-hidden="true"></i></button>
             </div>`).join('') : '<p class="empty-message">No games yet</p>';
@@ -415,6 +523,7 @@
             show(data);
             const other = data.state.players[1 - data.seat].name;
             message(joinedNow && !data.moved ? `${other} has joined.` : `${other} moved.`);
+            if ((data.waiting_on || []).includes(data.seat)) notifyYourMove(data);
         } else {
             scheduleSync();
         }
@@ -456,13 +565,32 @@
         state.game = game;
         state.placing = null;  // The server's game replaces anything placed provisionally
         state.arriving = null;
+        state.pendingMove = null;
+        Object.keys(hoverPreviews).forEach(k => delete hoverPreviews[k]);  // The board changed: odds are worked out again
+        const fresh = first ? [] : freshEvents(game);  // Made since the board last drew this game (theirs or ours)
         if (first) {
             state.selected = null;
             state.logSeen = game.events.length;  // Rolls already made don't animate when a game opens
+            state.logRead = game.events.length;
+            state.rotation = null;
+            state.lastTurn = turnKey(game);
+            state.lastActor = game.reaction ? game.reaction.player : actingPlayer(game.state.turn);
+            state.measures = [];
+            state.pendingMove = null;
             fitView();
             history.replaceState(null, '', `/play?game=${game.id}`);
+            startRecap(game);
         }
+        state.drawnEvents = game.events.length;
         render();
+        requestAnimationFrame(measureChrome);
+        if (!first) announce(game, fresh);
+        rememberSeen(game);
+    }
+
+    /** The events a game answer has that the board hadn't drawn yet. */
+    function freshEvents(game) {
+        return game.events.slice(state.drawnEvents ?? game.events.length);
     }
 
     /** A game that waits for the other player to join with their army: the invite code, and what they'll play. */
@@ -554,6 +682,41 @@
 
     function place(unitId, positions) {
         return send({ type: 'place', unit: unitId, models: positions });
+    }
+
+    /** The acting player's units that can still do something this phase (the server's `ready`), as this app plays. */
+    function myReadyUnits() {
+        const game = state.game;
+        if (!game) return [];
+        const acting = actingPlayer(game.state.turn);
+        if (game.seat != null && game.seat !== acting) return [];
+        return game.ready.map(unitById).filter(u => u && u.player === acting);
+    }
+
+    /**
+     * Next phase, asking first when units could still act (the Command phase and deployment excepted: nothing is
+     * lost by moving on there, or the server refuses).
+     */
+    function requestNextPhase() {
+        const turn = state.game && state.game.state.turn;
+        if (!turn) return;
+        const waiting = ['movement', 'shooting', 'charge', 'fight'].includes(turn.phase) ? myReadyUnits() : [];
+        if (!waiting.length || !$('phase-confirm').hidden) {
+            $('phase-confirm').hidden = true;
+            return nextPhase();
+        }
+        const label = $('phase-btn').querySelector('span').textContent;
+        const names = waiting.slice(0, 4).map(u => escapeHtml(u.name)).join(', ') + (waiting.length > 4 ? ` and ${waiting.length - 4} more` : '');
+        $('phase-confirm').innerHTML = `<p><strong>${waiting.length} unit${waiting.length === 1 ? '' : 's'} can still act</strong>: ${names}.</p>
+            <span class="play-pending-actions">
+                <button class="btn btn-primary" id="confirm-phase">${escapeHtml(label)} anyway</button>
+                <button class="btn-small" id="confirm-show"><i class="fa-solid fa-forward" aria-hidden="true"></i> Show me</button>
+                <button class="btn-small" id="confirm-cancel">Cancel</button></span>`;
+        $('phase-confirm').hidden = false;
+        $('confirm-phase').focus();
+        $('confirm-phase').addEventListener('click', () => { $('phase-confirm').hidden = true; nextPhase(); });
+        $('confirm-show').addEventListener('click', () => { $('phase-confirm').hidden = true; nextReadyUnit(); });
+        $('confirm-cancel').addEventListener('click', () => { $('phase-confirm').hidden = true; });
     }
 
     async function nextPhase() {
@@ -660,6 +823,8 @@
         state.fight = null;
         state.fightWeapon = {};
         state.fightTarget = {};
+        state.preview = null;
+        state.rangeFor = null;
     }
 
     /** A reserve unit arriving (`state.arriving`: {unitId, kind, player}): in formation, centred on a board point,
@@ -782,14 +947,22 @@
 
     function render() {
         const game = state.game;
+        $('tab-games').classList.toggle('no-game', !(game || state.waiting));
+        // A game open: the page is the game (play.css: the board fills the window, the log is a drawer)
+        document.body.classList.toggle('play-game-mode', !!(game || state.waiting));
+        measureChrome();
         $('game-title').textContent = game ? game.name : 'Choose or start a game';
+        const last = game && game.events.length ? game.events[game.events.length - 1] : null;
+        const undoLabel = game && Core.playOnline(game) ? 'Undo: ask the other player to take back your last action'
+            : Core.playActionLabel(last, id => (unitById(id) || { name: id }).name);
+        $('undo-btn').setAttribute('aria-label', undoLabel);
         $('twist-chip').hidden = !(game && game.twist);
         if (game && game.twist) {
             $('twist-chip').textContent = `Twist: ${game.twist.name}`;
             $('twist-chip').title = game.twist.text;
         }
         $('undo-btn').disabled = !canUndo(game);
-        $('undo-btn').title = game && Core.playOnline(game) ? 'Undo: ask the other player to take back your last action' : 'Undo';
+        $('undo-btn').title = `${undoLabel} (Ctrl+Z)`;
         const turn = game && game.state.turn;
         const allPlaced = game && game.state.units.every(u => (u.status && u.status.reserve) || u.models.every(m => !m.alive || m.position));
         let banner = '';
@@ -841,6 +1014,13 @@
         renderMission();
         renderCorrection();
         renderStratagems();
+        renderLogButton();
+        renderMoreMenu();
+        renderRecap();
+        renderPass();
+        renderPendingMove();
+        $('phase-confirm').hidden = true;
+        $('next-unit-btn').disabled = !game || !myReadyUnits().length;
     }
 
     /** The Mission panel: each player's primary mission, its lines (when each scores, what it would score
@@ -1050,8 +1230,11 @@
             side.innerHTML = player ? `<span class="play-side-name">${escapeHtml(player.name)}</span>
                 <span class="play-side-cp">${player.cp ?? 0} CP</span>` : '';
         });
-        $('hud-score').innerHTML = game ? `${game.score[0]}<span>–</span>${game.score[1]}` : '';
-        $('hud-score').title = game ? (game.mission ? 'Victory points' : 'Kill points') : '';
+        $('hud-score').innerHTML = game ? `${game.score[0]}<span>–</span>${game.score[1]}<small class="play-score-kind">${game.mission ? 'VP' : 'kill pts'}</small>` : '';
+        $('hud-score').title = game ? (game.mission ? 'Victory points' : 'Kill points: the points of enemy units destroyed') : '';
+        $('hud-pips').title = turn && playing ? `Battle round ${turn.round} of 5` : 'Battle round';
+        // The board's edge glows in the colour of whoever is acting
+        $('board-wrap').dataset.acting = game && playing && turn.phase !== 'ended' ? String(acting) : '';
         renderPhoneTabs(acting);
         $('hud-pips').innerHTML = game ? [1, 2, 3, 4, 5].map(r =>
             `<span class="play-pip ${r < turn.round || turn.phase === 'ended' ? 'done' : r === turn.round && playing ? 'now' : ''}"></span>`).join('') : '';
@@ -1079,10 +1262,9 @@
             const m = game.mission;
             const split = m ? `Primary ${m.standing[i].primary.primary}
                 · Secondary ${m.standing[i].secondary.total}` : '';
+            // The score and CP are the scoreboard's above the board; here, how the VP split
             $(`army-head-${i}`).innerHTML = `<span class="play-army-name">${escapeHtml(player.name)}
                     <small>${escapeHtml(player.faction || '')}${player.disposition ? ` · ${escapeHtml(player.disposition)}` : ''}</small></span>
-                <span class="play-army-stats"><span class="play-army-cp" title="Command points">${player.cp ?? 0}<small>CP</small></span>
-                    <span class="play-army-vp" title="${m ? 'Victory points' : 'Kill points'}">${game.score[i]}<small>${m ? 'VP' : 'pts'}</small></span></span>
                 ${split ? `<span class="play-army-split">${split}</span>` : ''}`;
         });
     }
@@ -1131,6 +1313,9 @@
             const standing = units.filter(u => u.models.some(m => m.alive)).length;
             $(`army-units-count-${p}`).textContent = `${standing}/${units.length}`;
             $(`army-units-${p}`).innerHTML = `<div class="play-player ${PLAYER_CLASSES[p]}">${plague}
+                <details class="play-orders-group" data-orders-group="${p}" ${state.ordersOpen && state.ordersOpen[p] ? 'open' : ''}>
+                <summary><i class="fa-solid fa-gear" aria-hidden="true"></i> Automatic replies
+                    <span class="play-orders-hint">casualties, Overwatch, Heroic Intervention, re-rolls</span></summary>
                 <label class="play-orders">Casualties
                     <select data-orders="${p}" class="filter-select">
                         <option value="farthest" ${orders === 'farthest' ? 'selected' : ''}>farthest from the attacker first</option>
@@ -1144,7 +1329,8 @@
                     <select data-reaction="${p}|ingress" class="filter-select">${reactionOrderOptions(player, 'ingress', [['ask', 'ask me'], ['never', 'never']])}</select></label>
                 <label class="play-orders" title="After an attack in which one of your saves failed">Re-roll a failed save
                     <select data-reaction="${p}|reroll" class="filter-select">${reactionOrderOptions(player, 'reroll',
-                        [['ask', 'ask me'], ['deaths', 'only when a model dies'], ['never', 'never']])}</select></label>${units.map(u => {
+                        [['ask', 'ask me'], ['deaths', 'only when a model dies'], ['never', 'never']])}</select></label>
+                </details>${units.map(u => {
                 const living = u.models.filter(m => m.alive);
                 const placed = living.length && living.every(m => m.position);
                 const reserve = u.status && u.status.reserve;
@@ -1249,7 +1435,7 @@
         const tab = state.phoneTab ?? String(acting ?? 0);
         $('tab-games').dataset.phoneTab = tab;
         [0, 1].forEach(i => { $(`phone-tab-${i}`).textContent = game ? game.state.players[i].name : `Player ${i + 1}`; });
-        document.querySelectorAll('[data-phone-tab]').forEach(b => {
+        document.querySelectorAll('#phone-tabs [data-phone-tab]').forEach(b => {  // The buttons (the page carries the tab too)
             b.classList.toggle('active', b.dataset.phoneTab === tab);
             b.setAttribute('aria-pressed', String(b.dataset.phoneTab === tab));
         });
@@ -1261,6 +1447,8 @@
         }
         const changed = state.selected !== unitId;
         state.selected = changed ? unitId : null;
+        if (changed && PHONE.matches) document.body.classList.remove('play-panel-open');  // Picked from an army sheet: to the board
+        if (!state.selected) state.rangeFor = null;
         if (changed) {
             state.waypoint = false;
             state.skies = false;
@@ -1299,18 +1487,23 @@
         const unit = state.selected && unitById(state.selected);
         if (!unit) {
             $('unit-detail').innerHTML = '';
+            $('unit-info').innerHTML = '';
+            $('action-head').innerHTML = '';
+            $('action-bar').hidden = true;
+            $('unit-sheet').classList.remove('open');
             state.sheetFor = null;
             return;
         }
-        const home = PHONE.matches ? $('unit-sheet-body') : $(`army-detail-${unit.player}`);  // Phones: the sheet
-        if ($('unit-detail').parentNode !== home) home.appendChild($('unit-detail'));
+        // The datasheet: beside the board in its army's panel; on a phone, in the sheet (opened from the action bar)
+        const home = PHONE.matches ? $('unit-sheet-body') : $(`army-detail-${unit.player}`);
+        if ($('unit-info').parentNode !== home) home.appendChild($('unit-info'));
         if (PHONE.matches && state.sheetFor !== unit.id) {
-            // The sheet covers the bottom of the screen: bring the board into view above it (also when the unit was
-            // picked from the list below, the board scrolled away)
             state.sheetFor = unit.id;
-            const board = $('play-board').getBoundingClientRect();
-            if (board.top < 0 || board.bottom > innerHeight * 0.6) window.scrollBy({ top: board.top - 8, behavior: 'smooth' });
+            $('unit-sheet').classList.remove('open');  // A new unit: its actions first, the datasheet on request
+            centreOn(unit);  // Its models above the action bar
         }
+        $('action-bar').hidden = false;
+        renderActionHead(unit);
         const turn = state.game.state.turn;
         let controls = '';
         const reserve = unit.status && unit.status.reserve;
@@ -1318,12 +1511,13 @@
         if (turn.phase === 'deployment' && unit.player === turn.player && !reserve && !placedNow && !state.placing) {
             controls = `<div class="play-move-modes"><button class="btn-small" data-reserve>
                     <i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> Put in reserves</button>${embarkButtons(unit)}</div>
-                <p class="play-hint">Strategic Reserves: off the board until it arrives in your Movement phase from battle round 2
+                <p class="play-hint play-hint-line">Tap the board in your zone to place it, or keep it in reserves
+                    ${Core.infoButton(`Strategic Reserves: off the board until it arrives in your Movement phase from battle round 2
                     (within 6" of an edge, or anywhere with Deep Strike; more than 8" from enemies). Up to half your points in all;
                     units still in reserves at the end of battle round 3 are lost.${embarkButtons(unit)
-                        ? ' Or it can start embarked in a transport (with it, if that goes into reserves).' : ''}
-                    ${unit.parts.some(p => p.keywords.includes('Dedicated Transport'))
-                        ? ' A Dedicated Transport must carry a unit when deployment ends, or it is lost.' : ''}</p>`;
+                        ? ' Or it can start embarked in a transport (with it, if that goes into reserves).' : ''}${
+                    unit.parts.some(p => p.keywords.includes('Dedicated Transport'))
+                        ? ' A Dedicated Transport must carry a unit when deployment ends, or it is lost.' : ''}`, 'About reserves')}</p>`;
         }
         const disembark = (state.game.disembark || {})[unit.id];
         if (turn.phase === 'movement' && unit.player === turn.player && unit.status && unit.status.embarked) {
@@ -1377,15 +1571,17 @@
             </div>${state.oneModel && state.picked && state.picked.unitId === unit.id ? `<div class="play-move-modes">
                 <span class="play-turn-label">Spin model</span>${[[15, 'rotate-left', 'anticlockwise'], [-15, 'rotate-right', 'clockwise']].map(([deg, icon, way]) =>
                 `<button class="btn-small" data-spin="${deg}" title="Spin the model you last touched 15° ${way}, on the spot (free)">
-                    <i class="fa-solid fa-${icon}" aria-hidden="true"></i> 15°</button>`).join('')}</div>` : ''}<p class="play-hint">Drag the unit to make the ${MOVE_MODES.find(m => m[0] === state.moveMode)[1]};
-                ${TOUCH.matches ? 'with One model on (the person button above the board), a drag moves just that model.'
-                    : 'Shift-drag moves one model.'} Turning the unit costs each model the distance its centre travels round the turn;
-                ${TOUCH.matches ? 'Spin model (with One model on) turns the model you last touched on the spot' : 'Shift + mouse wheel over a model spins it on the spot'}, which is free.
-                Climbing Dense terrain over 2" high (twice its height) counts against the move, unless the unit is Infantry,
-                Beasts, Swarm or Mobile, or takes to the skies.
-                ${state.waypoint ? 'Waypoint: the next drag carries on from where it stands, and the whole path counts.'
+                    <i class="fa-solid fa-${icon}" aria-hidden="true"></i> 15°</button>`).join('')}</div>` : ''}<p class="play-hint play-hint-line">${
+                    TOUCH.matches ? 'Drag to move · One model: the person button · Turn: the buttons'
+                        : 'Drag to move · <kbd>Shift</kbd>-drag one model · <kbd>Q</kbd>/<kbd>E</kbd> turn · <kbd>Shift</kbd>+wheel spins a model'}
+                ${Core.infoButton(`Drag the unit to make the ${MOVE_MODES.find(m => m[0] === state.moveMode)[1]}. ${TOUCH.matches
+                    ? 'With One model on (the person button above the board), a drag moves just that model.' : 'Shift-drag moves one model.'}
+                    Turning the unit costs each model the distance its centre travels round the turn; ${TOUCH.matches
+                    ? 'Spin model (with One model on) turns the model you last touched on the spot' : 'Shift + mouse wheel over a model spins it on the spot'}, which is free.
+                    Climbing Dense terrain over 2" high (twice its height) counts against the move, unless the unit is Infantry,
+                    Beasts, Swarm or Mobile, or takes to the skies. ${state.waypoint ? 'Waypoint: the next drag carries on from where it stands, and the whole path counts.'
                     : 'Each drag is measured along the path you drag, from where the unit started the phase; Waypoint carries on from where it stands instead.'}
-                You can move it again or reset it until the Movement phase ends; then moves are locked.</p>
+                    You can move it again or reset it until the Movement phase ends; then moves are locked.`, 'How moving works')}</p>
                 ${embarkButtons(unit) ? `<div class="play-move-modes">${embarkButtons(unit)}</div>` : ''}`;
         }
         if (turn.phase === 'shooting' && unit.player === turn.player && state.shooting && state.shooting.unit === unit.id) {
@@ -1411,7 +1607,7 @@
         }
         if (turn.phase !== 'deployment' && turn.phase !== 'ended') controls += effectsControls(unit);
         controls = contagionControls(unit) + controls;
-        $('unit-detail').innerHTML = controls + allocationControl(unit) + unit.parts.map((part, i) => {
+        const parts = unit.parts.map((part, i) => {
             const s = part.stats;
             const outline = state.game.outlines[unit.id][i];
             const alive = unit.models.filter(m => m.alive && m.part === i).length;
@@ -1421,6 +1617,10 @@
                 <small>${alive} of ${part.models} models · base ${escapeHtml((part.base && part.base.text) || 'unknown')}${outline.estimated ? ' (size estimated)' : ''}</small>
             </div>`;
         }).join('');
+        // What it can do now: the action bar under the board; what it is: its datasheet (the army panel, or a phone's sheet)
+        $('unit-detail').innerHTML = controls || `<p class="play-hint">${escapeHtml(idleHint(unit))}</p>`;
+        $('unit-info').innerHTML = parts + allocationControl(unit);
+        if (state.shooting && state.shooting.unit === unit.id) wireShooting(unit);
         $('unit-detail').querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => movementChoice(b.dataset.mode)));
         $('unit-detail').querySelectorAll('[data-reserve]').forEach(b => b.addEventListener('click', async () => {
             if (await send({ type: 'reserve', unit: unit.id })) {
@@ -1457,16 +1657,19 @@
         $('unit-detail').querySelectorAll('[data-start-action]').forEach(b => b.addEventListener('click', () => startAction(unit, b.dataset.startAction)));
         $('unit-detail').querySelectorAll('[data-fire]').forEach(c => c.addEventListener('change', () => {
             state.fire[c.dataset.fire] = c.checked;
+            renderDetail();
             drawBoard();
+            schedulePreview();
         }));
         $('unit-detail').querySelectorAll('[data-target]').forEach(s => s.addEventListener('change', () => {
             state.targets[s.dataset.target] = s.value;
             state.fire[s.dataset.target] = true;
             renderDetail();
             drawBoard();
+            schedulePreview();
         }));
         const fire = $('fire-btn');
-        if (fire) fire.addEventListener('click', fireSelected);
+        if (fire) holdToConfirm(fire, fireSelected, 'Hold to fire');
         $('unit-detail').querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', async () => {
             if (await send({ type: 'reset_move', unit: unit.id })) message(`${unit.name} is back where it started.`);
         }));
@@ -1475,19 +1678,25 @@
         $('unit-detail').querySelectorAll('[data-charge-target]').forEach(b => b.addEventListener('click', () => toggleChargeTarget(b.dataset.chargeTarget)));
         $('unit-detail').querySelectorAll('[data-fight-weapon]').forEach(s => s.addEventListener('change', () => {
             state.fightWeapon[s.dataset.fightWeapon] = Number(s.value);
+            schedulePreview();
         }));
         $('unit-detail').querySelectorAll('[data-fight-target]').forEach(s => s.addEventListener('change', () => {
             state.fightTarget[s.dataset.fightTarget] = s.value;
             drawBoard();
+            schedulePreview();
         }));
         const strike = $('fight-btn');
-        if (strike) strike.addEventListener('click', fightSelected);
+        if (strike) holdToConfirm(strike, fightSelected, 'Hold to fight');
+        $('unit-detail').querySelectorAll('[data-hover-unit]').forEach(row => {
+            row.addEventListener('pointerenter', () => highlightUnit(row.dataset.hoverUnit));
+            row.addEventListener('pointerleave', () => highlightUnit(null));
+        });
         const addEffect = $('effect-add');
         if (addEffect) {
             addEffect.addEventListener('click', () => send({ type: 'effect', unit: unit.id, effect: $('effect-kind').value,
                                                              until: $('effect-until').value }));
         }
-        $('unit-detail').querySelectorAll('[data-allocation]').forEach(select => select.addEventListener('change', () => {
+        $('unit-info').querySelectorAll('[data-allocation]').forEach(select => select.addEventListener('change', () => {
             // The chosen group first, then the others in datasheet order, then every other part (Characters)
             const groups = state.game.allocation[unit.id];
             const first = groups[Number(select.value)];
@@ -1592,6 +1801,9 @@
                 <i class="fa-solid fa-globe" aria-hidden="true"></i> Play online</button>` : '',
             game.connection && game.connection.kind === 'relay' ? `<button class="btn-small" id="seat-new-code" title="If someone else may have used the code: the old one stops working">
                 <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> New invite code</button>` : '',
+            Core.playOnline(game) && 'Notification' in window && Notification.permission === 'default'
+                ? `<button class="btn-small" id="seat-notify" title="A notice when it's your move, while this page is open in the background">
+                    <i class="fa-solid fa-bell" aria-hidden="true"></i> Notify me</button>` : '',
         ].filter(Boolean);
         $('seat-bar').innerHTML = `<strong>${escapeHtml(notice.text)}</strong>${buttons.length
             ? `<span class="play-pending-actions">${buttons.join('')}</span>` : ''}`;
@@ -1600,6 +1812,11 @@
                 .then(() => message('Invite code copied.'), () => message('Copy the code by hand.', true)));
         }
         if ($('seat-online')) $('seat-online').addEventListener('click', goOnline);
+        if ($('seat-notify')) $('seat-notify').addEventListener('click', async () => {
+            const answer = await Notification.requestPermission().catch(() => 'denied');
+            message(answer === 'granted' ? "You'll get a notice when it's your move (while this page is open)." : 'Notices are off for this site.');
+            renderSeat();
+        });
         if ($('seat-new-code')) $('seat-new-code').addEventListener('click', newInviteCode);
     }
 
@@ -1710,6 +1927,12 @@
             if (state.rerolling !== r.player) {
                 state.rerolling = r.player;
                 renderLog();
+                // The dice to pick are in the log: open it (a phone: its sheet)
+                if (PHONE.matches) {
+                    state.phoneTab = 'log';
+                    document.body.classList.add('play-panel-open');
+                    renderHud();
+                } else if (!state.logOpen) toggleLog(true);
             }
             bar.innerHTML = `<span><strong>${escapeHtml(who)}: ${escapeHtml(r.name)}?</strong> A save failed: click one of your
                     glowing dice in the battle log to re-roll it (${Number(r.cp)} CP), or pass.</span>
@@ -1833,6 +2056,7 @@
         }
         renderDetail();
         drawBoard();
+        schedulePreview();
     }
 
     // --- Mission actions -------------------------------------------------------------------
@@ -1870,7 +2094,13 @@
         const options = state.charge;
         if (options.roll == null) {
             if (options.reason) return `<p class="play-hint">${escapeHtml(options.reason)}</p>`;
-            return `<div class="play-shooting"><button class="btn btn-primary" id="charge-btn">
+            // Before the roll: each enemy unit within 12", how far, and the chance 2D6 reaches it (the server's sums)
+            const reach = Object.entries(options.reach || {}).sort((a, b) => a[1].distance - b[1].distance);
+            const odds = reach.length ? `<ul class="play-odds">${reach.map(([id, r]) => `<li data-hover-unit="${escapeHtml(id)}">
+                    <span>${escapeHtml(unitById(id).name)} <small>${r.distance.toFixed(1)}"</small></span>
+                    <span class="play-odds-bar" style="--odds: ${Number(r.chance)}%"></span>
+                    <strong>${Number(r.chance)}%</strong>${r.skies_chance != null ? `<small title="Taking to the skies: 2&quot; less">${Number(r.skies_chance)}% flying</small>` : ''}</li>`).join('')}</ul>` : '';
+            return `<div class="play-shooting play-charge">${odds}<button class="btn btn-primary" id="charge-btn">
                 <i class="fa-solid fa-bolt" aria-hidden="true"></i> Declare charge (roll 2D6)</button></div>`;
         }
         const reachable = Object.keys(options.targets);
@@ -1879,10 +2109,10 @@
         }
         const chips = reachable.map(id => `<button class="btn-small ${state.chargeTargets.includes(id) ? 'active' : ''}"
             data-charge-target="${escapeHtml(id)}">${escapeHtml(unitById(id).name)} <small>${options.targets[id].distance}"</small></button>`).join('');
-        return `<p class="play-hint">Charge roll <strong>${options.roll}"</strong>. Pick the units to charge (or click them on
-            the board), then drag the unit so it ends engaged with every one of them and no other: each model that can
-            ends within 1" of a target (or, if it can't, engaged with one).
-            ${heroicUnit() === unit.id ? 'A Heroic Intervention\'s move is made once.' : 'You can redo the move until the Charge phase ends.'}</p>
+        return `<p class="play-hint play-hint-line">Charge roll <strong>${options.roll}"</strong>: pick targets (or tap them), then drag into combat
+            ${Core.infoButton(`Pick the units to charge (or click them on the board), then drag the unit so it ends engaged with every one of
+                them and no other: each model that can ends within 1" of a target (or, if it can't, engaged with one).
+                ${heroicUnit() === unit.id ? 'A Heroic Intervention\'s move is made once.' : 'You can redo the move until the Charge phase ends.'}`, 'How charging works')}</p>
             <div class="play-move-modes">${chips}
             ${unit.activity.charged ? '<button class="btn-small" data-reset>Reset charge</button>' : ''}${skiesButton(unit)}</div>`;
     }
@@ -1929,8 +2159,9 @@
                 ${extra.length ? `<small>+ ${extra.map(w => escapeHtml(w.name)).join(', ')} (Extra Attacks)</small>` : ''}
                 ${targetSelect(part.part)}</div>`;
         }).join('');
-        return `<div class="play-shooting">${rows}
-            <button class="btn btn-primary" id="fight-btn"><i class="fa-solid fa-hand-fist" aria-hidden="true"></i> Fight</button></div>`;
+        return `<div class="play-shooting"><div class="play-weapons">${rows}</div>
+            <div class="play-preview" id="attack-preview">${previewHtml()}</div>
+            <button class="btn btn-primary play-hold" id="fight-btn"><i class="fa-solid fa-hand-fist" aria-hidden="true"></i> Fight</button></div>`;
     }
 
     async function fightSelected() {
@@ -1951,17 +2182,36 @@
     // --- Shooting -----------------------------------------------------------------------
 
 
-    /** Point every weapon that can fire at an enemy unit (clicked on the board). */
+    /** Point every weapon that can fire at an enemy unit (clicked on the board); if none can, say why. */
     function targetAll(enemyId) {
         if (!state.shooting) return;
-        for (const w of state.shooting.weapons) {
-            const key = `${w.part}:${w.weapon}`;
-            state.targets[key] = enemyId;
-            state.fire[key] = w.targets[enemyId] ? w.targets[enemyId].ok && (w.default_use || state.fire[key]) : false;
+        const weapons = state.shooting.weapons;
+        const able = weapons.filter(w => w.targets[enemyId] && w.targets[enemyId].ok);
+        if (!able.length) {  // Nothing changes: the reason is what the player needs
+            const why = weapons.map(w => w.targets[enemyId] && w.targets[enemyId].reason).find(Boolean);
+            message(`Can't shoot ${unitById(enemyId).name}: ${why || 'no weapon can.'}`, true);
+            Haptics.tap();
+            return;
         }
-        message(`Target: ${unitById(enemyId).name}.`);
+        for (const w of weapons) {
+            const key = `${w.part}:${w.weapon}`;
+            if (!(w.targets[enemyId] && w.targets[enemyId].ok)) continue;  // Weapons that can't keep what they had
+            state.targets[key] = enemyId;
+            state.fire[key] = w.default_use || state.fire[key] || false;
+        }
+        message(`Target: ${unitById(enemyId).name} (${able.length} weapon${able.length === 1 ? '' : 's'}).`);
         renderDetail();
         drawBoard();
+        schedulePreview();
+    }
+
+    /** The shoot action's weapons as picked now: each ticked weapon with a target it can shoot. */
+    function shotPicks() {
+        if (!state.shooting) return [];
+        return state.shooting.weapons
+            .map(w => ({ key: `${w.part}:${w.weapon}`, w }))
+            .filter(({ key, w }) => state.fire[key] && state.targets[key] && w.targets[state.targets[key]]?.ok)
+            .map(({ key, w }) => ({ part: w.part, weapon: w.weapon, target: state.targets[key] }));
     }
 
     function shootingControls(unit) {
@@ -1974,27 +2224,37 @@
             const target = state.targets[key];
             const choice = target && w.targets[target];
             const checked = !!(choice && choice.ok && state.fire[key]);
-            const select = `<select class="filter-select" data-target="${escapeHtml(key)}">
-                <option value="">Choose a target</option>
+            const can = enemies.filter(e => w.targets[e.id] && w.targets[e.id].ok);
+            const select = `<select class="filter-select" data-target="${escapeHtml(key)}" aria-label="Target for ${escapeHtml(w.name)}">
+                <option value="">${can.length ? 'Choose a target' : 'Nothing in range and sight'}</option>
                 ${enemies.map(e => {
                     const t = w.targets[e.id];
                     return `<option value="${escapeHtml(e.id)}" ${target === e.id ? 'selected' : ''} ${t && t.ok ? '' : 'disabled'}
-                        title="${escapeHtml(t && t.reason ? t.reason : '')}">${escapeHtml(e.name)}${t && t.ok ? ` (${t.models} firing)` : ' (no)'}</option>`;
+                        title="${escapeHtml(t && t.reason ? t.reason : '')}">${escapeHtml(e.name)}${t && t.ok ? ` (${t.models} firing)` : ''}</option>`;
                 }).join('')}</select>`;
             const why = choice && !choice.ok ? `<small class="play-why">${escapeHtml(choice.reason)}</small>` : '';
-            return `<div class="play-weapon ${choice && !choice.ok ? 'blocked' : ''}">
+            return `<div class="play-weapon ${choice && !choice.ok ? 'blocked' : ''} ${can.length ? '' : 'none'}" data-range-key="${escapeHtml(key)}">
                 <label><input type="checkbox" data-fire="${escapeHtml(key)}" ${checked ? 'checked' : ''} ${choice && choice.ok ? '' : 'disabled'}>
                     ${escapeHtml(w.name)}${w.deck ? ' <small class="play-tag">Firing Deck</small>' : ''} <small>${w.range ? w.range + '"' : ''}</small></label>${select}${why}</div>`;
         }).join('');
-        return `<div class="play-shooting">${rows}
-            <button class="btn btn-primary" id="fire-btn"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i> Fire</button></div>`;
+        const ready = shotPicks().length;
+        return `<div class="play-shooting"><div class="play-weapons">${rows}</div>
+            <div class="play-preview" id="attack-preview">${previewHtml()}</div>
+            <button class="btn btn-primary play-hold" id="fire-btn" ${ready ? '' : 'disabled'}
+                title="${ready ? 'Roll the dice' : 'Tick a weapon with a target first (or click an enemy unit on the board)'}">
+                <i class="fa-solid fa-crosshairs" aria-hidden="true"></i> Fire${ready ? ` ${ready} weapon${ready === 1 ? '' : 's'}` : ''}</button></div>`;
+    }
+
+    /** The shooting controls' own wiring: a weapon row hovered draws its range round the shooter. */
+    function wireShooting() {
+        $('unit-detail').querySelectorAll('[data-range-key]').forEach(row => {
+            row.addEventListener('pointerenter', () => { state.rangeFor = row.dataset.rangeKey; drawBoard(); });
+            row.addEventListener('pointerleave', () => { if (state.rangeFor === row.dataset.rangeKey) { state.rangeFor = null; drawBoard(); } });
+        });
     }
 
     async function fireSelected() {
-        const weapons = state.shooting.weapons
-            .map(w => ({ key: `${w.part}:${w.weapon}`, w }))
-            .filter(({ key, w }) => state.fire[key] && state.targets[key] && w.targets[state.targets[key]]?.ok)
-            .map(({ key, w }) => ({ part: w.part, weapon: w.weapon, target: state.targets[key] }));
+        const weapons = shotPicks();
         if (!weapons.length) return message('Tick at least one weapon with a target.', true);
         if (await send({ type: 'shoot', unit: state.selected, weapons })) {
             const event = state.game.events[state.game.events.length - 1];
@@ -2003,6 +2263,80 @@
             clearOptions();
             loadOptions();
         }
+    }
+
+    // --- Attack previews: what the planned attack would likely do (game.attack_preview), before rolling ---------
+
+    let previewTimer = null, previewAsked = 0;
+
+    /** What the shooting or fighting planned now would send to the preview, and a key for it; null when nothing. */
+    function plannedAttack() {
+        const unit = state.selected && unitById(state.selected);
+        if (!unit) return null;
+        if (state.shooting && state.shooting.unit === unit.id && !state.shooting.reason) {
+            const weapons = shotPicks();
+            return weapons.length ? { unit: unit.id, kind: 'shoot', weapons } : null;
+        }
+        if (state.fight && state.fight.unit === unit.id && !state.fight.reason && state.fight.targets.length) {
+            const weapons = state.fight.parts.filter(p => state.fightWeapon[p.part] != null)
+                .map(p => ({ part: p.part, weapon: state.fightWeapon[p.part], target: state.fightTarget[p.part] }));
+            return { unit: unit.id, kind: 'fight', weapons };
+        }
+        return null;
+    }
+
+    /** Ask for the preview of what is planned, once the choices settle. */
+    function schedulePreview() {
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(loadPreview, 180);
+    }
+
+    async function loadPreview() {
+        const planned = plannedAttack();
+        const key = planned ? JSON.stringify(planned) : null;
+        if (!key) {
+            state.preview = null;
+            paintPreview();
+            return;
+        }
+        if (state.preview && state.preview.key === key) return paintPreview();
+        const asked = ++previewAsked;
+        const answer = await askPreview(planned);
+        if (asked !== previewAsked) return;  // Something newer was asked
+        state.preview = answer ? { key, targets: answer.targets } : null;
+        paintPreview();
+    }
+
+    async function askPreview(planned) {
+        const resp = await fetch(`/api/play/games/${state.game.id}/preview`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(planned),
+        }).catch(() => null);
+        return resp && resp.ok ? resp.json() : null;
+    }
+
+    function paintPreview() {
+        const box = $('attack-preview');
+        if (box) box.innerHTML = previewHtml();
+    }
+
+    /** The preview as the action bar shows it: per target, models likely killed of those standing, and the chances. */
+    function previewHtml(preview = state.preview) {
+        if (!preview) return '';
+        return Object.entries(preview.targets).map(([id, t]) => previewLine(id, t)).join('');
+    }
+
+    function previewLine(id, t) {
+        const unit = unitById(id);
+        const bar = (value, label, title) => `<span class="play-chance" title="${escapeHtml(title)}">
+            <span class="play-chance-bar" style="--odds: ${Number(value)}%"></span><b>${Number(value)}%</b> <small>${label}</small></span>`;
+        return `<div class="play-preview-line">
+            <span class="play-preview-target"><i class="fa-solid fa-bullseye" aria-hidden="true"></i> ${escapeHtml(unit ? unit.name : id)}</span>
+            <span class="play-preview-kills" title="Models likely killed (an average of ${Number(t.trials)} tries; the dice decide)">
+                <b>≈${Number(t.kills).toFixed(1)}</b> <small>of ${Number(t.models)} killed</small></span>
+            ${bar(t.kill_chance, 'kill one', 'Chance at least one model dies')}
+            ${bar(t.wipe_chance, 'wipe out', 'Chance the whole unit dies')}
+            ${t.leader ? bar(t.leader.chance, `${escapeHtml(t.leader.name)} dies`, 'Chance its leader dies') : ''}
+        </div>`;
     }
 
     // --- Dice log -------------------------------------------------------------------------
@@ -2038,7 +2372,7 @@
             const section = title !== last ? `<h4 class="play-log-heading ${player != null ? PLAYER_CLASSES[player] : ''}">${escapeHtml(title)}</h4>` : '';
             last = title;
             if (!event.attacks || !event.attacks.length) {
-                return `${section}<div class="play-log-entry play-log-roll ${fresh ? 'fresh' : ''}">
+                return `${section}<div class="play-log-entry play-log-roll ${fresh ? 'fresh' : ''}" data-units="${escapeHtml(eventUnits(event).join(' '))}">
                     <span class="play-log-icon"><i class="${logIcon(event)}" aria-hidden="true"></i></span><div class="play-log-text">${logLine(event, name, i === latest)}</div></div>`;
             }
             return section + attackEntry(event, n === 0, fresh, name, owner, i === latest);
@@ -2078,7 +2412,8 @@
         const redone = event.redo ? `<div class="play-log-redo"><i class="fa-solid fa-rotate" aria-hidden="true"></i>
             ${escapeHtml(state.game.state.players[event.player].name)} used Command Re-roll (${Number(event.cp)} CP): a ${event.rerolled.from} re-rolled.
             This replaces the roll above.</div>` : '';
-        return `<details class="play-log-entry play-log-attack ${PLAYER_CLASSES[shooter] || ''} ${fresh ? 'fresh' : ''}" ${open ? 'open' : ''}>
+        return `<details class="play-log-entry play-log-attack ${PLAYER_CLASSES[shooter] || ''} ${fresh ? 'fresh' : ''}" ${open ? 'open' : ''}
+            data-units="${escapeHtml([act.unit, ...targets].join(' '))}">
             <summary class="play-log-head">
                 <span class="play-log-icon"><i class="fa-solid ${fight ? 'fa-hand-fist' : 'fa-crosshairs'}" aria-hidden="true"></i></span>
                 <span class="play-log-who"><strong>${escapeHtml(name(act.unit))}</strong>
@@ -2088,6 +2423,14 @@
             </summary>
             <div class="play-log-body">${redone}${weapons}${aftermath(event, name)}</div>
         </details>`;
+    }
+
+    /** The units an event is about (its unit, targets, the unit used on), to show on the board. */
+    function eventUnits(event) {
+        const a = event.action || {};
+        const ids = [a.unit, event.unit, ...(a.targets || []), ...(a.units || []), a.target,
+                     ...((event.attacks || []).map(x => x.target))];
+        return [...new Set(ids.filter(id => id && state.game.state.units.some(u => u.id === id)))];
     }
 
     /** What models destroyed in an event set off: emergency disembarks and Deadly Demise. */
@@ -2347,9 +2690,72 @@
         }
     }
 
+    // --- The view: how the board is turned, fitted, and where a pointer is on it -----------------------------
+
+    /** How the board is turned now (degrees clockwise): the player's choice, else the default for this screen. */
+    function rotation() {
+        if (state.rotation != null) return state.rotation;
+        const portrait = PHONE.matches && window.innerHeight > window.innerWidth;
+        return Core.playDefaultRotation({ seat: state.game ? state.game.seat : null, portrait });
+    }
+
+    /** The board's drawing turned for the screen: its transform and the view's size (Core.playViewTransform). */
+    function viewOf() {
+        return Core.playViewTransform(rotation(), state.game ? state.game.board : { width: 60, depth: 44 });
+    }
+
+    /** The view's own board size, for keeping the camera on the board when panning and pinching. */
+    function viewBoard() {
+        const v = viewOf();
+        return { width: v.width, depth: v.depth };
+    }
+
     function fitView() {
-        const board = state.game ? state.game.board : { width: 60, depth: 44 };
-        state.view = { x: -1, y: -1, w: board.width + 2, h: board.depth + 2 };
+        const v = viewOf();
+        state.view = { x: -1, y: -1, w: v.width + 2, h: v.depth + 2 };
+    }
+
+    /** Turn the board a quarter turn (R), keeping it fitted. */
+    function turnBoard() {
+        if (!state.game) return;
+        state.rotation = (rotation() + 90) % 360;
+        fitView();
+        drawBoard();
+        message(`Board turned ${state.rotation}°.`);
+    }
+
+    /** Text at (x, y) kept upright however the board is turned. */
+    function upright(x, y) {
+        return Core.playUpright(rotation(), x, y);
+    }
+
+    /** Screen up, as a direction on the board's drawing (where a unit's nameplate goes). */
+    function screenUp() {
+        return { 0: [0, -1], 90: [-1, 0], 180: [0, 1], 270: [1, 0] }[rotation()] || [0, -1];
+    }
+
+    /** Pixels per inch on screen now (the SVG draws the view centred, as "meet" does). */
+    function pixelsPerInch() {
+        const svg = $('play-board'), box = svg.getBoundingClientRect();
+        if (!state.view || !box.width) return 10;
+        return Math.min(box.width / state.view.w, box.height / state.view.h);
+    }
+
+    /** Set the board's view box (pan and zoom), keeping labels the same size on screen. */
+    function applyView() {
+        $('play-board').setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.w} ${state.view.h}`);
+        scaleLabels();
+    }
+
+    /** Nameplates and other screen-sized marks: drawn in pixels, scaled to the current zoom. */
+    function scaleLabels() {
+        const svg = $('play-board');
+        if (!svg || !state.game) return;
+        const k = 1 / pixelsPerInch();
+        svg.querySelectorAll('[data-screen-x]').forEach(el => {
+            const x = Number(el.dataset.screenX), y = Number(el.dataset.screenY);
+            el.setAttribute('transform', `translate(${x} ${y}) scale(${k})`);  // Its layer isn't turned: already upright
+        });
     }
 
     function svgEl(name, attrs, parent) {
@@ -2359,35 +2765,53 @@
         return el;
     }
 
+    /** The board's hatching for Dense terrain and the arrows for shots (made once per drawing). */
+    function boardDefs(svg) {
+        const defs = svgEl('defs', {}, svg);
+        const hatch = svgEl('pattern', { id: 'play-hatch', patternUnits: 'userSpaceOnUse', width: 0.6, height: 0.6, patternTransform: 'rotate(45)' }, defs);
+        svgEl('line', { x1: 0, y1: 0, x2: 0, y2: 0.6, class: 'play-hatch-line' }, hatch);
+        return defs;
+    }
+
     function drawBoard() {
         const svg = $('play-board');
         if (!state.view) fitView();
         svg.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.w} ${state.view.h}`);
         svg.innerHTML = '';
+        svg.classList.toggle('tactical', state.tactical);
         const game = state.game;
+        boardDefs(svg);
+        const view = viewOf();
+        // Everything on the board is drawn in the board's own inches (y down) inside one group, turned for the screen
+        const root = svgEl('g', { id: 'board-root', transform: view.transform }, svg);
         const board = game ? game.board : { width: 60, depth: 44 };
         const W = board.width, D = board.depth;
-        svgEl('rect', { x: 0, y: 0, width: W, height: D, class: 'play-field' }, svg);
+        svgEl('rect', { x: 0, y: 0, width: W, height: D, class: 'play-field' }, root);
         // The game's battle mat, dimmed so everything drawn on it stays readable
         const mat = Core.playMat(game && game.uid);
-        svgEl('image', { href: `/static/img/mats/${mat.file}`, x: 0, y: 0, width: W, height: D, preserveAspectRatio: 'none', class: 'play-mat' }, svg);
-        svgEl('rect', { x: 0, y: 0, width: W, height: D, class: 'play-mat-dim', opacity: 1 - Core.PLAY_MAT_STRENGTH }, svg);
+        svgEl('image', { href: `/static/img/mats/${mat.file}`, x: 0, y: 0, width: W, height: D, preserveAspectRatio: 'none', class: 'play-mat' }, root);
+        svgEl('rect', { x: 0, y: 0, width: W, height: D, class: 'play-mat-dim', opacity: 1 - Core.PLAY_MAT_STRENGTH }, root);
         // Each player's deployment zone, as the battlefield draws it (SVG y runs down)
         (game ? game.zones : []).forEach((zone, p) => svgEl('polygon', {
-            points: zone.map(([x, y]) => `${x},${D - y}`).join(' '), class: `play-zone ${PLAYER_CLASSES[p]}` }, svg));
-        const grid = svgEl('g', { class: 'play-grid' }, svg);
+            points: zone.map(([x, y]) => `${x},${D - y}`).join(' '), class: `play-zone ${PLAYER_CLASSES[p]}` }, root));
+        const grid = svgEl('g', { class: 'play-grid' }, root);
         for (let x = 1; x < W; x++) svgEl('line', { x1: x, y1: 0, x2: x, y2: D, class: x % 6 ? '' : 'major' }, grid);
         for (let y = 1; y < D; y++) svgEl('line', { x1: 0, y1: y, x2: W, y2: y, class: y % 6 ? '' : 'major' }, grid);
         if (!game) return;
         const divider = game.state.battlefield && game.state.battlefield.divider;
         if (divider) {  // The line between the two territories
-            svgEl('line', { x1: divider[0][0], y1: D - divider[0][1], x2: divider[1][0], y2: D - divider[1][1], class: 'play-divider' }, svg);
+            svgEl('line', { x1: divider[0][0], y1: D - divider[0][1], x2: divider[1][0], y2: D - divider[1][1], class: 'play-divider' }, root);
         }
-        drawTerrain(svg, D);
-        drawObjectives(svg, D);
-        drawIngress(svg, D);
-        drawShotLines(svg, D);
+        drawTerrain(root, D);
+        drawObjectives(root, D);
+        drawIngress(root, D);
+        drawNoGo(root, D);
+        drawChargeReach(root, D);
+        drawShotLines(root, D);
+        drawCasualties(root, D);
 
+        const nameplates = svgEl('g', { class: 'play-nameplates' }, svg);  // Drawn last, over everything
+        const targets = targetStates();
         for (const unit of game.state.units) {
             const placed = unit.models.filter(m => m.alive && m.position);
             if (!placed.length) continue;
@@ -2397,16 +2821,13 @@
             const shocked = unit.status && unit.status.shocked ? 'shocked' : '';
             const afflicted = (game.afflicted || {})[unit.id] ? 'afflicted' : '';
             const condemned = game.mission && Object.values(game.mission.condemned).some(ids => ids.includes(unit.id)) ? 'condemned' : '';
-            const provisional = state.placing && state.placing.unitId === unit.id ? 'provisional' : '';
+            const provisional = state.placing && state.placing.unitId === unit.id ? 'provisional'
+                : state.pendingMove && state.pendingMove.unitId === unit.id ? `provisional ${state.check && state.check.unitId === unit.id && !state.check.ok ? 'bad' : ''}` : '';
             const ready = game.ready.includes(unit.id) ? 'ready' : '';
-            const g = svgEl('g', { class: `play-unit-group ${PLAYER_CLASSES[unit.player]} ${state.selected === unit.id ? 'selected' : ''} ${targeted ? 'targeted' : ''} ${shocked} ${afflicted} ${ready} ${condemned} ${provisional}`,
-                                   'data-unit': unit.id }, svg);
-            // The unit's outline: around every model's whole base, 0.4" out
-            const reach = m => Math.max(game.outlines[unit.id][m.part].length, game.outlines[unit.id][m.part].width) / 2 + 0.4;
-            const left = Math.min(...placed.map(m => m.position.x - reach(m)));
-            const right = Math.max(...placed.map(m => m.position.x + reach(m)));
-            const top = Math.min(...placed.map(m => D - m.position.y - reach(m)));
-            const bottom = Math.max(...placed.map(m => D - m.position.y + reach(m)));
+            const target = targets[unit.id] || '';
+            const g = svgEl('g', { class: `play-unit-group ${PLAYER_CLASSES[unit.player]} ${state.selected === unit.id ? 'selected' : ''} ${targeted ? 'targeted' : ''} ${shocked} ${afflicted} ${ready} ${condemned} ${provisional} ${target}`,
+                                   'data-unit': unit.id }, root);
+            if (target === 'invalid-target' && targets.why[unit.id]) svgEl('title', {}, g).textContent = targets.why[unit.id];
             drawBorder(g, unit, placed, D);
             if (unit.activity[startKey()] && allowance(unit, placed[0]) != null) {
                 for (const model of placed) {  // Where it started the phase, until moves lock
@@ -2437,21 +2858,156 @@
                     svgEl('circle', { cx: from.x, cy: D - from.y, r: left + Math.max(o.length, o.width) / 2,
                                       class: 'play-move-ring' }, g);
                 }
+                drawRange(g, unit, placed, D);
             }
             for (const model of placed) {  // Under the models: grabbing the unit's border area grabs the unit
                 padded(g, unit, model, D, BORDER_PAD, { class: 'play-unit-hit', 'data-unit': unit.id, 'data-model': model.id,
                                                        'data-follow': model.id, 'data-turn': 1 });
             }
             for (const model of placed) drawModel(g, unit, model, D);
-            const label = svgEl('text', { x: (left + right) / 2, y: top - 0.3, class: 'play-label' }, g);
-            const carrying = game.state.units.filter(o => o.status && o.status.embarked === unit.id).length;
-            label.textContent = unit.name + (carrying ? ` (${carrying} unit${carrying === 1 ? '' : 's'} aboard)` : '') + (afflicted ? ' · Afflicted' : '');
+            drawNameplate(nameplates, unit, placed, D, view, target);
         }
         // Wounds badges on top of every model, so a neighbouring base never hides one
-        const badges = svgEl('g', { class: 'play-badges' }, svg);
-        svg.querySelectorAll('.play-wounds').forEach(b => badges.appendChild(b));
-        drawMarkers(svg, D);  // Operation markers above the models, so a unit standing on one doesn't hide it
+        const badges = svgEl('g', { class: 'play-badges' }, root);
+        root.querySelectorAll('.play-wounds').forEach(b => badges.appendChild(b));
+        drawMarkers(root, D);  // Operation markers above the models, so a unit standing on one doesn't hide it
+        drawRecapStep(root, D);
+        svg.appendChild(nameplates);
         drawMeasure();
+        scaleLabels();
+    }
+
+    /**
+     * Which enemy units the selected unit could attack now ('valid-target') and which not ('invalid-target', with
+     * `why`), from the server's options: Shooting (any weapon), Fight (engaged) and Charge (before the roll, in reach).
+     */
+    function targetStates() {
+        const out = { why: {} };
+        const game = state.game, unit = state.selected && unitById(state.selected);
+        if (!unit) return out;
+        const enemies = game.state.units.filter(u => u.player !== unit.player && u.models.some(m => m.alive && m.position));
+        if (state.shooting && state.shooting.unit === unit.id && !state.shooting.reason && !unit.activity.shot) {
+            for (const e of enemies) {
+                const answers = state.shooting.weapons.map(w => w.targets[e.id]).filter(Boolean);
+                out[e.id] = answers.some(t => t.ok) ? 'valid-target' : 'invalid-target';
+                if (out[e.id] === 'invalid-target') out.why[e.id] = (answers.find(t => t.reason) || {}).reason || 'No weapon can shoot it.';
+            }
+        } else if (state.fight && state.fight.unit === unit.id && !state.fight.reason) {
+            for (const e of enemies) if (state.fight.targets.includes(e.id)) out[e.id] = 'valid-target';
+        } else if (state.charge && state.charge.unit === unit.id) {
+            const pool = state.charge.roll == null ? state.charge.reach || {} : state.charge.targets || {};
+            for (const e of enemies) if (pool[e.id]) out[e.id] = 'valid-target';
+        }
+        return out;
+    }
+
+    /** A unit's nameplate: its name, a bar of models (or wounds) left and its state, upright and the same size at
+     * every zoom; over the side of the unit nearest the top of the screen. */
+    function drawNameplate(layer, unit, placed, D, view, target = '') {
+        const game = state.game;
+        const up = screenUp();
+        const reach = m => Math.max(game.outlines[unit.id][m.part].length, game.outlines[unit.id][m.part].width) / 2;
+        const xs = placed.map(m => m.position.x), ys = placed.map(m => D - m.position.y);
+        const cx = xs.reduce((a, b) => a + b, 0) / xs.length, cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+        const along = Math.max(...placed.map(m => m.position.x * up[0] + (D - m.position.y) * up[1] + reach(m))) + 0.25;
+        const here = cx * up[0] + cy * up[1];
+        const bx = cx + (along - here) * up[0], by = cy + (along - here) * up[1];
+        // Into the view's own coordinates (the nameplates layer isn't turned)
+        const m = (view.transform.match(/-?[\d.]+/g) || [1, 0, 0, 1, 0, 0]).map(Number);
+        const [a, b, c, d, e, f] = view.transform ? m : [1, 0, 0, 1, 0, 0];
+        const x = a * bx + c * by + e, y = b * bx + d * by + f;
+        const total = unit.models.length;
+        const single = total === 1;
+        const model = unit.models[0];
+        const full = single ? unit.parts[model.part].stats.wounds : total;
+        const left = single ? Math.max(0, model.wounds_left) : unit.models.filter(mm => mm.alive).length;
+        const share = full ? left / full : 1;
+        const status = [unit.status && unit.status.shocked ? '!' : '', actedThisPhase(unit, game.state.turn) ? '✓' : ''].filter(Boolean).join(' ');
+        const carrying = game.state.units.filter(o => o.status && o.status.embarked === unit.id).length;
+        const name = unit.name + (carrying ? ` (+${carrying})` : '');
+        const width = Math.max(44, Math.min(150, name.length * 6.2 + 12));
+        const g = svgEl('g', { class: `play-nameplate ${PLAYER_CLASSES[unit.player]} ${state.selected === unit.id ? 'selected' : ''} ${target}`,
+                               'data-screen-x': x, 'data-screen-y': y, 'data-plate': unit.id }, layer);
+        svgEl('rect', { x: -width / 2, y: -21, width, height: 17, rx: 4, class: 'play-plate-bg' }, g);
+        const text = svgEl('text', { x: 0, y: -9, class: 'play-plate-name' }, g);
+        text.textContent = name.length > 24 ? name.slice(0, 23) + '…' : name;
+        svgEl('rect', { x: -width / 2 + 3, y: -6.5, width: width - 6, height: 3, rx: 1.5, class: 'play-plate-track' }, g);
+        svgEl('rect', { x: -width / 2 + 3, y: -6.5, width: Math.max(0, (width - 6) * share), height: 3, rx: 1.5,
+                        class: `play-plate-health ${share <= 0.5 ? 'low' : ''}` }, g);
+        if (status) {
+            const s = svgEl('text', { x: width / 2 + 3, y: -9, class: `play-plate-status ${unit.status && unit.status.shocked ? 'shocked' : ''}` }, g);
+            s.textContent = status;
+        }
+        const title = svgEl('title', {}, g);
+        title.textContent = `${unit.name}: ${left} of ${full} ${single ? 'wounds' : 'models'} left${unit.status && unit.status.shocked ? ', battle-shocked' : ''}`;
+    }
+
+    /** The hovered weapon's range round each model carrying it (Shooting). */
+    function drawRange(g, unit, placed, D) {
+        if (!state.rangeFor || !state.shooting || state.shooting.unit !== unit.id) return;
+        const [part, weapon] = state.rangeFor.split(':').map(Number);
+        const w = state.shooting.weapons.find(x => x.part === part && x.weapon === weapon);
+        if (!w || !w.range) return;
+        for (const model of placed.filter(m => m.part === part && (m.weapons || []).includes(weapon))) {
+            padded(g, unit, model, D, Number(w.range), { class: 'play-range-ring' });
+        }
+    }
+
+    /** While a unit is dragged in the Movement phase (or set up, or scouting): where it can't end, engagement range
+     * round each enemy model (the server's ENGAGEMENT_RANGE), shaded. */
+    function drawNoGo(svg, depth) {
+        const drag = state.drag || (state.placing && { unitId: state.placing.unitId });
+        if (!drag || !state.game.engagement_range) return;
+        const phase = state.game.state.turn.phase;
+        if (!['movement', 'deployment', 'prebattle'].includes(phase)) return;
+        const unit = unitById(drag.unitId);
+        const enemies = state.game.state.units.filter(u => u.player !== unit.player);
+        const W = state.game.board.width;
+        const mask = svgEl('mask', { id: 'play-nogo-mask', maskUnits: 'userSpaceOnUse', x: -5, y: -5, width: W + 10, height: depth + 10 }, svg);
+        let any = false;
+        for (const enemy of enemies) {
+            for (const model of enemy.models.filter(m => m.alive && m.position)) {
+                padded(mask, enemy, model, depth, state.game.engagement_range, { fill: 'white' });
+                any = true;
+            }
+        }
+        if (any) svgEl('rect', { x: -5, y: -5, width: W + 10, height: depth + 10, class: 'play-nogo', mask: 'url(#play-nogo-mask)' }, svg);
+    }
+
+    /** Charge phase, before the roll: 12" round the selected unit, and each enemy in reach labelled with its odds. */
+    function drawChargeReach(svg, depth) {
+        const unit = state.selected && unitById(state.selected);
+        if (!unit || !state.charge || state.charge.unit !== unit.id || state.charge.roll != null || state.charge.reason) return;
+        const W = state.game.board.width;
+        const mask = svgEl('mask', { id: 'play-charge-mask', maskUnits: 'userSpaceOnUse', x: -20, y: -20, width: W + 40, height: depth + 40 }, svg);
+        for (const model of unit.models.filter(m => m.alive && m.position)) padded(mask, unit, model, depth, 12, { fill: 'white' });
+        svgEl('rect', { x: -20, y: -20, width: W + 40, height: depth + 40, class: 'play-charge-reach', mask: 'url(#play-charge-mask)' }, svg);
+        const layer = svgEl('g', { class: 'play-odds-labels' }, svg);
+        for (const [id, r] of Object.entries(state.charge.reach || {})) {
+            const enemy = unitById(id);
+            const centre = Core.playCentre(enemy.models.filter(m => m.alive && m.position).map(m => m.position));
+            if (!centre) continue;
+            const g = svgEl('g', { transform: `translate(${centre.x} ${depth - centre.y})` }, layer);
+            const t = svgEl('text', { class: `play-odds-label ${r.chance >= 66 ? 'good' : r.chance >= 33 ? 'fair' : 'poor'}`, transform: upright(0, 0) }, g);
+            t.textContent = `${r.chance}%`;
+        }
+    }
+
+    /** Models killed this phase: a mark where each fell, so it's clear what just happened. */
+    function drawCasualties(svg, depth) {
+        const dead = new Set(Core.playCasualties(state.game.events));
+        if (!dead.size) return;
+        const layer = svgEl('g', { class: 'play-casualties' }, svg);
+        for (const unit of state.game.state.units) {
+            for (const model of unit.models.filter(m => !m.alive && m.position && dead.has(m.id))) {
+                const o = state.game.outlines[unit.id][model.part];
+                const r = Math.min(o.length, o.width) / 2;
+                const g = svgEl('g', { class: `play-casualty ${PLAYER_CLASSES[unit.player]}`, transform: `translate(${model.position.x} ${depth - model.position.y})` }, layer);
+                svgEl('circle', { r, class: 'play-casualty-base' }, g);
+                svgEl('path', { d: `M ${-r * 0.55} ${-r * 0.55} L ${r * 0.55} ${r * 0.55} M ${r * 0.55} ${-r * 0.55} L ${-r * 0.55} ${r * 0.55}` }, g);
+                svgEl('title', {}, g).textContent = `${unit.parts[model.part].name} (${unit.name}): killed this phase`;
+            }
+        }
     }
 
     // --- Turning in the Movement phase: shown at once, sent as one move after a short pause ---
@@ -2540,18 +3096,49 @@
         cardTimer = setTimeout(() => showCard(unitId, at), CARD_DELAY);
     }
 
-    function hideCard() {
+    /** Hide the hover card; a pinned one (double-click) stays unless `force`. */
+    function hideCard(force = false) {
+        if (state.pinned && !force) return;
         clearTimeout(cardTimer);
         cardTimer = null;
         cardUnit = null;
+        state.pinned = false;
         const card = $('play-card');
-        if (card) card.hidden = true;
+        if (card) {
+            card.hidden = true;
+            card.classList.remove('pinned');
+        }
     }
 
-    async function showCard(unitId, at) {
+    /**
+     * What attacking an enemy unit with the selected unit would likely do, for its hover card: every weapon that can
+     * shoot it (as a click on it would pick), or the fight at it. Null when the selected unit can't attack it now.
+     */
+    function hoverAttack(enemyId) {
+        const unit = state.selected && unitById(state.selected);
+        const enemy = unitById(enemyId);
+        if (!unit || !enemy || enemy.player === unit.player) return null;
+        if (state.shooting && state.shooting.unit === unit.id && !state.shooting.reason && !unit.activity.shot) {
+            const weapons = state.shooting.weapons.filter(w => w.targets[enemyId] && w.targets[enemyId].ok && w.default_use)
+                .map(w => ({ part: w.part, weapon: w.weapon, target: enemyId }));
+            return weapons.length ? { unit: unit.id, kind: 'shoot', weapons } : null;
+        }
+        if (state.fight && state.fight.unit === unit.id && !state.fight.reason && state.fight.targets.includes(enemyId)) {
+            const weapons = state.fight.parts.filter(p => state.fightWeapon[p.part] != null)
+                .map(p => ({ part: p.part, weapon: state.fightWeapon[p.part], target: enemyId }));
+            return { unit: unit.id, kind: 'fight', weapons };
+        }
+        return null;
+    }
+
+    const hoverPreviews = {};  // JSON of the attack -> its preview (or the promise of it), for this board
+
+    async function showCard(unitId, at, pin = false) {
         const unit = unitById(unitId);
         if (!unit || state.drag || state.pan || state.measure) return;
+        if (state.pinned && !pin) return;  // A pinned card stays put until it's closed
         cardUnit = unitId;
+        state.pinned = pin;
         let card = $('play-card');
         if (!card) {
             card = document.createElement('div');
@@ -2560,12 +3147,22 @@
             card.setAttribute('role', 'tooltip');
             document.body.appendChild(card);
         }
+        card.classList.toggle('pinned', pin);
         const key = part => `${part.bsdata_id || ''}|${part.unit_id || ''}`;
+        const attack = hoverAttack(unitId);
+        const attackKey = attack && JSON.stringify(attack);
         const draw = () => {
             if (cardUnit !== unitId) return;
             card.classList.toggle('wide', unit.parts.length > 1);  // Its leaders beside it, not below
-            card.innerHTML = Core.playUnitCard(unit, unit.parts.map(p => abilityCache[key(p)] instanceof Promise ? undefined : abilityCache[key(p)]),
-                state.game.invulnerable_only?.[unit.id] || []);
+            const preview = attackKey && hoverPreviews[attackKey] && !(hoverPreviews[attackKey] instanceof Promise) ? hoverPreviews[attackKey] : null;
+            const odds = attack ? `<div class="play-card-preview"><strong>If ${escapeHtml(unitById(attack.unit).name)} ${attack.kind === 'fight' ? 'fights' : 'shoots'} it now</strong>
+                ${preview ? previewLine(unitId, preview.targets[unitId] || { kills: 0, models: 0, kill_chance: 0, wipe_chance: 0, trials: 0 })
+                    : '<p class="play-hint">Working out the odds…</p>'}</div>` : '';
+            card.innerHTML = (pin ? `<button class="play-card-close" type="button" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>` : '')
+                + odds + Core.playUnitCard(unit, unit.parts.map(p => abilityCache[key(p)] instanceof Promise ? undefined : abilityCache[key(p)]),
+                    state.game.invulnerable_only?.[unit.id] || []);
+            const close = card.querySelector('.play-card-close');
+            if (close) close.addEventListener('click', () => hideCard(true));
             card.hidden = false;
             // Beside the pointer, kept on screen
             const box = card.getBoundingClientRect(), gap = 16;
@@ -2580,7 +3177,10 @@
                 .then(r => r.json()).catch(() => ({ found: false, abilities: [], rules: [] }))
                 .then(answer => { abilityCache[key(p)] = answer; });
         });
-        await Promise.all(unit.parts.map(p => abilityCache[key(p)]).filter(v => v instanceof Promise));
+        if (attack && !(attackKey in hoverPreviews)) {
+            hoverPreviews[attackKey] = askPreview(attack).then(answer => { hoverPreviews[attackKey] = answer || { targets: {} }; });
+        }
+        await Promise.all([...unit.parts.map(p => abilityCache[key(p)]), attackKey && hoverPreviews[attackKey]].filter(v => v instanceof Promise));
         draw();
     }
 
@@ -2589,9 +3189,11 @@
     function toggleMeasure(on = !state.measure) {
         hideCard();
         state.measure = on ? { from: null, to: null, distance: null, fixed: false } : null;
+        if (!on) state.measures = [];  // Off: the measurements kept on the board go too
         $('measure-btn').classList.toggle('active', on);
+        $('measure-btn').setAttribute('aria-pressed', String(on));
         $('play-board').classList.toggle('measuring', on);
-        if (on) message('Measure: click a point or a model, then another. Esc or the ruler button to stop.');
+        if (on) message('Measure: click a point or a model, then another; each measurement stays until Measure is off (Esc or M).');
         else message('');
         drawMeasure();
     }
@@ -2613,6 +3215,7 @@
     function measureClick(event) {
         const end = measureEnd(event), m = state.measure;
         if (!m.from || m.fixed) {
+            if (m.fixed && m.distance != null) state.measures.push({ ...m });  // Kept while the tool is on
             Object.assign(m, { from: end, to: null, distance: null, fixed: false });
             drawMeasure();
         } else {
@@ -2645,21 +3248,22 @@
     }
 
     function drawMeasure() {
-        const svg = $('play-board');
-        const old = svg.querySelector('.play-measure');
-        if (old) old.remove();
-        const m = state.measure;
-        if (!m || !m.from || !state.game) return;
+        const svg = $('play-board'), root = $('board-root');
+        svg.querySelectorAll('.play-measure').forEach(el => el.remove());
+        if (!root || !state.game) return;
         const D = state.game.board.depth;
-        const g = svgEl('g', { class: 'play-measure' }, svg);
-        svgEl('circle', { cx: m.from.x, cy: D - m.from.y, r: 0.15 }, g);
-        if (!m.to) return;
-        svgEl('line', { x1: m.from.x, y1: D - m.from.y, x2: m.to.x, y2: D - m.to.y }, g);
-        svgEl('circle', { cx: m.to.x, cy: D - m.to.y, r: 0.15 }, g);
-        if (m.distance == null) return;
-        const bases = m.from.outline && m.to.outline ? ' base to base' : m.from.outline || m.to.outline ? ' from the base' : '';
-        const text = svgEl('text', { x: (m.from.x + m.to.x) / 2, y: D - (m.from.y + m.to.y) / 2 - 0.4 }, g);
-        text.textContent = `${m.distance.toFixed(1)}"${bases}`;
+        for (const m of [...state.measures, state.measure].filter(x => x && x.from)) {
+            const g = svgEl('g', { class: `play-measure ${m === state.measure ? 'live' : 'kept'}` }, root);
+            svgEl('circle', { cx: m.from.x, cy: D - m.from.y, r: 0.15 }, g);
+            if (!m.to) continue;
+            svgEl('line', { x1: m.from.x, y1: D - m.from.y, x2: m.to.x, y2: D - m.to.y }, g);
+            svgEl('circle', { cx: m.to.x, cy: D - m.to.y, r: 0.15 }, g);
+            if (m.distance == null) continue;
+            const bases = m.from.outline && m.to.outline ? ' base to base' : m.from.outline || m.to.outline ? ' from the base' : '';
+            const x = (m.from.x + m.to.x) / 2, y = D - (m.from.y + m.to.y) / 2;
+            const text = svgEl('text', { x, y: y - 0.4, transform: upright(x, y - 0.4) }, g);
+            text.textContent = `${m.distance.toFixed(1)}"${bases}`;
+        }
     }
 
     /** Terrain areas: each footprint shaded by category (Exposed, Light, Dense), its height on hover. */
@@ -2686,10 +3290,17 @@
             const g = svgEl('g', { class: `play-objective ${owner}`, transform: `translate(${o.x} ${depth - o.y})` }, layer);
             svgEl('circle', { r: r + game.objective_size.range, class: 'play-objective-range' }, g);
             svgEl('circle', { r, class: 'play-objective-marker' }, g);
-            const letter = svgEl('text', { class: 'play-objective-letter', y: 0.02 }, g);
+            const letter = svgEl('text', { class: 'play-objective-letter', y: 0.02, transform: upright(0, 0) }, g);
             letter.textContent = { home: 'H', central: 'C', expansion: 'E' }[o.kind] || 'O';
             const oc = game.objective_oc[o.id] || [0, 0];
             const players = game.state.players;
+            if (oc[0] || oc[1]) {  // The OC in range now, under the marker: who would hold it if the phase ended now
+                const chip = svgEl('g', { class: 'play-oc', transform: upright(0, 0) }, g);
+                const lead = oc[0] > oc[1] ? 'play-p1' : oc[1] > oc[0] ? 'play-p2' : 'tie';
+                svgEl('rect', { x: -1.1, y: r + 0.25, width: 2.2, height: 0.8, rx: 0.3, class: `play-oc-bg ${lead}` }, chip);
+                const t = svgEl('text', { y: r + 0.68, class: 'play-oc-text' }, chip);
+                t.textContent = `${oc[0]}–${oc[1]}`;
+            }
             const title = svgEl('title', {}, g);
             title.textContent = `${o.kind === 'home' ? `${players[o.owner].name}'s home` : o.kind[0].toUpperCase() + o.kind.slice(1)} objective`
                 + ` · ${o.controller == null ? 'not controlled' : `held by ${players[o.controller].name}`}`
@@ -2706,7 +3317,7 @@
             const info = Core.playMarker(m.tag);
             const g = svgEl('g', { class: `play-marker ${PLAYER_CLASSES[m.player]}`, transform: `translate(${m.x} ${depth - m.y})` }, layer);
             svgEl('rect', { x: -0.45, y: -0.45, width: 0.9, height: 0.9, transform: 'rotate(45)' }, g);
-            const letter = svgEl('text', { y: 0.02 }, g);
+            const letter = svgEl('text', { y: 0.02, transform: upright(0, 0) }, g);
             letter.textContent = info.letter;
             const title = svgEl('title', {}, g);
             title.textContent = `${state.game.state.players[m.player].name}: ${info.label}${m.objective ? ` (${m.objective})` : m.terrain ? ` (terrain area ${m.terrain})` : ''}`;
@@ -2715,7 +3326,7 @@
             for (const piece of state.game.terrain || []) {
                 const cx = piece.points.reduce((s, p) => s + p[0], 0) / piece.points.length;
                 const cy = piece.points.reduce((s, p) => s + p[1], 0) / piece.points.length;
-                const label = svgEl('text', { x: cx, y: depth - cy, class: `play-terrain-id ${mission.locate_options.includes(piece.id) ? 'choosable' : ''}` }, layer);
+                const label = svgEl('text', { x: cx, y: depth - cy, transform: upright(cx, depth - cy), class: `play-terrain-id ${mission.locate_options.includes(piece.id) ? 'choosable' : ''}` }, layer);
                 label.textContent = piece.id;
             }
         }
@@ -2894,7 +3505,7 @@
             // ...and a crown on it, kept upright
             const size = Math.min(outline.length, outline.width) * 0.28;
             const crown = [[-1, 0.6], [-1, -0.45], [-0.5, 0.1], [0, -0.7], [0.5, 0.1], [1, -0.45], [1, 0.6]];
-            svgEl('polygon', { class: 'play-leader-crown', 'data-follow': model.id, transform: `translate(${x} ${y})`,
+            svgEl('polygon', { class: 'play-leader-crown', 'data-follow': model.id, 'data-upright': 1, transform: `translate(${x} ${y}) rotate(${-rotation()})`,
                                points: crown.map(([cx, cy]) => `${cx * size},${cy * size}`).join(' ') }, g);
         }
         const full = unit.parts[model.part].stats.wounds;
@@ -2903,7 +3514,7 @@
             const badge = svgEl('g', { class: 'play-wounds', 'data-badge': model.id,
                                        transform: `translate(${x + outline.length * 0.36} ${y - outline.width * 0.36})` }, g);
             svgEl('circle', { r: 0.34 }, badge);
-            const text = svgEl('text', { y: 0.01 }, badge);
+            const text = svgEl('text', { y: 0.01, transform: upright(0, 0) }, badge);
             text.textContent = model.wounds_left;
             const title = svgEl('title', {}, badge);
             title.textContent = `${model.wounds_left} of ${full} wounds left`;
@@ -2915,10 +3526,11 @@
     /** A pointer event's position on the board, in inches with y up. */
     function boardPoint(event) {
         const svg = $('play-board');
+        const root = $('board-root') || svg;  // The board's own drawing, however it's turned
         const pt = svg.createSVGPoint();
         pt.x = event.clientX;
         pt.y = event.clientY;
-        const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+        const p = pt.matrixTransform(root.getScreenCTM().inverse());
         return { x: p.x, y: state.game.board.depth - p.y, svgX: p.x, svgY: p.y };
     }
 
@@ -2932,7 +3544,14 @@
             if (touches.size > 2) return;
         }
         let target = event.target.closest('[data-model]');
-        if (!target && finger && !state.measure) target = modelNear(event.clientX, event.clientY);  // Just off a small base
+        if (!target && finger && !state.measure) {  // Just off a small base: the one meant, or ask between two units
+            const near = unitsNear(event.clientX, event.clientY);
+            if (near.length > 1) {
+                touches.delete(event.pointerId);
+                return chooseUnit(near, event.clientX, event.clientY);
+            }
+            target = modelNear(event.clientX, event.clientY);
+        }
         if (state.measure && event.button === 0) return measureClick(event);
         if (event.button === 1 || event.button === 2 || (event.button === 0 && !target)) {
             // Pan: left-drag on empty board, or middle- or right-drag anywhere. A left click without dragging still places.
@@ -2985,8 +3604,8 @@
     function pinchTo() {
         const svg = $('play-board'), box = svg.getBoundingClientRect();
         state.view = Core.playPinch(state.pinch.view, state.pinch.start, fingersOnBoard(), { width: box.width, height: box.height },
-            state.game.board);
-        svg.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.w} ${state.view.h}`);
+            viewBoard());
+        applyView();
     }
 
     function longPress(unitId, at) {
@@ -3006,6 +3625,49 @@
         });
         const id = Core.nearestWithin(items, x, y, FINGER_REACH);
         return id ? board.querySelector(`.play-model[data-model="${CSS.escape(id)}"]`) : null;
+    }
+
+    /** The units with a model within a finger's reach of (x, y) on the screen, nearest first, when more than one is
+     * about as near (a finger between two units): the player says which. */
+    function unitsNear(x, y) {
+        const found = new Map();
+        $('play-board').querySelectorAll('.play-model[data-model]').forEach(el => {
+            const r = el.getBoundingClientRect();
+            const gap = Math.max(0, Math.hypot(r.left + r.width / 2 - x, r.top + r.height / 2 - y) - Math.min(r.width, r.height) / 2);
+            if (gap <= FINGER_REACH && (!found.has(el.dataset.unit) || gap < found.get(el.dataset.unit))) found.set(el.dataset.unit, gap);
+        });
+        const sorted = [...found.entries()].sort((a, b) => a[1] - b[1]);
+        return sorted.length > 1 && sorted[1][1] - sorted[0][1] < 8 ? sorted.map(([id]) => id) : [];
+    }
+
+    /** A small menu by the finger: which of these units? */
+    function chooseUnit(ids, x, y) {
+        let menu = $('unit-chooser');
+        if (!menu) {
+            menu = document.createElement('div');
+            menu.id = 'unit-chooser';
+            menu.className = 'play-chooser';
+            menu.setAttribute('role', 'menu');
+            document.body.appendChild(menu);
+        }
+        menu.innerHTML = `<small>Which unit?</small>${ids.map(id => {
+            const unit = unitById(id);
+            return `<button type="button" role="menuitem" class="${PLAYER_CLASSES[unit.player]}" data-choose="${escapeHtml(id)}">${escapeHtml(unit.name)}</button>`;
+        }).join('')}`;
+        menu.hidden = false;
+        menu.style.left = `${Math.min(Math.max(8, x - 90), window.innerWidth - 196)}px`;
+        menu.style.top = `${Math.min(Math.max(8, y + 16), window.innerHeight - 60 * ids.length - 40)}px`;
+        const close = e => {
+            if (e && e.target.closest('#unit-chooser')) return;
+            menu.hidden = true;
+            document.removeEventListener('pointerdown', close, true);
+        };
+        menu.querySelectorAll('[data-choose]').forEach(b => b.addEventListener('click', () => {
+            menu.hidden = true;
+            document.removeEventListener('pointerdown', close, true);
+            if (state.selected !== b.dataset.choose) select(b.dataset.choose);
+        }));
+        setTimeout(() => document.addEventListener('pointerdown', close, true), 0);
     }
 
     /** A pointer the browser took back (a scroll, a call coming in): whatever it was doing is dropped. */
@@ -3031,7 +3693,7 @@
         if (!state.view) fitView();
         const v = state.view;
         state.view = Core.playZoom(v, factor, v.x + v.w / 2, v.y + v.h / 2);
-        $('play-board').setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.w} ${state.view.h}`);
+        applyView();
     }
 
     function panTo(event) {
@@ -3041,8 +3703,8 @@
         pan.moved = true;
         const svg = $('play-board'), box = svg.getBoundingClientRect();
         const scale = Math.max(pan.view.w / box.width, pan.view.h / box.height);  // SVG units per pixel
-        state.view = Core.playPan(pan.view, -px * scale, -py * scale, state.game.board);
-        svg.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.w} ${state.view.h}`);
+        state.view = Core.playPan(pan.view, -px * scale, -py * scale, viewBoard());
+        applyView();
         svg.classList.add('panning');
     }
 
@@ -3060,9 +3722,19 @@
         if (state.pan) return panTo(event);
         if (state.measure && !state.measure.fixed && state.measure.from) return measureTo(measureEnd(event));
         if (!state.drag) return;
+        if (!state.drag.started) {  // The drag begins: the no-go zones drawn, and a finger's models lifted into view
+            state.drag.started = true;
+            state.check = null;
+            if (event.pointerType === 'touch') {
+                const below = boardPoint(event), above = boardPoint({ clientX: event.clientX, clientY: event.clientY - LIFT_PX });
+                state.drag.lift = { x: above.x - below.x, y: above.y - below.y };
+            }
+            drawBoard();
+        }
         const p = boardPoint(event);
-        state.drag.dx = p.x - state.drag.start.x;
-        state.drag.dy = p.y - state.drag.start.y;
+        const lift = state.drag.lift || { x: 0, y: 0 };
+        state.drag.dx = p.x - state.drag.start.x + lift.x;
+        state.drag.dy = p.y - state.drag.start.y + lift.y;
         const trail = state.drag.trail, last = trail[trail.length - 1];
         if (Math.hypot(state.drag.dx - last.x, state.drag.dy - last.y) >= 0.1) trail.push({ x: state.drag.dx, y: state.drag.dy });
         const unit = unitById(state.drag.unitId);
@@ -3083,11 +3755,15 @@
             if (!label || parseFloat(here.text) > parseFloat(label.text) || here.over) label = here;
         }
         showReadout(event, label);
+        const action = dragAction(state.drag);  // Would the server take it? (asked once the drag pauses)
+        if (action) checkMove(action, unit.id);
         if (state.drag.modelIds.length === unit.models.filter(m => m.alive && m.position).length) {
             // The whole unit: its outline and name go with it (SVG y runs down)
             const group = $('play-board').querySelector(`.play-unit-group[data-unit="${unit.id}"]`);
-            group.querySelectorAll('.play-unit-border, .play-label').forEach(el =>
+            group.querySelectorAll('.play-unit-border').forEach(el =>
                 el.setAttribute('transform', `translate(${state.drag.dx} ${-state.drag.dy})`));
+            const plate = $('play-board').querySelector(`[data-plate="${CSS.escape(unit.id)}"]`);
+            if (plate) plate.classList.add('dragging');
         }
         for (const id of state.drag.modelIds) {
             const el = $('play-board').querySelector(`.play-model[data-model="${id}"]`);
@@ -3095,7 +3771,8 @@
             const x = model.position.x + state.drag.dx, y = state.game.board.depth - (model.position.y + state.drag.dy);
             el.setAttribute('transform', `translate(${x} ${y}) rotate(${-(model.position.angle || 0)})`);
             $('play-board').querySelectorAll(`[data-follow="${id}"]`).forEach(mark =>  // The leader's ring and crown
-                mark.setAttribute('transform', `translate(${x} ${y})${mark.dataset.turn ? ` rotate(${-(model.position.angle || 0)})` : ''}`));
+                mark.setAttribute('transform', `translate(${x} ${y})${mark.dataset.turn ? ` rotate(${-(model.position.angle || 0)})`
+                    : mark.dataset.upright ? ` rotate(${-rotation()})` : ''}`));
             const badge = $('play-board').querySelector(`[data-badge="${id}"]`);
             if (badge) {
                 const o = state.game.outlines[unit.id][model.part];
@@ -3118,6 +3795,7 @@
     }
 
     async function pointerUp(event) {
+        clearTimeout(checkTimer);
         clearTimeout(state.press);
         state.press = null;
         if (event && event.pointerType === 'touch') {
@@ -3162,55 +3840,161 @@
                 state.fight.parts.forEach(p => { state.fightTarget[p.part] = unit.id; });
                 renderDetail();
                 drawBoard();
+                schedulePreview();
             } else if (state.selected !== unit.id) {
                 select(unit.id);
             }
             return;
         }
         showReadout(null, null);
-        const round = v => Math.round(v * 100) / 100;
-        const moved = new Set(drag.modelIds);
         const turn = state.game.state.turn;
         const settingUp = state.placing && state.placing.unitId === unit.id;  // Deployment, or arriving from reserves
-        if (turn.phase === 'movement' && !settingUp && unit.activity.moved === 'ingress' && unit.player === turn.player) {
-            // Arrived this phase: set it up again where it was dragged (the server checks the ingress rules again)
-            await send({ type: 'ingress', unit: unit.id, models: unit.models.filter(m => m.alive).map(m => ({
-                id: m.id, angle: m.position.angle || 0,
-                x: round(m.position.x + (moved.has(m.id) ? drag.dx : 0)), y: round(m.position.y + (moved.has(m.id) ? drag.dy : 0)) })) });
-            return;
-        }
-        if (turn.phase !== 'deployment' && !settingUp) {
-            const bends = dragBends(drag);
-            const models = unit.models.filter(m => m.alive).map(m => Object.assign({
-                id: m.id, x: round(m.position.x + (moved.has(m.id) ? drag.dx : 0)),
-                y: round(m.position.y + (moved.has(m.id) ? drag.dy : 0)), angle: m.position.angle || 0,
-            }, moved.has(m.id) && bends.length ? { route: routeOf(m, bends) } : {}));
-            if (turn.phase === 'prebattle') {
-                if (await send({ type: 'scout', unit: unit.id, models })) message(`${unit.name} made a scout move.`);
-            } else if (turn.phase === 'movement') {
-                const mode = state.selected === unit.id ? state.moveMode : 'normal';
-                await send(Object.assign({ type: 'move', unit: unit.id, mode, models }, waypointing(unit) ? { waypoint: true } : {},
-                    flying(unit) ? { skies: true } : {}));
-            } else if (turn.phase === 'charge') {
-                const targets = state.charge && state.charge.unit === unit.id ? state.chargeTargets : [];
-                if (await send(Object.assign({ type: 'charge_move', unit: unit.id, targets, models }, flying(unit) ? { skies: true } : {}))) loadOptions();
-            } else if (turn.phase === 'fight' && (turn.step === 'pile_in' || turn.step === 'consolidate')) {
-                await send({ type: turn.step, unit: unit.id, models });
-            } else if (turn.phase === 'fight' && turn.step === 'fight') {  // An overrun fight's pile-in
-                if (await send({ type: 'overrun', unit: unit.id, models })) {
-                    clearOptions();
-                    loadOptions();
-                }
+        const action = dragAction(drag);
+        if (!action) {
+            if (turn.phase === 'deployment' || settingUp) {
+                const round = v => Math.round(v * 100) / 100, moved = new Set(drag.modelIds);
+                startPlacing(unit, unit.models.filter(m => m.alive && m.position).map(m => ({
+                    id: m.id, angle: m.position.angle || 0,
+                    x: round(m.position.x + (moved.has(m.id) ? drag.dx : 0)), y: round(m.position.y + (moved.has(m.id) ? drag.dy : 0)),
+                })));
             } else {
-                message('Models move in the Movement and Charge phases and the Fight phase\'s Pile in and Consolidate steps.', true);
+                message("Models move in the Movement and Charge phases and the Fight phase's Pile in and Consolidate steps.", true);
                 render();
             }
             return;
         }
-        startPlacing(unit, unit.models.filter(m => m.alive && m.position).map(m => ({
-            id: m.id, angle: m.position.angle || 0,
-            x: round(m.position.x + (moved.has(m.id) ? drag.dx : 0)), y: round(m.position.y + (moved.has(m.id) ? drag.dy : 0)),
-        })));
+        // A finger's move waits for Confirm (a slip is easy on a small screen); a mouse's goes at once
+        if (event && event.pointerType === 'touch') return holdMove(unit, action);
+        await sendMove(unit, action);
+    }
+
+    /**
+     * The action a drag makes (its models where they were dropped, each moved model's route), or null when a drag
+     * makes none here (deployment: a provisional placing instead; a phase where nothing moves).
+     */
+    function dragAction(drag) {
+        const unit = unitById(drag.unitId);
+        const round = v => Math.round(v * 100) / 100;
+        const moved = new Set(drag.modelIds);
+        const turn = state.game.state.turn;
+        const settingUp = state.placing && state.placing.unitId === unit.id;
+        const spot = m => ({ id: m.id, angle: m.position.angle || 0,
+                             x: round(m.position.x + (moved.has(m.id) ? drag.dx : 0)), y: round(m.position.y + (moved.has(m.id) ? drag.dy : 0)) });
+        if (turn.phase === 'movement' && !settingUp && unit.activity.moved === 'ingress' && unit.player === turn.player) {
+            // Arrived this phase: set it up again where it was dragged (the server checks the ingress rules again)
+            return { type: 'ingress', unit: unit.id, models: unit.models.filter(m => m.alive).map(spot) };
+        }
+        if (turn.phase === 'deployment' || settingUp) return null;
+        const bends = dragBends(drag);
+        const models = unit.models.filter(m => m.alive).map(m => Object.assign(spot(m),
+            moved.has(m.id) && bends.length ? { route: routeOf(m, bends) } : {}));
+        if (turn.phase === 'prebattle') return { type: 'scout', unit: unit.id, models };
+        if (turn.phase === 'movement') {
+            const mode = state.selected === unit.id ? state.moveMode : 'normal';
+            return Object.assign({ type: 'move', unit: unit.id, mode, models }, waypointing(unit) ? { waypoint: true } : {},
+                flying(unit) ? { skies: true } : {});
+        }
+        if (turn.phase === 'charge') {
+            const targets = state.charge && state.charge.unit === unit.id ? state.chargeTargets : [];
+            return Object.assign({ type: 'charge_move', unit: unit.id, targets, models }, flying(unit) ? { skies: true } : {});
+        }
+        if (turn.phase === 'fight' && (turn.step === 'pile_in' || turn.step === 'consolidate')) return { type: turn.step, unit: unit.id, models };
+        if (turn.phase === 'fight' && turn.step === 'fight') return { type: 'overrun', unit: unit.id, models };  // An overrun fight's pile-in
+        return null;
+    }
+
+    /** Send a dragged move, with what follows each kind. */
+    async function sendMove(unit, action) {
+        const ok = await send(action);
+        if (!ok) return false;
+        if (action.type === 'scout') message(`${unit.name} made a scout move.`);
+        if (action.type === 'charge_move') loadOptions();
+        if (action.type === 'overrun') {
+            clearOptions();
+            loadOptions();
+        }
+        return true;
+    }
+
+    // --- Touch: a dropped move waits for Confirm, shown where it was dropped and checked with the server ---------
+
+    function holdMove(unit, action) {
+        const original = Object.fromEntries(unit.models.map(m => [m.id, m.position && { ...m.position }]));
+        const byId = Object.fromEntries(action.models.map(m => [m.id, m]));
+        unit.models.forEach(m => { if (byId[m.id] && m.position) m.position = { x: byId[m.id].x, y: byId[m.id].y, angle: byId[m.id].angle }; });
+        state.pendingMove = { unitId: unit.id, action, original };
+        state.check = null;
+        render();
+        checkMove(action, unit.id, true);
+    }
+
+    function cancelPendingMove() {
+        const pending = state.pendingMove;
+        if (!pending) return;
+        unitById(pending.unitId).models.forEach(m => { if (pending.original[m.id] !== undefined) m.position = pending.original[m.id]; });
+        state.pendingMove = null;
+        state.check = null;
+        render();
+    }
+
+    async function confirmPendingMove() {
+        const pending = state.pendingMove;
+        if (!pending) return;
+        const unit = unitById(pending.unitId);
+        cancelPendingMove();  // Back where it was: the server's answer draws it where it went
+        if (await sendMove(unit, pending.action)) Haptics.tap();
+    }
+
+    /** The bar over the board while a dropped move waits: Confirm or Reset, and whether the server would take it. */
+    function renderPendingMove() {
+        const bar = $('place-bar');
+        const pending = state.pendingMove;
+        if (!pending) return;
+        const unit = unitById(pending.unitId);
+        const check = state.check && state.check.unitId === pending.unitId ? state.check : null;
+        bar.hidden = false;
+        bar.innerHTML = `<span>${check && !check.ok ? `<strong class="play-check-bad">Not allowed:</strong> ${escapeHtml(check.error)}`
+                : `Move <strong>${escapeHtml(unit.name)}</strong> here?${check ? ' <span class="play-check-ok">Allowed</span>' : ''}`}</span>
+            <span class="play-pending-actions">
+                <button class="btn btn-primary" id="move-ok" ${check && !check.ok ? 'disabled' : ''}><i class="fa-solid fa-check" aria-hidden="true"></i> Confirm</button>
+                <button class="btn-small" id="move-reset"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reset</button></span>`;
+        $('move-ok').addEventListener('click', confirmPendingMove);
+        $('move-reset').addEventListener('click', cancelPendingMove);
+    }
+
+    // --- While dragging: would the server take the move? (a dry run, GameSession.check) ---------------------------
+
+    let checkTimer = null, checkAsked = 0;
+
+    /** Ask whether a move would be allowed (soon, unless `now`: a drag keeps changing it). */
+    function checkMove(action, unitId, now = false) {
+        clearTimeout(checkTimer);
+        const ask = async () => {
+            const asked = ++checkAsked;
+            const resp = await fetch(`/api/play/games/${state.game.id}/check`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action),
+            }).catch(() => null);
+            const answer = resp && resp.ok ? await resp.json() : null;
+            if (asked !== checkAsked || !answer) return;
+            state.check = { unitId, ok: answer.ok, error: answer.error };
+            paintCheck(unitId);
+        };
+        if (now) ask(); else checkTimer = setTimeout(ask, 220);
+    }
+
+    /** Show the dragged (or waiting) unit as allowed or not: its outline, and the readout or the Confirm bar. */
+    function paintCheck(unitId) {
+        const group = $('play-board').querySelector(`.play-unit-group[data-unit="${CSS.escape(unitId)}"]`);
+        if (group) {
+            group.classList.toggle('bad', !!(state.check && !state.check.ok));
+            group.classList.toggle('good', !!(state.check && state.check.ok));
+        }
+        if (state.pendingMove) renderPendingMove();
+        const readout = $('play-readout');
+        if (state.drag && readout && !readout.hidden && state.check && !state.check.ok) {
+            readout.textContent = `${readout.dataset.distance || ''} · ${state.check.error}`;
+            readout.classList.add('over');
+        }
     }
 
     function zoom(event) {
@@ -3228,7 +4012,7 @@
         pt.y = event.clientY;
         const p = pt.matrixTransform(svg.getScreenCTM().inverse());
         state.view = Core.playZoom(state.view, event.deltaY > 0 ? 1.1 : 1 / 1.1, p.x, p.y);
-        svg.setAttribute('viewBox', `${state.view.x} ${state.view.y} ${state.view.w} ${state.view.h}`);
+        applyView();
     }
 
     /** The distance readout beside the pointer while dragging ({text, over}), or hidden. */
@@ -3242,10 +4026,525 @@
         }
         el.hidden = !label;
         if (!label) return;
-        el.textContent = label.text;
-        el.classList.toggle('over', label.over);
+        const bad = state.check && state.drag && state.check.unitId === state.drag.unitId && !state.check.ok;
+        el.dataset.distance = label.text;
+        el.textContent = bad ? `${label.text} · ${state.check.error}` : label.text;
+        el.classList.toggle('over', label.over || !!bad);
         el.style.left = `${event.clientX + 14}px`;
         el.style.top = `${event.clientY + 14}px`;
+    }
+
+    // --- Keys: the game's shortcuts (the help pop-up lists them) --------------------------------------------------
+
+    /** A key pressed on the board's page (no pop-up open, not typing): true if it was a shortcut. */
+    function shortcut(e) {
+        const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+        if ((e.ctrlKey || e.metaKey) && key === 'z') {
+            if (!$('undo-btn').disabled) undo();
+            return true;
+        }
+        if (e.ctrlKey || e.metaKey) return false;
+        if (key === 'Alt') {  // Held: the tactical view
+            if (!state.tactical) { state.altTactical = true; setTactical(true); }
+            return true;
+        }
+        if (key === 'Escape') {
+            if (!$('phase-confirm').hidden) { $('phase-confirm').hidden = true; return true; }
+            if (state.pendingMove) { cancelPendingMove(); return true; }
+            if (state.placing) return false;  // Cancels the placing (below)
+            if (state.logOpen) { toggleLog(false); return true; }
+            if (state.pinned) { hideCard(true); return true; }
+            if (state.selected) { select(state.selected); return true; }
+            return false;
+        }
+        if (state.placing) return false;  // Q, E, Enter and Escape place the unit (below)
+        if (key === 'Tab' && !e.shiftKey) { nextReadyUnit(); return true; }
+        if (key === 'Enter' && !$('phase-btn').hidden && !e.target.closest('button, a, summary, [role=button]')) {
+            requestNextPhase();
+            return true;
+        }
+        const actions = { m: () => toggleMeasure(), f: () => { fitView(); drawBoard(); }, r: () => turnBoard(), t: () => setTactical(!state.tactical),
+                          l: () => toggleLog(), '?': () => openModal('help-modal') };
+        if (actions[key]) { actions[key](); return true; }
+        return false;
+    }
+
+    /** Select the next unit that can still act this phase (Tab), and bring it into view. */
+    function nextReadyUnit() {
+        const units = myReadyUnits();
+        if (!units.length) return message('No unit can act now: move on to the next phase.');
+        const at = units.findIndex(u => u.id === state.selected);
+        const next = units[(at + 1) % units.length];
+        if (state.selected !== next.id) select(next.id);
+        centreOn(next, true);
+        flashUnits([next.id]);
+    }
+
+    /** Move the camera so a unit is in view (`always`: centred on it even when it was in view). */
+    function centreOn(unit, always = false) {
+        const models = unit.models.filter(m => m.alive && m.position);
+        if (!models.length || !state.view) return;
+        const g = $('play-board').querySelector(`.play-unit-group[data-unit="${CSS.escape(unit.id)}"]`);
+        const box = $('play-board').getBoundingClientRect();
+        if (g && !always) {  // Already in view: the camera stays put
+            const r = g.getBoundingClientRect();
+            if (r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom) return;
+        }
+        const D = state.game.board.depth;
+        const centre = Core.playCentre(models.map(m => m.position));
+        const [a, b, c, d, e, f] = (viewOf().transform.match(/-?[\d.]+/g) || [1, 0, 0, 1, 0, 0]).map(Number);
+        const x = a * centre.x + c * (D - centre.y) + e, y = b * centre.x + d * (D - centre.y) + f;
+        state.view = Core.playPan(state.view, x - (state.view.x + state.view.w / 2), y - (state.view.y + state.view.h / 2), viewBoard());
+        applyView();
+    }
+
+    /** Zoom in on a unit (a double tap): about 16" across, centred on it; Fit goes back. */
+    function zoomToUnit(unit) {
+        if (!unit || !state.view) return;
+        state.view = Core.playZoom(state.view, Math.min(1, 16 / state.view.w), state.view.x + state.view.w / 2, state.view.y + state.view.h / 2);
+        applyView();
+        centreOn(unit, true);
+    }
+
+    /** Light up units on the board for a moment (from the log, Tab, the recap). */
+    function flashUnits(ids) {
+        const svg = $('play-board');
+        ids.forEach(id => {
+            const g = svg.querySelector(`.play-unit-group[data-unit="${CSS.escape(id)}"]`);
+            if (!g) return;
+            g.classList.remove('flash');
+            void g.getBoundingClientRect();  // Restart the animation
+            g.classList.add('flash');
+        });
+    }
+
+    /** A unit hovered in an army list (or an odds list): lit up on the board, and the other way round. */
+    function highlightUnit(id) {
+        document.querySelectorAll('.play-unit-group.hovered, .play-unit.hovered').forEach(el => el.classList.remove('hovered'));
+        if (!id) return;
+        document.querySelectorAll(`.play-unit-group[data-unit="${CSS.escape(id)}"], .play-unit[data-unit="${CSS.escape(id)}"]`)
+            .forEach(el => el.classList.add('hovered'));
+    }
+
+    /** The tactical view: no battle mat, terrain drawn strongly (T, or held Alt). */
+    function setTactical(on) {
+        state.tactical = on;
+        $('tactical-btn').classList.toggle('active', on);
+        $('tactical-btn').setAttribute('aria-pressed', String(on));
+        $('play-board').classList.toggle('tactical', on);
+        renderMoreMenu();
+    }
+
+    /** The battle log drawer (desktop; phones have it as a tab). */
+    function toggleLog(open = !state.logOpen) {
+        state.logOpen = open;
+        document.body.classList.toggle('play-log-open', open);
+        $('log-btn').classList.toggle('active', open);
+        $('log-btn').setAttribute('aria-pressed', String(open));
+        if (open) state.logRead = state.game ? state.game.events.length : 0;
+        renderLogButton();
+    }
+
+    /** The log button's count: entries added since the log was last open. */
+    function renderLogButton() {
+        const game = state.game;
+        const unread = game && !state.logOpen ? Math.max(0, game.events.length - state.logRead) : 0;
+        $('log-unread').hidden = !unread;
+        $('log-unread').textContent = unread > 9 ? '9+' : String(unread);
+        if (state.logOpen && game) state.logRead = game.events.length;
+    }
+
+    /** The More menu: its items follow the hidden buttons they press (shown, on or off). */
+    function renderMoreMenu() {
+        $('correct-item').hidden = $('correct-btn').hidden;
+        $('file-item').hidden = $('file-btn').hidden;
+        $('full-item').hidden = document.documentElement.dataset.layout === 'desktop';
+        $('sound-item').innerHTML = `<i class="fa-solid fa-${state.sound ? 'volume-high' : 'volume-xmark'}" aria-hidden="true"></i> Sound: ${state.sound ? 'on' : 'off'}`;
+        $('tactical-item').innerHTML = `<i class="fa-solid fa-layer-group" aria-hidden="true"></i> Tactical view: ${state.tactical ? 'on' : 'off'} <kbd>T</kbd>`;
+    }
+
+    function renderSound() {
+        $('sound-btn').querySelector('i').className = `fa-solid fa-${state.sound ? 'volume-high' : 'volume-xmark'}`;
+        $('sound-btn').setAttribute('aria-pressed', String(state.sound));
+        $('sound-btn').title = state.sound ? 'Sound on: click to mute' : 'Sound off: click to turn on';
+        if ($('sound-item')) renderMoreMenu();
+    }
+
+    /** Phones: the whole screen for the game (the browser's bars hidden), and back. */
+    function toggleFullScreen() {
+        const doc = document;
+        if (doc.fullscreenElement) return doc.exitFullscreen && doc.exitFullscreen();
+        const el = doc.documentElement;
+        if (el.requestFullscreen) el.requestFullscreen().catch(() => message('This browser keeps its bars: add the app to your home screen instead.', true));
+        else message('This browser keeps its bars: add the app to your home screen instead.', true);
+    }
+
+    /** The heights around the board (the site's header, a phone's tab bar), for the game layout's sizes (play.css). */
+    function measureChrome() {
+        const header = document.querySelector('.header');
+        const root = document.documentElement;
+        root.style.setProperty('--header-h', `${header ? Math.round(header.getBoundingClientRect().height) : 0}px`);
+        // The phone game screen: sheets stop above the armies-and-log tabs, so the tabs stay to hand
+        const tabs = $('phone-tabs').getBoundingClientRect();
+        root.style.setProperty('--play-tabs-h', `${tabs.height ? Math.round(window.innerHeight - tabs.top) : 0}px`);
+    }
+
+    /** The overlays on the board: a tap skips the dice moment; the recap and hand-over buttons. */
+    function wireOverlays() {
+        $('result-toast').addEventListener('click', () => hideResult());
+        $('board-wrap').addEventListener('keydown', e => { if (e.key === 'Escape' && !$('result-toast').hidden) hideResult(); });
+    }
+
+    /** What the action bar says when the selected unit has nothing to do this phase. */
+    function idleHint(unit) {
+        const turn = state.game.state.turn;
+        if (turn.phase === 'ended') return 'The battle is over.';
+        if (state.game.seat != null && unit.player !== state.game.seat) return `${state.game.state.players[unit.player].name}'s unit.`;
+        if (unit.player !== actingPlayer(turn)) return `Not ${state.game.state.players[unit.player].name}'s turn to act.`;
+        if (actedThisPhase(unit, turn)) return `${unit.name} has acted this phase.`;
+        return `Nothing for ${unit.name} to do in the ${PHASE_NAMES[turn.phase] || turn.phase} phase.`;
+    }
+
+    /** The action bar's head: the unit, its models or wounds left, and (phones) its datasheet and close buttons. */
+    function renderActionHead(unit) {
+        const living = unit.models.filter(m => m.alive).length;
+        const single = unit.models.length === 1;
+        const left = single ? `${unit.models[0].wounds_left}/${unit.parts[unit.models[0].part].stats.wounds} W` : `${living}/${unit.models.length} models`;
+        $('action-head').innerHTML = `<span class="play-action-unit ${PLAYER_CLASSES[unit.player]}"><strong>${escapeHtml(unit.name)}</strong>
+                <small>${escapeHtml(left)}${unit.status && unit.status.shocked ? ' · battle-shocked' : ''}</small></span>
+            <span class="play-action-tools">
+                <button class="btn-small play-sheet-open" id="sheet-open" type="button"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Datasheet</button>
+                <button class="play-icon-btn" id="action-close" type="button" title="Deselect (Esc)" aria-label="Deselect ${escapeHtml(unit.name)}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></span>`;
+        $('sheet-open').addEventListener('click', () => $('unit-sheet').classList.toggle('open'));
+        $('action-close').addEventListener('click', () => select(unit.id));
+    }
+
+    /**
+     * A button that acts at once with a mouse, but on a touch screen needs holding for a moment (a slip of a finger
+     * shouldn't end a phase or roll the dice): the button fills while held, and a tap says to hold it.
+     */
+    function holdToConfirm(button, act, hint) {
+        const HOLD_MS = 550;
+        let timer = null, done = false;
+        const stop = () => { clearTimeout(timer); timer = null; button.classList.remove('holding'); };
+        button.addEventListener('pointerdown', e => {
+            if (e.pointerType !== 'touch' || button.disabled) return;
+            done = false;
+            button.classList.add('holding');
+            timer = setTimeout(() => { stop(); done = true; Haptics.tap(); act(); }, HOLD_MS);
+        });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(kind => button.addEventListener(kind, e => {
+            if (e.pointerType !== 'touch' || !timer) return;
+            stop();
+            if (kind === 'pointerup') message(`${hint}: press and hold.`);
+        }));
+        button.addEventListener('click', e => {
+            if (state.lastPointer === 'touch') {  // A finger: the hold did it (or said to hold)
+                e.preventDefault();
+                done = false;
+                return;
+            }
+            act();
+        });
+        button.addEventListener('contextmenu', e => { if (timer || done) e.preventDefault(); });
+    }
+    document.addEventListener('pointerdown', e => { state.lastPointer = e.pointerType; }, true);
+
+    // --- The turn as it goes: the phase banner, results on the board, sounds and notices -------------------------
+
+    function turnKey(game) {
+        const t = game && game.state.turn;
+        return t ? `${t.round}:${t.player}:${t.phase}:${t.step || ''}` : null;
+    }
+
+    /** After an answer brought new events: a new phase announced, an attack's result shown, sounds, a hand-over. */
+    function announce(game, fresh) {
+        const key = turnKey(game);
+        if (key !== state.lastTurn) {
+            state.lastTurn = key;
+            const t = game.state.turn;
+            if (PHASE_NAMES[t.phase] && !['setup'].includes(t.phase)) {
+                const who = ['deployment', 'prebattle'].includes(t.phase) ? '' : `${game.state.players[t.player].name} · `;
+                showBanner(`${who}${PHASE_NAMES[t.phase]}${t.step ? ' · ' + STEP_NAMES[t.step] : ''}`, actingPlayer(t));
+                Sound.play('phase');
+            }
+        }
+        const attack = [...fresh].reverse().find(e => e.attacks && e.attacks.length);
+        if (attack) showResult(attack);
+        else if (fresh.some(e => e.rolls && e.rolls.length)) Sound.play('dice');
+        const actor = game.reaction ? game.reaction.player : actingPlayer(game.state.turn);  // A reaction: theirs to decide
+        if (actor !== state.lastActor) {
+            state.lastActor = actor;
+            state.handOver = handOverNeeded(game);
+            renderPass();
+        }
+    }
+
+    /** The phase banner: a moment across the board, in the colour of whoever acts. */
+    function showBanner(text, player) {
+        const banner = $('phase-banner');
+        banner.textContent = text;
+        banner.className = `play-phase-banner ${player != null ? PLAYER_CLASSES[player] : ''}`;
+        void banner.offsetWidth;
+        banner.classList.add('show');
+        clearTimeout(state.bannerTimer);
+        state.bannerTimer = setTimeout(() => banner.classList.remove('show'), 1500);
+    }
+
+    /**
+     * An attack's result over the board: who attacked whom, its dice by roll and attacks › hits › wounds › killed per
+     * target, numbers rising from each target; a tap (or a few seconds) clears it. With Fast dice, just the result.
+     */
+    function showResult(event) {
+        const totals = Core.playAttackTotals(event);
+        if (!totals.length) return;
+        const name = id => (unitById(id) || { name: id }).name;
+        const act = event.redo || event.action;
+        const killed = totals.reduce((n, t) => n + t.killed, 0);
+        const dice = state.fastDice ? '' : event.attacks.filter(a => a.name !== 'Hazardous').slice(0, 3).map(a =>
+            Core.playDiceGroups(event.rolls, a.rolls).filter(g => ['hit', 'wound', 'save'].includes(g.purpose || '') || g.need)
+                .slice(0, 3).map((g, gi) => `<div class="play-result-dice"><span>${escapeHtml(g.label)}${g.need ? ` <em>${g.need}</em>` : ''}</span>
+                    <span class="play-dice">${g.dice.slice(0, 24).map((d, k) => dieHtml(d.face, d.kind, gi * 6 + k, d.rerolled_from)).join('')}${g.dice.length > 24 ? '<small>…</small>' : ''}</span></div>`).join('')).join('');
+        const toast = $('result-toast');
+        toast.className = `play-result ${PLAYER_CLASSES[(unitById(act.unit) || {}).player] || ''} ${state.fastDice ? 'fast' : ''}`;
+        toast.innerHTML = `<div class="play-result-head"><strong>${escapeHtml(name(act.unit))}</strong>
+                <span class="play-log-verb">${act.type === 'fight' ? 'fights' : act.type === 'overwatch' || event.overwatch ? 'fires Overwatch at' : 'shoots'}</span>
+                <strong>${escapeHtml(totals.map(t => name(t.target)).join(', '))}</strong></div>
+            ${totals.map(t => `<div class="play-funnel">${[[t.attacks, 'Attacks'], [t.hits, 'Hits'], [t.wounds, 'Wounds'], [t.killed, 'Killed']].map(([v, l], i) =>
+                `${i ? '<i class="fa-solid fa-chevron-right" aria-hidden="true"></i>' : ''}<span class="play-stage ${l === 'Killed' ? 'killed' : ''} ${v ? '' : 'zero'}"><b>${v}</b><small>${l}</small></span>`).join('')}</div>`).join('')}
+            ${dice}<small class="play-result-skip">${PHONE.matches ? 'Tap' : 'Click'} to close</small>`;
+        toast.hidden = false;
+        toast.classList.remove('fresh');
+        void toast.offsetWidth;
+        toast.classList.add('fresh');
+        clearTimeout(state.resultTimer);
+        state.resultTimer = setTimeout(hideResult, state.fastDice ? 2500 : 5500);
+        Sound.play(killed ? 'kill' : 'dice');
+        if (killed) Haptics.tap();
+        // Each target: how many died, rising from it
+        totals.forEach(t => floatOver(t.target, t.killed ? `−${t.killed}` : 'no kills', t.killed ? 'kill' : 'miss'));
+    }
+
+    function hideResult() {
+        clearTimeout(state.resultTimer);
+        $('result-toast').hidden = true;
+    }
+
+    /** A number rising from a unit on the board for a moment ("−2"). */
+    function floatOver(unitId, text, kind) {
+        const unit = unitById(unitId);
+        const models = unit ? unit.models.filter(m => m.position && (m.alive || Core.playCasualties(state.game.events).includes(m.id))) : [];
+        if (!models.length) return;
+        const D = state.game.board.depth;
+        const centre = Core.playCentre(models.map(m => m.position));
+        const root = $('board-root');
+        if (!root) return;
+        const point = $('play-board').createSVGPoint();
+        point.x = centre.x;
+        point.y = D - centre.y;
+        const screen = point.matrixTransform(root.getScreenCTM());
+        const wrap = $('board-wrap').getBoundingClientRect();
+        const el = document.createElement('div');
+        el.className = `play-float ${kind}`;
+        el.textContent = text;
+        el.style.left = `${screen.x - wrap.left}px`;
+        el.style.top = `${screen.y - wrap.top}px`;
+        $('board-wrap').appendChild(el);
+        setTimeout(() => el.remove(), 1600);
+    }
+
+    /** Sounds made in the page (no files): dice rattling, a phase chime, a kill. Off with the sound button. */
+    const Sound = (() => {
+        let context = null;
+        function ctx() {
+            if (!context) {
+                const Ctor = window.AudioContext || window.webkitAudioContext;
+                if (!Ctor) return null;
+                context = new Ctor();
+            }
+            if (context.state === 'suspended') context.resume().catch(() => {});
+            return context;
+        }
+        function click(c, at, freq, length, volume) {
+            const osc = c.createOscillator(), gain = c.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, at);
+            gain.gain.setValueAtTime(volume, at);
+            gain.gain.exponentialRampToValueAtTime(0.0001, at + length);
+            osc.connect(gain).connect(c.destination);
+            osc.start(at);
+            osc.stop(at + length + 0.02);
+        }
+        function play(kind) {
+            if (!state.sound || document.hidden) return;
+            const c = ctx();
+            if (!c) return;
+            const now = c.currentTime;
+            if (kind === 'dice' || kind === 'kill') {  // A rattle of small clicks
+                for (let i = 0; i < 7; i++) click(c, now + i * 0.045 + Math.random() * 0.02, 900 + Math.random() * 900, 0.04, 0.05);
+                if (kind === 'kill') click(c, now + 0.36, 160, 0.25, 0.12);
+            } else if (kind === 'phase') {
+                click(c, now, 523, 0.18, 0.06);
+                click(c, now + 0.12, 784, 0.25, 0.05);
+            } else if (kind === 'turn') {
+                click(c, now, 392, 0.2, 0.07);
+                click(c, now + 0.15, 523, 0.2, 0.07);
+                click(c, now + 0.3, 659, 0.35, 0.07);
+            } else {
+                click(c, now, 1200, 0.05, 0.04);
+            }
+        }
+        return { play };
+    })();
+
+    /** A notice outside the page that it's your move (an online game, the page in the background). */
+    function notifyYourMove(game) {
+        Sound.play('turn');
+        if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
+        try {
+            const notice = new Notification('Your move', { body: `${game.name}: ${game.state.players[1 - game.seat].name} has moved.`,
+                                                         tag: `play-${game.id}`, icon: '/static/img/icons/icon-192.png' });
+            notice.onclick = () => { window.focus(); notice.close(); };
+        } catch (e) { /* Some browsers only notify from a service worker */ }
+        if (navigator.vibrate) try { navigator.vibrate([60, 40, 60]); } catch (e) { /* not allowed */ }
+    }
+
+    // --- Coming back to a game: what the other player did since you last looked ---------------------------------
+
+    function seenKey(game) {
+        return `play-seen-${game.uid || game.id}`;
+    }
+
+    /** Remember how much of a game this person has seen (on this device: a convenience, never the game's state). */
+    function rememberSeen(game) {
+        if (!state.recap) store(seenKey(game), game.events.length);
+    }
+
+    /** On opening a game played from two places: the other player's moves since this device last showed it. */
+    function startRecap(game) {
+        state.recap = null;
+        if (game.seat == null) return;
+        const seen = stored(seenKey(game), null);
+        if (seen == null || seen >= game.events.length) return;
+        const lines = Core.playRecap(game.events, seen, 1 - game.seat, unitById, game.state.players.map(p => p.name));
+        if (lines.length) state.recap = { lines, step: -1, seen };
+    }
+
+    function renderRecap() {
+        const panel = $('recap-panel');
+        const recap = state.recap;
+        panel.hidden = !recap;
+        if (!recap) return;
+        const other = state.game.state.players[1 - state.game.seat].name;
+        const step = recap.step;
+        panel.innerHTML = `<div class="play-recap-head"><strong><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                Since you last looked: ${escapeHtml(other)}</strong>
+                <button class="play-icon-btn" id="recap-close" title="Done" aria-label="Close the recap"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+            <ol class="play-recap-lines">${recap.lines.map((l, i) => `<li class="${i === step ? 'current' : ''}" data-recap="${i}">
+                <i class="fa-solid fa-${escapeHtml(l.icon)}" aria-hidden="true"></i> ${escapeHtml(l.text)}</li>`).join('')}</ol>
+            <span class="play-pending-actions">
+                <button class="btn-small" id="recap-prev" ${step <= 0 ? 'disabled' : ''}><i class="fa-solid fa-backward-step" aria-hidden="true"></i></button>
+                <button class="btn btn-primary" id="recap-next">${step < 0 ? 'Show on the board' : step < recap.lines.length - 1 ? 'Next' : 'Done'}</button></span>`;
+        const go = i => {
+            recap.step = i;
+            renderRecap();
+            drawBoard();
+            const line = recap.lines[i];
+            if (line) {
+                flashUnits(line.units);
+                const unit = line.units[0] && unitById(line.units[0]);
+                if (unit) centreOn(unit);
+            }
+        };
+        $('recap-close').addEventListener('click', endRecap);
+        $('recap-prev').addEventListener('click', () => go(Math.max(0, step - 1)));
+        $('recap-next').addEventListener('click', () => (step >= recap.lines.length - 1 ? endRecap() : go(step + 1)));
+        panel.querySelectorAll('[data-recap]').forEach(li => li.addEventListener('click', () => go(Number(li.dataset.recap))));
+    }
+
+    function endRecap() {
+        state.recap = null;
+        renderRecap();
+        drawBoard();
+        if (state.game) rememberSeen(state.game);
+    }
+
+    /** The recap's current line on the board: each moved model's path from where it stood before. */
+    function drawRecapStep(svg, depth) {
+        const recap = state.recap;
+        const line = recap && recap.lines[recap.step];
+        if (!line) return;
+        const event = state.game.events[line.index];
+        const layer = svgEl('g', { class: 'play-recap-paths' }, svg);
+        for (const [id, m] of Object.entries(event.models || {})) {
+            if (!m || !m.position) continue;
+            const before = Core.playLastPosition(state.game.events, line.index, id);
+            if (!before || (before.x === m.position.x && before.y === m.position.y)) continue;
+            svgEl('line', { x1: before.x, y1: depth - before.y, x2: m.position.x, y2: depth - m.position.y, class: 'play-recap-path' }, layer);
+            svgEl('circle', { cx: before.x, cy: depth - before.y, r: 0.3, class: 'play-recap-from' }, layer);
+        }
+    }
+
+    // --- Hot-seat: handing the device over between the players' turns -------------------------------------------
+
+    /** Whether the board should hand over now: hot-seat, a battle turn (or a reaction) for the other player. */
+    function handOverNeeded(game) {
+        if (!state.passScreen || game.seat != null || Core.playOnline(game)) return false;
+        const turn = game.state.turn;
+        return ['command', 'movement', 'shooting', 'charge', 'fight'].includes(turn.phase) || !!game.reaction;
+    }
+
+    function renderPass() {
+        const screen = $('pass-screen');
+        const game = state.game;
+        const show = !!(game && state.handOver);
+        screen.hidden = !show;
+        if (!show) return;
+        const player = game.reaction ? game.reaction.player : actingPlayer(game.state.turn);
+        const name = game.state.players[player].name;
+        const why = game.reaction ? `${game.reaction.name}?` : `${PHASE_NAMES[game.state.turn.phase]} phase`;
+        screen.className = `play-pass ${PLAYER_CLASSES[player]}`;
+        screen.innerHTML = `<div class="play-pass-card"><i class="fa-solid fa-people-arrows" aria-hidden="true"></i>
+            <p>Pass to</p><strong>${escapeHtml(name)}</strong><small>${escapeHtml(why)}</small>
+            <button class="btn btn-primary" id="pass-go">I'm ${escapeHtml(name)}: go</button></div>`;
+        $('pass-go').addEventListener('click', () => { state.handOver = false; renderPass(); Sound.play('turn'); });
+        $('pass-go').focus();
+    }
+
+    // --- The new-game form: what the chosen battlefield looks like -----------------------------------------------
+
+    async function previewBattlefield() {
+        const box = $('new-bf-preview');
+        const key = $('new-battlefield').value;
+        if (!key || key.startsWith('pairing:')) {
+            box.innerHTML = key === 'pairing:random' ? '<p class="play-hint">One of the pairing\'s layouts A, B or C, drawn at random.</p>' : '';
+            if (key && key !== 'pairing:random') {  // A pairing's layout: drawn from the list, as Battlefields shows it
+                const layout = ((state.matchup && state.matchup.layouts) || []).find(b => `pairing:${b.layout}` === key);
+                if (layout && layout.key) return drawMiniBattlefield(box, layout.key);
+            }
+            return;
+        }
+        drawMiniBattlefield(box, key);
+    }
+
+    let footprints = null;  // /api/play/footprints: each footprint's corners, for drawing terrain pieces
+
+    /** A small drawing of a battlefield: deployment zones (attacker, defender), terrain by category, objectives. */
+    async function drawMiniBattlefield(box, key) {
+        const [data, corners] = await Promise.all([
+            fetch(`/api/play/battlefields/${encodeURIComponent(key)}`).then(r => r.ok ? r.json() : null).catch(() => null),
+            footprints || fetch('/api/play/footprints').then(r => r.json()).then(f => (footprints = f)).catch(() => ({})),
+        ]);
+        if (!data || $('new-bf-preview') !== box || $('new-battlefield').value !== key && !$('new-battlefield').value.startsWith('pairing:')) return;
+        const W = 60, D = 44;
+        const pts = list => list.map(([x, y]) => `${x},${D - y}`).join(' ');
+        const zones = Object.entries(data.zones || {}).map(([role, z]) => `<polygon class="play-mini-zone ${escapeHtml(role)}" points="${pts(z)}"/>`).join('');
+        const terrain = (data.terrain || []).filter(t => corners[t.footprint]).map(t =>
+            `<polygon class="play-terrain ${escapeHtml(t.category || 'light')}" points="${pts(Core.playFootprintPoints(corners[t.footprint], t.x, t.y, t.angle || 0, !!t.flip))}"/>`).join('');
+        const objectives = (data.objectives || []).map(o => `<circle class="play-mini-objective" cx="${o.x}" cy="${D - o.y}" r="0.9"/>`).join('');
+        box.innerHTML = `<svg class="play-mini-board" viewBox="-1 -1 ${W + 2} ${D + 2}" role="img" aria-label="${escapeHtml(data.name || 'Battlefield')}">
+            <rect class="play-field" x="0" y="0" width="${W}" height="${D}"/>${zones}${terrain}${objectives}</svg>
+            <small class="play-hint">${escapeHtml(data.name || '')}: attacker's zone light, defender's dark; who is which is rolled in setup.</small>`;
     }
 
     function message(text, isError = false) {

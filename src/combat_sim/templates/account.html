@@ -85,6 +85,16 @@
             (the host sets one up: see self-hosting.md).</p>{% endif %}
     </section>
     <section class="setup-card">
+        <h3>Layout</h3>
+        <p>How pages are laid out on this device. Automatic picks a phone layout on a phone (held either way), a tablet's
+            on a touch screen, and a desktop's with a mouse.</p>
+        <label class="setup-row">Layout
+            <select class="filter-select" data-layout-setting aria-label="Layout">
+                <option value="auto">Automatic</option><option value="phone">Phone</option>
+                <option value="tablet">Tablet</option><option value="desktop">Desktop</option>
+            </select></label>
+    </section>
+    <section class="setup-card">
         <h3>Play (experimental)</h3>
         <p>Full games against another player on a top-down board. Still being built: turn it on to try what's there so far.</p>
         <label class="setup-row"><input type="checkbox" id="play-setting" {% if show_play %}checked{% endif %}>

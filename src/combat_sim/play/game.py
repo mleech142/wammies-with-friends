@@ -16,7 +16,8 @@ from dataclasses import asdict
 
 from .. import contagion
 from ..engagement import Sources, attack_modifiers, target_modifiers
-from ..simulation import AttackerProfile, BattleConditions, DefenderProfile
+from ..simulation import (AttackerProfile, BattleConditions, DefenderProfile, _roll_attack, _roll_attack_count,
+                          affordable_trials, resolve)
 from .attack import roll_attack, roll_wound
 from . import battlefields, mission_state, tactical
 from .missions import MIRRORED_PRIMARIES, NIGHT_VISIBILITY
@@ -32,7 +33,8 @@ __all__ = [
     'ActionError', 'new_game', 'resolve_action', 'apply_event', 'apply_in_place', 'replay', 'redo_history',
     'MODEL_FIELDS', 'PHASES',
     # What the board shows and offers now (play/view.py, play/routes.py, play/seats.py)
-    'MANUAL_EFFECTS', 'MARKER_MM', 'OBJECTIVE_RANGE', 'afflictions', 'allocation_groups', 'can_fly', 'charge_options',
+    'ENGAGEMENT_RANGE', 'MANUAL_EFFECTS', 'MARKER_MM', 'OBJECTIVE_RANGE', 'afflictions', 'allocation_groups',
+    'attack_preview', 'can_fly', 'charge_chance', 'charge_options',
     'contagion_ranges', 'deployment_zone', 'disembark_options', 'embark_options', 'fight_options', 'grant_options',
     'has_contagion', 'infiltrators', 'ingress_rules', 'measure', 'move_characteristic', 'mover', 'objective_control',
     'objectives_in_range', 'outline', 'ready_units', 'rerollable', 'score', 'scouts', 'shooting_options',
@@ -1151,36 +1153,15 @@ def _shoot(state, action, dice, snap=False):
                  for w, weapon in enumerate(part['weapons']) if weapon['default_use'] and weapon['type'] == 'ranged']
     if not picks:
         raise ActionError(f'{shooter["name"]} has no ranged weapons to fire.')
-    stationary = moved_distance(shooter) <= HEAVY_MOVE + 1e-9 and not _is_engaged(state, shooter)  # Heavy
+    stationary = _stationary_for_heavy(state, shooter)
     deck = _deck_picks(state, shooter, picks)
     afflicted = afflictions(state)  # Death Guard's Nurgle's Gift (contagion.py), as the volley starts
-    plans = []
-    for pick in picks:
-        if not isinstance(pick, dict) or 'part' not in pick or 'weapon' not in pick:
-            raise ActionError('Choose weapons the unit has.')
-        target = _unit_or_error(state, pick.get('target') or action.get('target'))
-        near, far, extra, covered = _weapon_plan(state, shooter, pick['part'], pick['weapon'], target)
-        if contagion.gives_cover(afflicted.get(shooter['id']), 'ranged'):  # Skullsquirm Blight: its targets have cover
-            covered = {m['id'] for m in near + far}
-        part_index, weapon_index = int(pick['part']), int(pick['weapon'])
-        if not _big(shooter):  # Each model fires either its Close-Quarters weapons or its others
-            for model in shooter['models']:
-                chosen = [shooter['parts'][int(p['part'])]['weapons'][int(p['weapon'])] for p in picks
-                          if int(p['part']) == model['part'] and int(p['weapon']) in model['weapons']]
-                if any(_close_quarters(w) for w in chosen) and not all(_close_quarters(w) for w in chosen):
-                    raise ActionError('Each model fires either its Close-Quarters weapons (Pistols) or its other '
-                                      'ranged weapons, not both.')
-        plans.append((part_index, weapon_index, shooter['parts'][part_index]['weapons'][weapon_index], target, near, far,
-                      extra, covered))
+    plans = _shot_plans(state, shooter, picks, action.get('target'), afflicted)
 
     attacks, hazardous = [], []
     for part_index, weapon_index, weapon, target, near, far, extra, covered in plans:
-        # Within half range or not, and with the target in cover from it or not: each its own roll
-        # ...and damaged or not (24.39)
-        groups = [([m for m in models if (m['id'] in covered) == cover and _damaged(shooter, m) == damaged], half, cover, damaged)
-                  for models, half in ((near, True), (far, False)) for cover in (False, True) for damaged in (False, True)]
-        for models, half, cover, damaged in groups:
-            if not models or not any(m['alive'] for m in target['models']):
+        for models, half, cover, damaged in _shot_groups(shooter, near, far, covered):
+            if not any(m['alive'] for m in target['models']):
                 continue
             pair = (afflicted.get(shooter['id']), afflicted.get(target['id']))
             attacker = _attacker(shooter, part_index, weapon_index, len(models), pair)
@@ -1211,6 +1192,150 @@ def _shoot(state, action, dice, snap=False):
     if not snap:  # (Fire Overwatch opens it itself, before carrying on with the phase change)
         _save_window(state, attacks, dice)
     return detail
+
+
+def _stationary_for_heavy(state, shooter):
+    """Heavy: whether no model of the unit moved more than 3" this turn and it isn't engaged."""
+    return moved_distance(shooter) <= HEAVY_MOVE + 1e-9 and not _is_engaged(state, shooter)
+
+
+def _shot_plans(state, shooter, picks, default_target, afflicted):
+    """
+    Each picked weapon checked against its target (_weapon_plan): [(part, weapon index, weapon, target, models
+    within half range, models beyond it, extra abilities, models whose target is in cover)]. ActionError if any
+    can't fire, or if a model would fire both Close-Quarters weapons and others.
+    """
+    plans = []
+    for pick in picks:
+        if not isinstance(pick, dict) or 'part' not in pick or 'weapon' not in pick:
+            raise ActionError('Choose weapons the unit has.')
+        target = _unit_or_error(state, pick.get('target') or default_target)
+        near, far, extra, covered = _weapon_plan(state, shooter, pick['part'], pick['weapon'], target)
+        if contagion.gives_cover(afflicted.get(shooter['id']), 'ranged'):  # Skullsquirm Blight: its targets have cover
+            covered = {m['id'] for m in near + far}
+        part_index, weapon_index = int(pick['part']), int(pick['weapon'])
+        if not _big(shooter):  # Each model fires either its Close-Quarters weapons or its others
+            for model in shooter['models']:
+                chosen = [shooter['parts'][int(p['part'])]['weapons'][int(p['weapon'])] for p in picks
+                          if int(p['part']) == model['part'] and int(p['weapon']) in model['weapons']]
+                if any(_close_quarters(w) for w in chosen) and not all(_close_quarters(w) for w in chosen):
+                    raise ActionError('Each model fires either its Close-Quarters weapons (Pistols) or its other '
+                                      'ranged weapons, not both.')
+        plans.append((part_index, weapon_index, shooter['parts'][part_index]['weapons'][weapon_index], target, near, far,
+                      extra, covered))
+
+    return plans
+
+
+def _shot_groups(shooter, near, far, covered):
+    """A weapon's firing models split into the groups that roll on their own: within half range or not, with the
+    target in cover from it or not, and damaged or not (24.39). [(models, half range, cover, damaged)], none empty."""
+    groups = [([m for m in models if (m['id'] in covered) == cover and _damaged(shooter, m) == damaged], half, cover, damaged)
+              for models, half in ((near, True), (far, False)) for cover in (False, True) for damaged in (False, True)]
+    return [g for g in groups if g[0]]
+
+
+# --- Attack previews: what an attack would likely do, before it's rolled (the page's target preview) -----------------
+
+PREVIEW_TRIALS = 600  # Trials a preview rolls at most (and fewer for big volleys: simulation.affordable_trials)
+
+
+def attack_preview(state, unit_id, picks=None, kind='shoot'):
+    """
+    What shooting (`kind` 'shoot': `picks` as the shoot action's `weapons`) or fighting ('fight': as the fight action's)
+    with a unit would likely do, per target: {'targets': {id: {'models', 'kills', 'kill_chance', 'wipe_chance', 'damage',
+    'hits', 'wounds', 'leader'}}}. The attacks are built as the action builds them, then rolled PREVIEW_TRIALS times with
+    the Simulator's dice (never game dice, and nothing is recorded), each wound going to the models in the order the
+    target's player's standing orders give them. `leader`: the chance its Character models all die, for a led unit.
+    ActionError if the attack isn't allowed.
+    """
+    unit = _unit_or_error(state, unit_id)
+    groups = []  # (target, AttackerProfile, BattleConditions, 'ranged' or 'melee', afflictions)
+    if kind == 'fight':
+        engaged = _engaged_units(state, unit)
+        if not engaged:
+            raise ActionError(f'{unit["name"]} isn\'t engaged with an enemy unit.')
+        picks = picks if picks is not None else [{'part': p, 'weapon': w} for p, w in _default_melee(unit)]
+        default = (picks[0].get('target') if picks else None) or engaged[0]['id']
+        for p, w, target, models, damaged in _fight_plans(state, unit, picks, default, engaged):
+            pair = (affliction_of(state, unit), affliction_of(state, target))
+            conditions = BattleConditions(charged=bool(unit['activity'].get('charged')), damaged=damaged)
+            groups.append((target, _attacker(unit, p, w, len(models), pair), conditions, 'melee', pair))
+    else:
+        shooter = _with_deck(state, copy.deepcopy(unit))
+        afflicted = afflictions(state)
+        stationary = _stationary_for_heavy(state, shooter)
+        if not picks:
+            raise ActionError('Choose weapons and targets to preview.')
+        for p, w, _, target, near, far, extra, covered in _shot_plans(state, shooter, picks, None, afflicted):
+            pair = (afflicted.get(shooter['id']), afflicted.get(target['id']))
+            for models, half, cover, damaged in _shot_groups(shooter, near, far, covered):
+                attacker = _attacker(shooter, p, w, len(models), pair)
+                attacker.abilities += extra
+                conditions = BattleConditions(half_range=half, stationary=stationary, cover=cover, damaged=damaged)
+                groups.append((target, attacker, conditions, 'ranged', pair))
+    by_target = {}
+    for group in groups:
+        by_target.setdefault(group[0]['id'], []).append(group)
+    return {'targets': {target_id: _preview_target(state, unit, found) for target_id, found in by_target.items()}}
+
+
+def _allocation_order(state, attacking, target):
+    """The target's living models in the order wounds would go to them (_allocate), each taken as it dies."""
+    copied = copy.deepcopy(target)
+    order = state['players'][target['player']].get('orders', DEFAULT_ORDERS)['casualties']
+    priority = _allocation_priority(state, target)
+    picked = []
+    while (model := _allocate(copied, attacking, order, priority=priority)) is not None:
+        picked.append(dict(model))
+        model['alive'] = False
+    return picked
+
+
+def _preview_target(state, attacking, groups):
+    """Roll one target's attacks (attack_preview's groups) PREVIEW_TRIALS times: models killed, the chances."""
+    target, kind, pair = groups[0][0], groups[0][3], groups[0][4]
+    order = _allocation_order(state, attacking, target)
+    profiles = {part: _defender(target, part, kind, pair) for part in {m['part'] for m in order}}
+    first = profiles[order[0]['part']]
+    trials = affordable_trials(PREVIEW_TRIALS, [g[1] for g in groups], [first] * len(groups), groups[0][2], PREVIEW_TRIALS)
+    resolved = {(i, part): resolve(g[1], profile, g[2]) for i, g in enumerate(groups) for part, profile in profiles.items()}
+    leaders = [i for i, m in enumerate(order) if _is_character(target['parts'][m['part']])]
+    led = bool(leaders) and len(leaders) < len(order)
+    kills, damage, leader_deaths = [], 0, 0
+    counts = {'hits': 0, 'wounds': 0, 'failed_saves': 0}
+    last = order[-1]['part']  # Once every model is dead, attacks still roll (for the hits and wounds) at the last one
+    for _ in range(trials):
+        index, left = 0, order[0]['wounds_left']
+        for i, (_, attacker, conditions, _, _) in enumerate(groups):
+            part = order[index]['part'] if index < len(order) else last
+            for _ in range(_roll_attack_count(attacker, profiles[part], resolved[(i, part)])):
+                part = order[index]['part'] if index < len(order) else last
+                for dealt in _roll_attack(attacker, profiles[part], conditions, resolved[(i, part)], counts):
+                    if index >= len(order):
+                        continue
+                    damage += min(dealt, left)
+                    left -= dealt
+                    if left <= 0:  # Dead: damage beyond its wounds is lost, the next wound goes to the next model
+                        index += 1
+                        left = order[index]['wounds_left'] if index < len(order) else 0
+        kills.append(index)
+        if led and all(i < index for i in leaders):
+            leader_deaths += 1
+    per = lambda value: round(value / trials, 2)  # noqa: E731
+    result = {'models': len(order), 'kills': per(sum(kills)), 'damage': per(damage), 'hits': per(counts['hits']),
+              'wounds': per(counts['wounds']), 'kill_chance': round(100 * sum(k >= 1 for k in kills) / trials),
+              'wipe_chance': round(100 * sum(k >= len(order) for k in kills) / trials), 'trials': trials}
+    if led:
+        result['leader'] = {'name': target['parts'][order[leaders[0]]['part']]['name'],
+                            'chance': round(100 * leader_deaths / trials)}
+    return result
+
+
+def charge_chance(distance, skies=False):
+    """The chance (%) a 2D6 charge roll reaches `distance` inches (2" more when taking to the skies)."""
+    need = max(2, math.ceil(distance - 1e-9)) + (SKIES if skies else 0)
+    return round(100 * sum(a + b >= need for a in range(1, 7) for b in range(1, 7)) / 36)
 
 
 # --- Reactions: the other player's decisions in your turn (11th edition core stratagems) ------------------------
@@ -2936,16 +3061,27 @@ def _charge_checks(state, unit):
 def charge_options(state, unit_id):
     """
     For the page: why a unit can't declare a charge ('reason', None if it can or has), its charge roll,
-    and once rolled, the enemy units it can charge: {id: {'ok': True, 'distance'}}.
+    and once rolled, the enemy units it can charge: {id: {'ok': True, 'distance'}}. Before the roll, `reach`:
+    each enemy unit within 12" with its distance and the chance (%) a 2D6 roll reaches it (and `skies_chance` for
+    a Fly unit taking to the skies).
     """
     unit = _unit_or_error(state, unit_id)
     roll = unit['activity'].get('charge_roll')
     reason = None
+    reach = {}
     if roll is None:
         try:
             _charge_checks(state, unit)
         except ActionError as error:
             reason = str(error)
+        shapes = _placed_shapes(unit)
+        if reason is None and shapes:
+            for other in state['units']:
+                if other['player'] != unit['player'] and _placed_shapes(other):
+                    gap = _unit_distance(shapes, _placed_shapes(other))
+                    if gap <= CHARGE_REACH + 1e-9:
+                        reach[other['id']] = {'distance': round(gap, 2), 'chance': charge_chance(gap),
+                                              **({'skies_chance': charge_chance(gap, True)} if can_fly(unit) else {})}
     targets, allowed = {}, None
     if roll is not None:
         start = _start_shapes(unit, 'charge_start')
@@ -2955,7 +3091,7 @@ def charge_options(state, unit_id):
                 gap = _unit_distance(start, _placed_shapes(other))
                 if gap <= min(CHARGE_REACH, roll) + 1e-9:
                     targets[other['id']] = {'ok': True, 'distance': round(gap, 2)}
-    return {'reason': None if allowed is not None else reason, 'roll': roll, 'targets': targets}
+    return {'reason': None if allowed is not None else reason, 'roll': roll, 'targets': targets, 'reach': reach}
 
 
 def _charge_move(state, action, dice=None):
@@ -3375,6 +3511,40 @@ def fight_options(state, unit_id):
 
 def _fight_with(state, unit, picks, explicit, default_target, engaged_with, fight, dice):
     """Roll a unit's fight (see _fight) with the weapons picked."""
+    plans = _fight_plans(state, unit, picks, default_target, engaged_with)
+    attacks, hazardous = [], []
+    for p, w, target, models, damaged in plans:
+        conditions = BattleConditions(charged=bool(unit['activity'].get('charged')), damaged=damaged)
+        if not any(m['alive'] for m in target['models']):
+            continue
+        weapon = unit['parts'][p]['weapons'][w]
+        pair = (affliction_of(state, unit), affliction_of(state, target))
+        attacker = _attacker(unit, p, w, len(models), pair)
+        first = len(dice.log)
+        pool = roll_attack(attacker, _defender(target, _first_alive(target)['part'], 'melee', pair), conditions, dice)
+        killed = _resolve_wounds(state, unit, target, attacker, conditions, pool, dice, pair)
+        attacks.append({'part': p, 'weapon': w, 'name': weapon['name'], 'target': target['id'], 'models': len(models),
+                        'half_range': False, **asdict(pool), 'killed': killed, 'rolls': [first, len(dice.log)]})
+        if _has(weapon['abilities'], 'Hazardous'):
+            hazardous += models
+    if hazardous:  # A hazard roll for each Hazardous weapon used
+        first = len(dice.log)
+        killed = _hazard(state, unit, len(hazardous), dice)['killed']
+        attacks.append({'name': 'Hazardous', 'target': unit['id'], 'models': len(hazardous),
+                        'killed': killed, 'rolls': [first, len(dice.log)]})
+    unit['activity']['fought'] = True
+    fight['picker'] = 1 - unit['player']
+    _settle_picker(state)
+    _save_window(state, attacks, dice)
+    return {'attacks': attacks}
+
+
+def _fight_plans(state, unit, picks, default_target, engaged_with):
+    """
+    The picked melee weapons (one plain weapon per part, plus every Extra Attacks weapon) at their targets:
+    [(part, weapon index, target, models engaged with the target that carry it, damaged)]. ActionError if a pick
+    isn't allowed or no model is engaged with its target.
+    """
     chosen = []
     for pick in picks:
         try:
@@ -3411,32 +3581,7 @@ def _fight_with(state, unit, picks, explicit, default_target, engaged_with, figh
                 plans.append((p, w, target, group, damaged))
     if not plans:
         raise ActionError(f'No model of {unit["name"]} is engaged with its target.')
-
-    attacks, hazardous = [], []
-    for p, w, target, models, damaged in plans:
-        conditions = BattleConditions(charged=bool(unit['activity'].get('charged')), damaged=damaged)
-        if not any(m['alive'] for m in target['models']):
-            continue
-        weapon = unit['parts'][p]['weapons'][w]
-        pair = (affliction_of(state, unit), affliction_of(state, target))
-        attacker = _attacker(unit, p, w, len(models), pair)
-        first = len(dice.log)
-        pool = roll_attack(attacker, _defender(target, _first_alive(target)['part'], 'melee', pair), conditions, dice)
-        killed = _resolve_wounds(state, unit, target, attacker, conditions, pool, dice, pair)
-        attacks.append({'part': p, 'weapon': w, 'name': weapon['name'], 'target': target['id'], 'models': len(models),
-                        'half_range': False, **asdict(pool), 'killed': killed, 'rolls': [first, len(dice.log)]})
-        if _has(weapon['abilities'], 'Hazardous'):
-            hazardous += models
-    if hazardous:  # A hazard roll for each Hazardous weapon used
-        first = len(dice.log)
-        killed = _hazard(state, unit, len(hazardous), dice)['killed']
-        attacks.append({'name': 'Hazardous', 'target': unit['id'], 'models': len(hazardous),
-                        'killed': killed, 'rolls': [first, len(dice.log)]})
-    unit['activity']['fought'] = True
-    fight['picker'] = 1 - unit['player']
-    _settle_picker(state)
-    _save_window(state, attacks, dice)
-    return {'attacks': attacks}
+    return plans
 
 
 def _pile_in(state, action):

@@ -6,13 +6,20 @@
 <div class="page-header">
     <h2><i class="fa-solid fa-database" aria-hidden="true"></i> Data Management</h2>
     <div class="header-actions">
-        <button class="btn btn-secondary" onclick="exportData()"><i class="fa-solid fa-file-export" aria-hidden="true"></i> Export JSON</button>
-        {% if can_setup %}<button class="btn btn-secondary" onclick="document.getElementById('import-file').click()"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Import JSON</button>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">{% endif %}
+        {# Phones: in an action sheet behind one button #}
+        <div class="overflow">
+            <button type="button" class="btn btn-secondary overflow-toggle" aria-haspopup="true" aria-expanded="false"><i class="fa-solid fa-file-export" aria-hidden="true"></i> Import / export</button>
+            <div class="overflow-items" role="menu" aria-label="App data file">
+                <button class="btn btn-secondary" onclick="exportData()"><i class="fa-solid fa-file-export" aria-hidden="true"></i> Export JSON</button>
+                {% if can_setup %}<button class="btn btn-secondary" onclick="document.getElementById('import-file').click()"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Import JSON</button>{% endif %}
+                <button type="button" class="btn btn-secondary overflow-cancel">Cancel</button>
+            </div>
+        </div>
+        {% if can_setup %}<input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">{% endif %}
     </div>
 </div>
 <div class="bsdata-status" id="bsdata-status"></div>
-<p class="data-note">Changes are saved to the app data file as soon as you confirm them. Units and weapons from
+<p class="data-note" data-read-more>Changes are saved to the app data file as soon as you confirm them. Units and weapons from
     BSData are read-only: add rules and stratagems to any faction, extra modifiers to a BSData unit, and your own
     units and weapons to a custom faction.</p>
 
@@ -30,7 +37,7 @@
     <section class="data-section">
         <div class="data-section-header">
             <h3>Core Stratagems</h3>
-            <button class="btn btn-secondary" onclick="showStratagemModal(null)">+ Add Core Stratagem</button>
+            <button class="btn btn-secondary" onclick="showStratagemModal(null)"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Core Stratagem</button>
         </div>
         <table class="data-table cards-on-phone" data-auto-labels id="core-stratagems-table">
             <thead>
@@ -43,7 +50,7 @@
     <section class="data-section">
         <div class="data-section-header">
             <h3>Factions</h3>
-            <button class="btn btn-primary" onclick="showAddFactionModal()">+ Add Faction</button>
+            <button class="btn btn-secondary" onclick="showAddFactionModal()"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Faction</button>
         </div>
         <table class="data-table cards-on-phone" data-auto-labels id="factions-table">
             <thead>
@@ -62,7 +69,7 @@
         </select>
         <input type="text" id="filter-unit" class="filter-input" placeholder="Search units..." oninput="filterUnits()">
         <label class="filter-check"><input type="checkbox" id="filter-legends" onchange="loadUnits()"> Show Legends</label>
-        <button class="btn btn-primary" onclick="showAddUnitModal()">+ Add Unit</button>
+        <button class="btn btn-secondary" onclick="showAddUnitModal()"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Unit</button>
     </div>
     <div class="table-scroll sticky-first">
     <table class="data-table" id="units-table">
@@ -89,7 +96,7 @@
             <option value="melee">Melee</option>
         </select>
         <input type="text" id="filter-weapon" class="filter-input" placeholder="Search weapons..." oninput="filterWeapons()">
-        <button class="btn btn-primary" onclick="showAddWeaponModal()">+ Add Weapon</button>
+        <button class="btn btn-secondary" onclick="showAddWeaponModal()"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Weapon</button>
     </div>
     <div class="table-scroll sticky-first">
     <table class="data-table" id="weapons-table">
@@ -610,6 +617,11 @@ function setWahapediaForm(kind, record) {
             maths reads it; changes apply in every faction that has it.</p><div class="rule-text">${Core.formatRuleText(record.text)}</div>` : '';
 }
 
+/** A count in a table: none is a quiet dash, so the rows that have something stand out */
+function countCell(n) {
+    return n ? String(n) : '<span class="count-none" aria-label="none">–</span>';
+}
+
 function sourceBadge(source) {
     return `<span class="source-badge source-${esc(source)}">${SOURCE_LABEL[source] || esc(source)}</span>`;
 }
@@ -643,10 +655,10 @@ async function loadFactions() {
             <td class="col-expand">
                 <button class="btn-expand" onclick="toggleFaction(${f.id})" title="Rules & stratagems">${expandedFactions.has(f.id) ? '<i class="fa-solid fa-chevron-down" aria-hidden="true"></i>' : '<i class="fa-solid fa-chevron-right" aria-hidden="true"></i>'}</button>
             </td>
-            <td><strong>${esc(f.name)}</strong> ${sourceBadge(f.source)}</td>
-            <td>${f.unit_count}</td>
-            <td>${f.rule_count}</td>
-            <td>${f.stratagem_count}</td>
+            <td><strong>${esc(f.name)}</strong> ${f.source === 'bsdata' ? '' : sourceBadge(f.source)}</td>
+            <td>${countCell(f.unit_count)}</td>
+            <td>${countCell(f.rule_count)}</td>
+            <td>${countCell(f.stratagem_count)}</td>
             <td>${f.editable ? `
                 <button class="btn-small" onclick="editFaction(${f.id})">Edit</button>
                 <button class="btn-small btn-danger" onclick="deleteFaction(${f.id})">Delete</button>` : ''}

@@ -232,7 +232,7 @@
         });
 
         // Action buttons
-        document.getElementById('btn-run-matrix').addEventListener('click', runMatrix);
+        document.getElementById('btn-run-matrix').addEventListener('click', e => Busy.during(e.currentTarget, runMatrix()));
         document.getElementById('btn-save-comparison').addEventListener('click', showSaveModal);
         document.getElementById('btn-load-comparison').addEventListener('click', showLoadModal);
 
@@ -240,6 +240,9 @@
         document.getElementById('close-detail').addEventListener('click', () => {
             elements.detailPanel.style.display = 'none';
         });
+        // Phones: the cell detail is a sheet over the bottom of the screen, dragged down to close
+        Sheets.addHandle(elements.detailPanel);
+        Sheets.swipeToClose(elements.detailPanel, () => { elements.detailPanel.style.display = 'none'; });
         document.getElementById('close-load-modal').addEventListener('click', () => {
             elements.loadModal.style.display = 'none';
         });
@@ -406,7 +409,7 @@
             const army = await fetch(`/api/armies/${armyId}`).then(r => r.ok ? r.json() : Promise.reject(r.status));
             const details = new Map();
             const unitData = async id => {
-                if (!details.has(id)) details.set(id, await fetch(`/api/units/${id}`).then(r => r.json()));
+                if (!details.has(id)) details.set(id, await fetch(`/api/units/${id}`).then(r => r.json()).then(d => { AbilityHints.add(d.ability_hints); return d; }));
                 return details.get(id);
             };
             const entries = [];
@@ -439,7 +442,7 @@
             document.getElementById('army-analysis').style.display = 'none';
         } catch (err) {
             console.error('Error loading army:', err);
-            alert('That army could not be loaded.');
+            Toast.show('That army could not be loaded.', 'error');
         }
     }
 
@@ -503,6 +506,7 @@
         try {
             const response = await fetch(`/api/units/${unitId}`);
             const unit = await response.json();
+            AbilityHints.add(unit.ability_hints);
 
             if (state.pickerMode === 'attacker') {
                 state.attackers.push(Core.attackerEntry(unit));
@@ -514,7 +518,7 @@
             closeUnitPicker();
         } catch (err) {
             console.error('Error adding unit:', err);
-            alert('Error loading unit');
+            Toast.show('Error loading unit', 'error');
         }
     }
 
@@ -526,7 +530,7 @@
         refreshRules('attacker');
         if (state.attackers.length === 0) {
             elements.attackerBody.innerHTML =
-                '<tr class="roster-empty"><td colspan="13">No attackers yet. Click "+ Add Unit".</td></tr>';
+                '<tr class="roster-empty"><td colspan="13"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><strong>No attackers yet</strong>Add a unit, or send an army here from the Armies page.</td></tr>';
             return;
         }
 
@@ -579,7 +583,7 @@
                     <td>${escapeHtml(w.strength)}</td>
                     <td>${w.ap ? '-' + escapeHtml(w.ap) : '0'}</td>
                     <td>${escapeHtml(w.damage)}</td>
-                    <td class="roster-abilities">${escapeHtml((w.abilities || []).join(', '))}</td>
+                    <td class="roster-abilities">${AbilityHints.chips(w.abilities)}</td>
                     <td><input type="number" class="roster-models models" data-a="${a}" data-w="${idx}"
                                value="${w.models}" min="1" max="99"></td>
                     <td class="col-remove">${i === 0 ? removeUnit : ''}</td>
@@ -618,6 +622,7 @@
         const atk = state.attackers[a];
         const choice = (atk.leaders || []).find(l => l.id === leaderId) || null;
         const detail = choice ? await fetch(`/api/units/${choice.id}`).then(r => r.json()) : null;
+        AbilityHints.add(detail?.ability_hints);
         atk.weapons = Core.withLeaderEntries(atk.weapons, detail);
         atk.leader_id = choice?.id ?? null;
         atk.leader_name = choice?.name ?? null;
@@ -692,7 +697,7 @@
             <th class="col-remove"></th></tr>`;
         if (state.defenders.length === 0) {
             elements.defenderBody.innerHTML =
-                '<tr class="roster-empty"><td colspan="11">No defenders yet. Click "+ Add Unit".</td></tr>';
+                '<tr class="roster-empty"><td colspan="11"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><strong>No defenders yet</strong>Add a unit, or send an army here from the Armies page.</td></tr>';
             return;
         }
 
@@ -810,7 +815,7 @@
         const request = buildMatrixRequest();
 
         if (request.attackers.length === 0 || request.defenders.length === 0) {
-            alert('Please add at least one attacker unit with an included weapon, and one defender unit.');
+            Toast.show('Add at least one attacker with a weapon included, and one defender', 'error');
             return;
         }
 
@@ -1184,7 +1189,7 @@
 
     function showSaveModal() {
         if (state.attackers.length === 0 || state.defenders.length === 0) {
-            alert('Add attackers and defenders before saving.');
+            Toast.show('Add attackers and defenders before saving.', 'error');
             return;
         }
         document.getElementById('comparison-name').value = '';
@@ -1194,7 +1199,7 @@
     async function saveComparison() {
         const name = document.getElementById('comparison-name').value.trim();
         if (!name) {
-            alert('Please enter a name for the comparison.');
+            Toast.show('Give the comparison a name', 'error');
             return;
         }
 
@@ -1217,12 +1222,12 @@
             });
 
             elements.saveModal.style.display = 'none';
-            alert('Comparison saved!');
+            Toast.show('Comparison saved');
             loadSavedComparisons();
 
         } catch (err) {
             console.error('Error saving comparison:', err);
-            alert('Error saving comparison.');
+            Toast.show('Error saving comparison.', 'error');
         }
     }
 
@@ -1356,7 +1361,7 @@
 
         } catch (err) {
             console.error('Error loading comparison:', err);
-            alert('Error loading comparison.');
+            Toast.show('Error loading comparison.', 'error');
         }
     }
 
@@ -1379,6 +1384,7 @@
         document.getElementById('mat-damaged').checked = !!state.conditions.damaged;
         document.getElementById('mat-reroll-hits').value = state.conditions.reroll_hits;
         document.getElementById('mat-reroll-wounds').value = state.conditions.reroll_wounds;
+        ['mat-reroll-hits', 'mat-reroll-wounds'].forEach(id => SegmentedSelect.sync(document.getElementById(id)));
     }
 
     function debounce(fn, delay) {
