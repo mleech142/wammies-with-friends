@@ -3941,7 +3941,11 @@
         const pending = state.pendingMove;
         if (!pending) return;
         const unit = unitById(pending.unitId);
-        cancelPendingMove();  // Back where it was: the server's answer draws it where it went
+        // Back where it was in the page's copy, without drawing it there (the server's answer draws where it went,
+        // or a refusal draws it back), and sent at once
+        unit.models.forEach(m => { if (pending.original[m.id] !== undefined) m.position = pending.original[m.id]; });
+        state.pendingMove = null;
+        state.check = null;
         if (await sendMove(unit, pending.action)) Haptics.tap();
     }
 

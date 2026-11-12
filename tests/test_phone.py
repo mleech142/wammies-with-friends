@@ -622,9 +622,11 @@ def test_one_model_at_a_time_and_spinning_it_by_touch(tmp_path_factory, browser)
         assert placed(page, game, 'p1-u0') == before  # Not sent until Confirm
         page.wait_for_selector('#place-bar .play-check-ok')  # The server has said the move is allowed
         page.tap('#move-ok')
-        page.wait_for_load_state('networkidle')
-        page.wait_for_timeout(300)
-        after = placed(page, game, 'p1-u0')
+        for _ in range(40):  # Until it is saved (a slow CI runner can take longer than a fixed pause)
+            after = placed(page, game, 'p1-u0')
+            if after != before:
+                break
+            page.wait_for_timeout(250)
         moved = [i for i, (a, b) in enumerate(zip(after, before)) if a != b]
         assert len(moved) == 1 and after[moved[0]]['y'] == pytest.approx(before[moved[0]]['y'] + 1, abs=0.3), \
             page.inner_text('#play-message')  # Just it, 1" forward
