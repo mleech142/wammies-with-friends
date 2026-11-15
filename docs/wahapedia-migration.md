@@ -153,7 +153,7 @@ and profile into one weapon record (weapons belong to a faction).
    `docs/releasing.md`, `README.md`, the Dockerfile and compose comments. 1,062 tests pass (phone and
    JavaScript included).
    **Left**: `engagement.stat_changes` still accepts characteristic changes in requests (nothing in the
-   data gives them now); wargear option points; the `bsdata_*` names (kept on purpose: renaming them would
+   data gives them now); the `bsdata_*` names (kept on purpose: renaming them would
    need a migration of saved data for no gain); old release notes and planning docs mention BSData as
    history.
 7. **Release** as 3.0.0 (saved data and app data format change).
@@ -164,3 +164,14 @@ and profile into one weapon record (weapons belong to a faction).
   stop working? (Default: ship it, as it holds no BSData content.)
 - Wahapedia's datasheet IDs can change when a datasheet is reissued; check whether `stable_ids` should be
   keyed by ID or by faction + name.
+
+## After 3.0.0
+
+- **Wargear points** (2026-11-15): the "per X" rows of `Datasheets_models_cost` (78 datasheets, 124 costs in
+  the export of 2026-11-12) are `Unit.wargear_costs`. `loadouts.costs` matches each to the unit's weapon of that
+  name (115; profiles count once) or makes it a priced item with a count of its own (`wargear:<name key>`: 9,
+  such as storm shields and banners, and a weapon named differently, the Leman Russ Commander's plasma
+  cannons). A weapon's cost is paid for each one beyond the datasheet's loadout (the Leman Russ hull
+  lascannon is free), an item's for each one taken; `price_army` adds them (`wargear_points`), the popup shows
+  them, share codes carry the items. Matching by the end of a name was tried and dropped: it matched the
+  Commander's "Plasma cannon" to its Executioner plasma cannon.

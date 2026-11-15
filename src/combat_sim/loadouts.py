@@ -1,17 +1,26 @@
 """
 Simple wargear (docs/wahapedia-migration.md, step 5): a unit's weapons are its datasheet loadout plus its wargear
 options, each with how many of its models carry it. The player follows the datasheet's own option text
-(`Unit.wargear_options`, shown beside the counts); the app sets no limits and adds no points for options.
+(`Unit.wargear_options`, shown beside the counts); the app sets no limits.
 
-An army entry's `wargear` for such a unit is {'ranged:<weapon id>': count, 'melee:<weapon id>': count} with every
-weapon the unit can carry; None is the datasheet's loadout at the unit's size. `evaluate` gives what the Armies
-page's popup, Analytics, Match view and Play read (`loadout` rows of {'weapon_id', 'weapon_type', 'name', 'qty',
-'default_use'}).
+Wargear is priced by the datasheet's "per X" costs (`Unit.wargear_costs`, [{'name', 'points'}]): a cost naming one
+of the unit's weapons (by name, its profiles counting once) is paid for each one carried beyond the datasheet's
+loadout; a cost naming anything else (a storm shield, a banner, a weapon the datasheet names differently) is a
+count of its own in the form, `wargear:<name key>`, paid for each one taken.
+
+An army entry's `wargear` is {'ranged:<weapon id>': count, 'melee:<weapon id>': count, 'wargear:<name key>': count}
+with everything the unit can take; None is the datasheet's loadout at the unit's size. `evaluate` gives what the
+Armies page's popup, pricing, Analytics, Match view and Play read (`loadout` rows of {'weapon_id', 'weapon_type',
+'name', 'qty', 'default_use'}).
 """
 
+import re
+
 from .models import MeleeWeapon, RangedWeapon
+from .wahapedia import name_key
 
 KINDS = ('ranged', 'melee')
+WARGEAR = 'wargear'  # A priced item that isn't a weapon
 MAX_COUNT = 100
 
 
@@ -31,8 +40,13 @@ def default_used(names):
     return used
 
 
-def key(kind, weapon_id):
-    return f'{kind}:{weapon_id}'
+def family(name):
+    """A weapon's name without its profile, compared loosely: 'Plasma cannon – supercharge' -> 'plasmacannon'."""
+    return name_key(re.split(r'\s+[-–]\s+', name)[0])
+
+
+def key(kind, ident):
+    return f'{kind}:{ident}'
 
 
 def is_simple(choices):
@@ -41,8 +55,8 @@ def is_simple(choices):
 
 
 def has_choices(unit):
-    """A unit with something to choose: wargear options (weapons or the datasheet's option text)."""
-    return bool(unit.ranged_options or unit.melee_options or unit.wargear_options)
+    """A unit with something to choose: wargear options (weapons, the datasheet's option text or priced wargear)."""
+    return bool(unit.ranged_options or unit.melee_options or unit.wargear_options or unit.wargear_costs)
 
 
 def scaled(qty, unit, models):
@@ -70,33 +84,72 @@ def weapons(unit, models):
     return out
 
 
+def costs(unit, listed):
+    """
+    The unit's wargear costs, each with what it counts: [{'name', 'points', 'keys': [weapon keys]}] for a weapon
+    (all its profiles), or 'keys': None and 'key' for a priced item of its own.
+    """
+    out = []
+    for cost in unit.wargear_costs or []:
+        want = name_key(cost['name'])
+        matched = [key(kind, w.id) for kind, w, _, _ in listed if family(w.name) == want]
+        if matched:
+            out.append({'name': cost['name'], 'points': cost['points'], 'keys': matched})
+        elif want:
+            out.append({'name': cost['name'], 'points': cost['points'], 'keys': None, 'key': key(WARGEAR, want)})
+    return out
+
+
+def _count(value, fallback):
+    try:
+        return max(0, min(int(value), MAX_COUNT))
+    except (TypeError, ValueError):
+        return fallback
+
+
 def evaluate(unit, choices, models):
     """
-    {'models', 'points': None (options cost nothing here), 'choices' (None when they are the datasheet's),
-    'loadout', 'summary', 'form', 'options_text', 'problems': [], 'effects': None} for a unit at `models` models.
+    {'models', 'points' (what the wargear taken adds), 'choices' (None when they are the datasheet's), 'loadout',
+    'summary', 'form' (each row: key, kind, name, count, default, option, points per one or None),
+    'options_text', 'problems': [], 'effects': None} for a unit at `models` models.
     """
     models = models or unit.default_models or 1
+    choices = choices or {}
     listed = weapons(unit, models)
-    counts = {}
-    for kind, weapon, default, _ in listed:
-        value = (choices or {}).get(key(kind, weapon.id), default)
-        try:
-            counts[key(kind, weapon.id)] = max(0, min(int(value), MAX_COUNT))
-        except (TypeError, ValueError):
-            counts[key(kind, weapon.id)] = default
-    changed = any(counts[key(kind, w.id)] != default for kind, w, default, _ in listed)
+    priced = costs(unit, listed)
+    defaults = {key(kind, w.id): default for kind, w, default, _ in listed}
+    counts = {k: _count(choices.get(k, default), default) for k, default in defaults.items()}
+    items = [c for c in priced if c['keys'] is None]
+    for item in items:
+        defaults[item['key']] = 0
+        counts[item['key']] = _count(choices.get(item['key'], 0), 0)
+    each = {k: c['points'] for c in priced for k in (c['keys'] or [c['key']])}
+
+    points = 0
+    for c in priced:
+        keys = c['keys'] or [c['key']]
+        taken = max(counts[k] for k in keys) - max(defaults[k] for k in keys)
+        points += max(0, taken) * c['points']
+
     rows, form, summary = [], [], []
     for kind, weapon, default, option in listed:
-        count = counts[key(kind, weapon.id)]
-        form.append({'key': key(kind, weapon.id), 'kind': kind, 'name': weapon.name, 'count': count,
-                     'default': default, 'option': option})
-        if count:
-            rows.append({'weapon_id': weapon.id, 'weapon_type': kind, 'name': weapon.name, 'qty': count})
-        if count != default:
-            summary.append(f'{count} × {weapon.name}')
+        k = key(kind, weapon.id)
+        form.append({'key': k, 'kind': kind, 'name': weapon.name, 'count': counts[k], 'default': default,
+                     'option': option, 'points': each.get(k)})
+        if counts[k]:
+            rows.append({'weapon_id': weapon.id, 'weapon_type': kind, 'name': weapon.name, 'qty': counts[k]})
+        if counts[k] != default:
+            summary.append(f'{counts[k]} × {weapon.name}')
+    for item in items:
+        k = item['key']
+        form.append({'key': k, 'kind': WARGEAR, 'name': item['name'], 'count': counts[k], 'default': 0,
+                     'option': True, 'points': item['points']})
+        if counts[k]:
+            summary.append(f'{counts[k]} × {item["name"]}')
     for row, used in zip(rows, default_used([r['name'] for r in rows])):
         row['default_use'] = used
-    return {'models': models, 'points': None, 'choices': counts if changed else None, 'loadout': rows,
+    changed = any(counts[k] != defaults[k] for k in counts)
+    return {'models': models, 'points': points, 'choices': counts if changed else None, 'loadout': rows,
             'summary': ', '.join(summary), 'form': form, 'options_text': list(unit.wargear_options or []),
             'problems': [], 'effects': None}
 
@@ -106,8 +159,10 @@ def clean(value):
     out = {}
     for k, v in value.items():
         kind, _, ident = str(k).partition(':')
-        if kind not in KINDS:
+        if kind in KINDS:
+            out[key(kind, int(ident))] = max(0, min(int(v), MAX_COUNT))
+        elif kind == WARGEAR and re.fullmatch(r'[a-z0-9]{1,80}', ident):
+            out[key(kind, ident)] = max(0, min(int(v), MAX_COUNT))
+        else:
             raise ValueError(k)
-        out[key(kind, int(ident))] = max(0, min(int(v), MAX_COUNT))
     return out or None
-

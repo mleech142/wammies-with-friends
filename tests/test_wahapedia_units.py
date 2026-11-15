@@ -59,7 +59,8 @@ def test_points_sizes_and_later_copies(imported):
     assert warriors['points_by_size'] == [{'models': 5, 'points': 80}, {'models': 10, 'points': 160}]
     assert warriors['copy_points'] == [0, 0, 10]  # "Your 3rd+ unit costs" 10 more
     assert unit(imported, 'Star Captain')['points_by_size'] == [{'models': 1, 'points': 70}]  # Repeated block once
-    assert any('per Heavy laser' in r['detail'] for r in imported.report)
+    assert warriors['wargear_costs'] == [{'name': 'Heavy laser', 'points': 5}]
+    assert unit(imported, 'Shield Brutes')['wargear_costs'] == [{'name': 'Brute shield', 'points': 10}]
 
 
 def test_stat_line_and_loadout_of_a_mixed_unit(imported):
@@ -184,7 +185,8 @@ def test_the_wargear_popup_lists_the_loadout_options_and_option_text(wahapedia_c
     assert form['Laser rifle - standard']['count'] == 8 and form['Laser rifle - standard']['option'] is False  # 4 at 5
     assert form['Heavy laser']['count'] == 0 and form['Heavy laser']['option']
     assert 'heavy laser' in result['options_text'][0] and result['wargear'] is None
-    assert result['sizes'] == [5, 10] and result['points'] is None  # Options add no points
+    assert result['sizes'] == [5, 10] and result['points'] == 0  # Nothing taken beyond the datasheet's
+    assert form['Heavy laser']['points'] == 5 and form['Laser pistol']['points'] is None
 
     choices = {keys['Laser rifle - standard']: 7, keys['Heavy laser']: 1}
     result = client.post('/api/armies/wargear', json={'unit_id': ids['Void Warriors'], 'models': 10,
@@ -192,7 +194,7 @@ def test_the_wargear_popup_lists_the_loadout_options_and_option_text(wahapedia_c
     loadout = {r['name']: r['qty'] for r in result['loadout']}
     assert loadout['Laser rifle - standard'] == 7 and loadout['Heavy laser'] == 1
     assert result['wargear'][keys['Laser rifle - standard']] == 7
-    assert result['summary'] == '7 × Laser rifle - standard, 1 × Heavy laser'
+    assert result['summary'] == '7 × Laser rifle - standard, 1 × Heavy laser' and result['points'] == 5
     ticked = {r['name']: r['default_use'] for r in result['loadout']}
     assert ticked['Laser rifle - standard'] and not ticked['Laser rifle - overcharge']  # Its second profile
     assert client.post('/api/armies/wargear', json={'unit_id': 999999}).status_code == 404
@@ -206,7 +208,7 @@ def test_an_armys_chosen_weapons_reach_its_price_and_match_view(wahapedia_client
             'units': [{'uid': 'a', 'unit_id': ids['Void Warriors'], 'models': 5, 'wargear': choices}]}
     priced = client.post('/api/armies/price', json=army).get_json()
     entry = priced['units'][0]
-    assert entry['points'] == 80 and entry['has_wargear']  # The same points as without the options
+    assert entry['points'] == 85 and entry['wargear_points'] == 5 and entry['has_wargear']  # 80, and its heavy laser
     assert {r['name']: r['qty'] for r in entry['loadout']} == {
         'Laser pistol': 1, 'Laser rifle - standard': 3, 'Laser rifle - overcharge': 4, 'Heavy laser': 1,
         'Blade': 1, 'Close combat weapon': 4}
@@ -227,3 +229,35 @@ def test_a_share_code_carries_the_weapon_counts(wahapedia_client):
     assert imported['notes'] == []
     wargear = imported['army']['units'][0]['wargear']
     assert wargear[keys['Laser rifle - standard']] == 3 and wargear[keys['Heavy laser']] == 1
+
+
+def test_wargear_is_priced_by_the_datasheets_costs(wahapedia_client):
+    client, faction_id, ids, keys = wahapedia_client
+
+    def popup(name, wargear=None, models=None):
+        return client.post('/api/armies/wargear', json={'unit_id': ids[name], 'models': models, 'wargear': wargear}).get_json()
+
+    # Two heavy lasers in ten: 5 each; their profiles would count once
+    assert popup('Void Warriors', {keys['Heavy laser']: 2}, 10)['points'] == 10
+    # Wargear that isn't a weapon: a count of its own, 10 each
+    brutes = popup('Shield Brutes')
+    shield = next(w for w in brutes['form'] if w['name'] == 'Brute shield')
+    assert (shield['key'], shield['kind'], shield['count'], shield['points']) == ('wargear:bruteshield', 'wargear', 0, 10)
+    taken = popup('Shield Brutes', {'wargear:bruteshield': 2})
+    assert taken['points'] == 20 and taken['summary'] == '2 × Brute shield' and taken['loadout'][0]['name'] == 'Brute club'
+    # A weapon the datasheet already has: paid only beyond the one it comes with
+    walker = popup('Star Walker [Legends]')
+    flamer = next(w for w in walker['form'] if w['name'] == 'Walker flamer')
+    assert (flamer['default'], flamer['points']) == (1, 10) and walker['points'] == 0
+    assert popup('Star Walker [Legends]', {flamer['key']: 2})['points'] == 10
+
+    army = {'name': 'List', 'faction_id': faction_id, 'detachment_keys': ['d-vanguard'],
+            'units': [{'uid': 'b', 'unit_id': ids['Shield Brutes'], 'wargear': {'wargear:bruteshield': 3}}]}
+    priced = client.post('/api/armies/price', json=army).get_json()
+    assert priced['units'][0]['points'] == 120 and priced['total'] == 120  # 90 and three shields
+    assert priced['units'][0]['size_points'] == [90]  # A size's own points stay the datasheet's
+    code = client.post('/api/armies/share', json=army).get_json()['code']
+    imported = client.post('/api/armies/import', json={'code': code}).get_json()
+    assert imported['notes'] == [] and imported['army']['units'][0]['wargear']['wargear:bruteshield'] == 3
+    assert client.post('/api/armies/price', json=dict(army, units=[{'uid': 'b', 'unit_id': ids['Shield Brutes'],
+                                                                    'wargear': {'wargear:no such': 1}}])).status_code == 400

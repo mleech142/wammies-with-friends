@@ -37,25 +37,32 @@ MAX_JSON_BYTES = 1_000_000  # Decompressed: guards against a code that inflates 
 
 
 def _weapons_out(choices):
-    """Simple wargear (loadouts.py) by the weapons' stable keys, which mean the same weapon on every install."""
+    """Simple wargear (loadouts.py) by the weapons' stable keys, which mean the same weapon on every install; a priced
+    item that isn't a weapon ('wargear:stormshield') as it is."""
     tables = {'ranged': 'ranged_weapons', 'melee': 'melee_weapons'}
-    wanted = {}
+    wanted, out = {}, {}
     for k, count in choices.items():
         kind, _, ident = k.partition(':')
-        wanted[(tables[kind], int(ident))] = count
+        if kind in tables:
+            wanted[(tables[kind], int(ident))] = count
+        else:
+            out[k] = count
     rows = StableId.query.filter(StableId.id.in_({i for _, i in wanted}), StableId.table.in_(tables.values()))
-    return {r.key: wanted[(r.table, r.id)] for r in rows if (r.table, r.id) in wanted}
+    out.update({r.key: wanted[(r.table, r.id)] for r in rows if (r.table, r.id) in wanted})
+    return out
 
 
 def _weapons_in(unit, weapons, models):
     """A code's weapon counts as this install's (loadouts.py), and how many weapons it doesn't have."""
     tables = {'ranged_weapons': 'ranged', 'melee_weapons': 'melee'}
     rows = {r.key: r for r in StableId.query.filter(StableId.key.in_([str(k) for k in weapons]))}
-    carried = {loadouts.key(kind, w.id) for kind, w, _, _ in loadouts.weapons(unit, models)}
+    listed = loadouts.weapons(unit, models)
+    carried = {loadouts.key(kind, w.id) for kind, w, _, _ in listed}
+    carried |= {c['key'] for c in loadouts.costs(unit, listed) if c['keys'] is None}
     found, missing = {}, 0
     for k, count in weapons.items():
         row = rows.get(str(k))
-        key = row and loadouts.key(tables.get(row.table), row.id)
+        key = loadouts.key(tables.get(row.table), row.id) if row else str(k)
         if key in carried and isinstance(count, int):
             found[key] = count
         else:

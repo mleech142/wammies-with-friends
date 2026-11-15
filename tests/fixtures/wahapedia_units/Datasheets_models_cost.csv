@@ -19,6 +19,8 @@ u-drone|1|YOUR UNIT COSTS||
 u-drone|2|1 model|30|
 u-brutes|1|YOUR UNIT COSTS||
 u-brutes|2|3 models|90|
+u-brutes|3|WARGEAR OPTIONS||
+u-brutes|4|per Brute shield|10|
 u-captain|1|YOUR UNIT COSTS||
 u-captain|2|1 model|70|
 u-captain|3|YOUR UNIT COSTS||
@@ -29,6 +31,8 @@ u-lord|1|YOUR UNIT COSTS||
 u-lord|2|1 model|120|
 u-walker|1|YOUR UNIT COSTS||
 u-walker|2|1 model|120|
+u-walker|3|WARGEAR OPTIONS||
+u-walker|4|per Walker flamer|10|
 u-void|1|YOUR 1ST TO 2ND UNITS COST||
 u-void|2|5 models|80|
 u-void|3|10 models|160|

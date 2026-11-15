@@ -445,6 +445,16 @@ def import_folder(folder, known_keywords=None):
     return Result(data, report.items, source)
 
 
+def _wargear_costs(rows):
+    """The "per Multi-melta: 5" rows as [{'name': 'Multi-melta', 'points': 5}], each name once."""
+    out = []
+    for text, points in rows:
+        m = re.match(r'^per\s+(.+?)\s*$', text, re.I)
+        if m and points is not None and m.group(1).lower() not in {c['name'].lower() for c in out}:
+            out.append({'name': m.group(1), 'points': points})
+    return out
+
+
 def _kind(row):
     return 'melee' if row.get('type') == 'Melee' else 'ranged'
 
@@ -477,8 +487,6 @@ def _unit(d, by_sheet, abilities, legends_sources, report, faction, can_lead, ca
     default_models = sizes[0]['models'] if sizes else (sum(c for _, c in parts) or 1)
     if not sizes:
         report.add('points', faction, name, 'no points given')
-    if wargear_costs:
-        report.add('points', faction, name, f'wargear costs not priced yet: {", ".join(t for t, _ in wargear_costs)}')
 
     def weight(model):  # Models of this stat line at the smallest size
         return max((c for part, c in parts if same_name(part, model['name'])), default=0)
@@ -554,5 +562,5 @@ def _unit(d, by_sheet, abilities, legends_sources, report, faction, can_lead, ca
         'can_lead': can_lead, 'can_support': can_support, 'max_in_army': None, 'copy_points': copy_points,
         'leader_buffs': leader_buffs,
         'abilities': '\n\n'.join(lines + [r for r in rules if r != 'Leader']),
-        'wargear_options': options or None,
+        'wargear_options': options or None, 'wargear_costs': _wargear_costs(wargear_costs) or None,
     }

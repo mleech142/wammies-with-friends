@@ -395,26 +395,27 @@
         $('wargear-title').textContent = `Wargear: ${result.name}`;
         $('wargear-size').innerHTML = result.sizes.map(s => `<option value="${s}" ${s === models ? 'selected' : ''}>${s}</option>`).join('');
         $('wargear-size').disabled = result.sizes.length < 2;
-        $('wargear-points').textContent = result.points != null ? `${result.points} pts` : '';
+        $('wargear-points').textContent = result.points ? `+${result.points} pts for wargear` : '';
         $('wargear-problems').innerHTML = result.problems.map(p => `<li>${escapeHtml(p)}</li>`).join('');
         const options = (result.options_text || []).length
             ? `<div class="wargear-options-text"><strong>The datasheet's options</strong>
                    <ul>${result.options_text.map(t => `<li>${Core.formatRuleText(t)}</li>`).join('')}</ul></div>` : '';
         $('wargear-sections').innerHTML = options + (result.form.length
-            ? `<fieldset class="wargear-section"><legend>Models carrying each weapon</legend>
+            ? `<fieldset class="wargear-section"><legend>Models carrying each weapon or item</legend>
                    ${result.form.map(wargearWeapon).join('')}</fieldset>`
             : '<p class="empty-state">This datasheet lists no weapons.</p>');
         $('wargear-loadout').innerHTML = result.loadout.length
             ? `<strong>Loadout:</strong> ${result.loadout.map(w => escapeHtml(w.qty > 1 ? `${w.qty}× ${w.name}` : w.name)).join(', ')}` : '';
     }
 
-    /** One weapon: how many models carry it (an option starts at 0). */
+    /** One weapon (or other priced wargear): how many models carry it (an option starts at 0), and its cost. */
     function wargearWeapon(w) {
         const tag = w.option ? ' <span class="option-tag">option</span>'
             : w.count !== w.default ? ` <span class="muted">(datasheet: ${w.default})</span>` : '';
+        const cost = w.points ? ` <span class="muted">+${w.points} pts each${w.option ? '' : ' beyond the datasheet\'s'}</span>` : '';
         return `<label class="wargear-option">
             <input type="number" class="filter-input wargear-count" data-k="${escapeHtml(w.key)}" min="0" max="100" value="${w.count}" inputmode="numeric">
-            ${escapeHtml(w.name)} <span class="muted">(${w.kind})</span>${tag}</label>`;
+            ${escapeHtml(w.name)} <span class="muted">(${w.kind})</span>${tag}${cost}</label>`;
     }
 
     function onWargearChange(e) {

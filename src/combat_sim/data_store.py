@@ -480,7 +480,7 @@ def export_data(source=None, unmatched=None, schema_version=SCHEMA_VERSION):
 WAHAPEDIA_COLUMNS = ('source', 'wahapedia_id', 'text', 'parse', 'edited', 'superseded', 'category', 'turn', 'timing')
 
 # Unit columns only downloaded units use, left out of custom units in the data JSON
-BSDATA_COLUMNS = {'bsdata_id', 'legends', 'ranged_options', 'melee_options', 'wargear_options', 'added_modifiers',
+BSDATA_COLUMNS = {'bsdata_id', 'legends', 'ranged_options', 'melee_options', 'wargear_options', 'wargear_costs', 'added_modifiers',
                   'leader_buffs_override', 'max_in_army', 'copy_points', 'base'}
 
 

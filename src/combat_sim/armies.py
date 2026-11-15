@@ -26,8 +26,8 @@ What is checked (an army that breaks a rule can still be saved; the problems are
 - enhancements: at most 2 at Incursion and 4 otherwise, each once, never on Epic Heroes, with
   their detachment chosen and on a datasheet Wahapedia lists for them (else on Characters);
   Upgrades go on their own unit and don't count towards the limit;
-- wargear: how many models carry each weapon (loadouts.py: no limits or points), its loadout
-  passed to Analytics, Match view and Play.
+- wargear: how many models carry each weapon (loadouts.py: no limits), priced by the datasheet's "per X"
+  costs (`wargear_points`, in the unit's points), its loadout passed to Analytics, Match view and Play.
 """
 
 from collections import Counter
@@ -183,7 +183,7 @@ def price_army(army):
                      name=unit.name if unit else 'Unknown unit', points=None, unit_points=None, sizes=[], size_points=[],
                      is_leader=False, is_support=False, is_character=False, is_epic_hero=False, can_join=[], join_roles={},
                      led_by=[],
-                     supported_by=[], enhancement_points=0, enhancement_options=[], problems=[], has_wargear=False,
+                     supported_by=[], enhancement_points=0, enhancement_options=[], problems=[], has_wargear=False, wargear_points=0,
                      wargear_summary='', loadout=None, wargear_effects=None)
         entries.append(entry)
         if unit is None:
@@ -203,7 +203,8 @@ def price_army(army):
         if entry['wargear'] and loadouts.is_simple(entry['wargear']):  # How many models carry each weapon
             chosen = loadouts.evaluate(unit, entry['wargear'], entry['models'])
             entry.update(wargear=chosen['choices'], wargear_summary=chosen['summary'],
-                         loadout=chosen['loadout'] if chosen['choices'] else None)
+                         loadout=chosen['loadout'] if chosen['choices'] else None,
+                         wargear_points=chosen['points'], unit_points=_plus_points(entry['unit_points'], chosen['points']))
         else:
             entry['wargear'] = None  # The datasheet's (a pre-3.0 option tree's choices included)
         if entry['unit_points'] is None:

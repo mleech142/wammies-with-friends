@@ -130,6 +130,8 @@ class Unit(db.Model):
     # Extra points for later copies in an army: [0, 0, 15] = the third and later cost 15 more
     copy_points = db.Column(JSON, nullable=True)
     wargear_options = db.Column(JSON, nullable=True)  # Wahapedia units: the datasheet's wargear options, as text
+    # What wargear costs: [{"name": "Multi-melta", "points": 5}], each one taken (loadouts.py)
+    wargear_costs = db.Column(JSON, nullable=True)
     # What this unit grants the unit it leads, as rows like faction rules:
     # [{"applies_to": "Attacker"|"Target", "phase": "Shooting"|"Fighting"|"Both", "modifier": "Lethal Hits"}]
     leader_buffs = db.Column(JSON, default=list)  # Downloaded: parsed from its abilities; custom: edited
@@ -259,7 +261,7 @@ class Unit(db.Model):
             'can_lead': self.can_lead or [],
             'can_support': self.can_support or [],
             'max_in_army': self.max_in_army,
-            'has_wargear': bool(self.ranged_options or self.melee_options or self.wargear_options),  # loadouts.has_choices
+            'has_wargear': bool(self.ranged_options or self.melee_options or self.wargear_options or self.wargear_costs),
             'leader_buffs': self.effective_leader_buffs,
             'datasheet_leader_buffs': self.leader_buffs or [],
             'leader_buffs_edited': self.leader_buffs_override is not None,

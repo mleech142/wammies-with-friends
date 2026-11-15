@@ -61,11 +61,11 @@ def test_later_copies_of_a_datasheet_cost_what_the_datasheet_adds(client):
     assert [entries[u]['points'] for u in 'abcd'] == [80, 80, 90, 170]
     assert entries['c']['size_points'][:2] == [90, 170]
     assert priced['total'] == 420
-    # With wargear chosen too (options add no points)
+    # With wargear chosen too: a heavy laser is 5 more ("per Heavy laser"), on top of the copies' surcharge
     form = client.post('/api/armies/wargear', json={'unit_id': units['Void Warriors'], 'models': 5}).get_json()['form']
     choices = {w['key']: 1 for w in form if w['name'] == 'Heavy laser'}
     chosen = price(client, army(factions, *[{'uid': u, 'unit_id': units['Void Warriors'], 'wargear': choices} for u in 'abc']))
-    assert [e['points'] for e in chosen['units']] == [80, 80, 90]
+    assert [e['points'] for e in chosen['units']] == [85, 85, 95]
 
 
 def test_checks(client):

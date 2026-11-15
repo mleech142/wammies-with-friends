@@ -83,7 +83,7 @@ Build an army once, then test it against anything.
 - **Copies:** the rule of three (six for Battleline, one for Epic Heroes).
 - **Characters:** one Warlord (a Character); enhancements on Characters only, never Epic Heroes, each once, up to the battle size's limit.
 - **Units:** legal unit sizes; leaders and support units joining units they're allowed to.
-- **Wargear:** the **Wargear** button sets how many models carry each weapon, beside the datasheet's own option text. The app doesn't check those options or add their points: follow the datasheet.
+- **Wargear:** the **Wargear** button sets how many models carry each weapon, beside the datasheet's own option text. The app doesn't check those options (follow the datasheet), but it adds their points: each weapon or item with a cost on the datasheet ("+5 pts each") is charged for every one beyond the datasheet's own loadout.
 
 **Copy as text** gives you the list ready to paste into a message.
 
