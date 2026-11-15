@@ -1,0 +1,8 @@
+﻿faction_id|name|id|cost|detachment|detachment_id|upgrade|legend|description|support_leader|
+SF|Targeting Sights|enh-sights|10|Void Vanguard|d-vanguard|true||Gun Crew unit only. This unit’s ranged attacks have [IGNORES COVER].||
+SF|Void Blade|enh-void-blade|20|Void Vanguard|d-vanguard|false||<span class="kwb">STARFARERS</span> model only. This model’s melee attacks have [LETHAL HITS].||
+SF|Bastion Ward|enh-bastion-ward|15|Star Bastion|d-bastion|false||While the bearer is leading a unit, models in that unit have a 4+ invulnerable save.||
+SF|Armada Relic|enh-armada-relic|30|Star Armada|d-armada|false||Once per battle, the bearer can do something clever.||
+SF|Sun Crown|enh-sun-crown|25|Void Vanguard|d-vanguard|false||The bearer shines.||
+SF|Line Banner|enh-line-banner|10|Void Vanguard|d-vanguard|true||This unit’s attacks have +1 S.||
+SF|Boarding Hook|enh-hook|5|Hull Breach|d-breach|false||For boarding actions only.||

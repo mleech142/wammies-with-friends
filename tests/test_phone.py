@@ -17,7 +17,7 @@ import threading
 
 import pytest
 
-from conftest import BSDATA_FIXTURES, create_app
+from conftest import UNIT_FIXTURES, create_app
 
 playwright_api = pytest.importorskip('playwright.sync_api')
 
@@ -68,8 +68,7 @@ def live_server(folder, seed, hosted=False):
     with pytest.MonkeyPatch.context() as env:
         env.setenv('DATA_JSON', str(folder / 'data.json'))
         env.setenv('DATABASE_URL', 'sqlite:///' + (folder / 'test.db').as_posix())
-        env.setenv('BSDATA_DIR', str(BSDATA_FIXTURES))
-        env.setenv('WAHAPEDIA_DIR', str(folder / 'no-wahapedia'))
+        env.setenv('WAHAPEDIA_DIR', str(UNIT_FIXTURES))
         if hosted:
             env.setenv('COMBAT_SIM_HOSTED', '1')
         else:

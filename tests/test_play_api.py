@@ -5,7 +5,7 @@ armies and event log, actions checked and logged, undo. Built on the made-up BSD
 
 import pytest
 
-from conftest import BSDATA_FIXTURES
+from conftest import UNIT_FIXTURES
 
 APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'ranged_weapons': [], 'melee_weapons': [],
             'faction_rules': [], 'stratagems': [], 'unit_modifiers': [], 'keywords': [], 'target_profiles': []}
@@ -13,7 +13,7 @@ APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'r
 
 @pytest.fixture
 def client(make_client):
-    return make_client(APP_DATA, bsdata=BSDATA_FIXTURES)[0]
+    return make_client(APP_DATA, wahapedia=UNIT_FIXTURES)[0]
 
 
 def saved_army(client, name, *units):

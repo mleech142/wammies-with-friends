@@ -1,3 +1,7 @@
 ﻿id|faction_id|name|legend|description|detachment|detachment_id|
-301|SF|Vanguard Doctrine||<b>Doctrine:</b> Each time a model in your unit makes a melee attack, add 1 to the Hit roll.|Void Vanguard|001|
-302|SF|Lost Doctrine||Models in your unit have the Stealth ability.|Lost Fleet|003|
+301|SF|Vanguard Doctrine||<b>Doctrine:</b> Each time a model in your unit makes a melee attack, add 1 to the Hit roll.|Void Vanguard|d-vanguard|
+302|SF|Lost Doctrine||Models in your unit have the Stealth ability.|Lost Fleet|d-lost|
+303|SF|Hold Fast||Units on objectives get +1 to their saves.|Star Bastion|d-bastion|
+304|SF|Walls||Units in cover get +1 to their saves.|Star Citadel|d-citadel|
+305|SF|Fleet||The whole fleet strikes.|Star Armada|d-armada|
+306|AL|Assigned||Agents can join any army.|Allied Task Force|d-task-force|

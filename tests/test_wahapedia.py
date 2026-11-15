@@ -14,11 +14,11 @@ import pytest
 
 from combat_sim import wahapedia, wahapedia_download
 from combat_sim.rules_text import damaged_threshold, has_core_ability, parse_effects, parse_leader_buffs
-from conftest import BSDATA_FIXTURES, WAHAPEDIA_FIXTURES
+from conftest import UNIT_FIXTURES, WAHAPEDIA_FIXTURES
 
 APP_DATA = {
     'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'ranged_weapons': [], 'melee_weapons': [],
-    'faction_rules': [{'id': 1, 'faction_key': 'cat-star', 'faction_name': 'Starfarers', 'name': 'Home Rule',
+    'faction_rules': [{'id': 1, 'faction_key': 'SF', 'faction_name': 'Starfarers', 'name': 'Home Rule',
                        'applies_to': 'Attacker', 'phase': 'Both', 'modifier': 'Lance'}],
     'stratagems': [{'id': 1, 'faction_id': None, 'name': 'Command Re-roll', 'cp': '1', 'applies_to': 'Attacker',
                     'phase': 'Both', 'modifier': None, 'notes': 'Hand-written placeholder'},
@@ -81,7 +81,8 @@ def test_import_folder():
     assert strats['Command Re-Roll']['faction_id'] is None
 
     rules = {r['name']: r for r in result.data['rules']}
-    assert set(rules) == {'Vanguard Doctrine', 'Lost Doctrine', 'Star Oath', 'Ghostly'}  # Not core or datasheet abilities
+    assert set(rules) == {'Vanguard Doctrine', 'Lost Doctrine', 'Hold Fast', 'Walls', 'Fleet', 'Assigned',
+                          'Star Oath', 'Star Pact', 'Ghostly'}  # Not core or datasheet abilities
     assert rules['Vanguard Doctrine']['modifier'] == 'Hit Modifier +1' and rules['Vanguard Doctrine']['phase'] == 'Fighting'
     assert rules['Star Oath']['detachment_id'] is None and rules['Star Oath']['modifier'] == 'Reroll Hits 1'
 
@@ -231,7 +232,7 @@ def test_interpret_picks_one_side_and_keeps_the_stratagems_phase():
 
 @pytest.fixture
 def app_client(make_client):
-    client, data_file = make_client(APP_DATA, bsdata=BSDATA_FIXTURES, wahapedia=WAHAPEDIA_FIXTURES)
+    client, data_file = make_client(APP_DATA, wahapedia=WAHAPEDIA_FIXTURES)
     return client, lambda: json.loads(data_file.read_text(encoding='utf-8'))
 
 
@@ -287,11 +288,8 @@ def test_matching_to_bsdata(app_client):
     assert allied['conditions'] == ['If your unit is within range of an objective marker']
     status = client.get('/api/data/status?report=1').get_json()['wahapedia']
     assert status['loaded'] and status['last_update'] == '2026-10-01 12:00:00'
-    assert (status['stratagems'], status['rules']) == (6, 2)  # Not Lost Signal or Lost Doctrine (no BSData detachment), or Ghostly
-    assert status['report_counts'] == {'wahapedia_detachment': 1, 'wahapedia_faction': 1}
-    assert {(r['faction'], r['detail']) for r in status['report']} == {
-        ('Starfarers', 'Detachment "Lost Fleet" is not in BSData'),
-        ('Ghost Legion', 'No BSData faction of this name or with its detachments')}
+    assert (status['stratagems'], status['rules']) == (7, 9)  # The units' factions and detachments: all found
+    assert status['report_counts'] == {}
 
 
 def test_ticked_stratagems_change_the_maths_for_attached_targets(app_client):
@@ -324,7 +322,7 @@ def test_data_tab_lists_them_read_only(app_client):
     rules = {r['name']: r for r in client.get(f'/api/data/rules?faction_id={star}').get_json()}
     assert client.delete(f'/api/data/rules/{rules["Star Oath"]["id"]}').status_code == 403
     counts = {f['name']: f for f in client.get('/api/data/factions').get_json()}['Starfarers']
-    assert (counts['rule_count'], counts['stratagem_count']) == (3, 3)  # Home Rule, Vanguard Doctrine, Star Oath
+    assert (counts['rule_count'], counts['stratagem_count']) == (8, 4)  # Home Rule, 5 detachments', 2 army rules
 
 
 def test_editing_how_the_maths_reads_one(app_client, make_client):
@@ -339,7 +337,7 @@ def test_editing_how_the_maths_reads_one(app_client, make_client):
     assert [s['name'] for s in saved()['stratagems']] == ['Command Re-roll', 'My Own Gambit']  # Wahapedia's are never saved
     assert 'Redeploy' in available(client, 'Attacker', star, 'd-vanguard')  # Now has a phase
 
-    restarted, _ = make_client(saved(), bsdata=BSDATA_FIXTURES, wahapedia=WAHAPEDIA_FIXTURES)
+    restarted, _ = make_client(saved(), wahapedia=WAHAPEDIA_FIXTURES)
     again = {s['name']: s for s in restarted.get(f'/api/data/stratagems?faction_id={star}').get_json()}['Redeploy']
     assert (again['id'], again['modifier'], again['edited']) == (redeploy['id'], 'Hit Modifier +1', True)  # Same ID
 
@@ -351,7 +349,7 @@ def test_editing_how_the_maths_reads_one(app_client, make_client):
 def test_edits_are_kept_while_wahapedia_is_not_loaded(make_client):
     data = dict(APP_DATA, wahapedia_overrides=[{'kind': 'rule', 'wahapedia_id': '401', 'name': 'Star Oath',
                                                  'applies_to': 'Attacker', 'phase': 'Both', 'modifier': 'Reroll Hits'}])
-    client, data_file = make_client(data, bsdata=BSDATA_FIXTURES)
+    client, data_file = make_client(data, wahapedia=UNIT_FIXTURES)
     client.post('/api/data/stratagems', json={'faction_id': None, 'name': 'New One', 'applies_to': 'Attacker'})
     assert json.loads(data_file.read_text(encoding='utf-8'))['wahapedia_overrides'] == data['wahapedia_overrides']
     core = {s['name'] for s in client.get('/api/data/stratagems?core=1').get_json()}
@@ -362,25 +360,25 @@ def test_core_stratagems_load_without_bsdata(make_client):
     client, _ = make_client(APP_DATA, wahapedia=WAHAPEDIA_FIXTURES)
     core = {s['name'] for s in client.get('/api/data/stratagems?core=1').get_json()}
     assert core == {'Command Re-Roll', 'Smokescreen', 'My Own Gambit'}
-    assert 'Rules and stratagems powered by' in client.get('/setup').get_data(as_text=True)
+    assert 'powered by <a href="https://wahapedia.ru/"' in client.get('/setup').get_data(as_text=True)
 
 
 # --- Download latest -------------------------------------------------------------------------------
 
 @pytest.fixture
 def fake_wahapedia(monkeypatch):
-    files = {p.name: p.read_bytes() for p in WAHAPEDIA_FIXTURES.glob('*.csv')}
+    files = {p.name: p.read_bytes() for p in WAHAPEDIA_FIXTURES.glob('*.csv')}  # The export with datasheets
     monkeypatch.setattr(wahapedia_download, 'fetch', lambda name: files[name])
     return files
 
 
 def test_download_latest(make_client, tmp_path, fake_wahapedia):
     target = tmp_path / 'downloaded'
-    client, data_file = make_client(APP_DATA, bsdata=BSDATA_FIXTURES, wahapedia=target)
+    client, data_file = make_client(APP_DATA, wahapedia=target)
     assert client.get('/api/data/status').get_json()['wahapedia']['loaded'] is False
     status = client.post('/api/wahapedia/download').get_json()['wahapedia']
-    assert status['loaded'] and status['stratagems'] == 6
-    assert sorted(p.name for p in target.iterdir()) == sorted(wahapedia.FILES)
+    assert status['loaded'] and status['stratagems'] == 7
+    assert sorted(p.name for p in target.iterdir()) == sorted(wahapedia_download.DOWNLOAD_FILES)
     settings = json.loads((data_file.parent / 'settings.json').read_text(encoding='utf-8'))
     assert settings['wahapedia_download']['last_update'] == '2026-10-01 12:00:00'
     assert '2026-10-01' in client.get('/data').get_data(as_text=True)  # Footer credit
@@ -389,7 +387,7 @@ def test_download_latest(make_client, tmp_path, fake_wahapedia):
 def test_failed_download_keeps_the_current_files(make_client, tmp_path, monkeypatch, fake_wahapedia):
     target = tmp_path / 'downloaded'
     shutil.copytree(WAHAPEDIA_FIXTURES, target)
-    client, _ = make_client(APP_DATA, bsdata=BSDATA_FIXTURES, wahapedia=target)
+    client, _ = make_client(APP_DATA, wahapedia=target)
 
     def offline(name):
         raise wahapedia_download.DownloadError('Could not reach Wahapedia: offline')
@@ -401,5 +399,5 @@ def test_failed_download_keeps_the_current_files(make_client, tmp_path, monkeypa
     response = client.post('/api/wahapedia/download')
     assert response.status_code == 502 and 'could not be read' in response.get_json()['error']
 
-    assert client.get('/api/data/status').get_json()['wahapedia']['stratagems'] == 6
+    assert client.get('/api/data/status').get_json()['wahapedia']['stratagems'] == 7
     assert not list(target.parent.glob('wahapedia-new-*'))  # The half-done downloads were cleared away

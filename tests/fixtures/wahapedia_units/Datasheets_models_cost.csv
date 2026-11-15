@@ -1,0 +1,44 @@
+﻿datasheet_id|line|description|cost|
+u-agent|1|YOUR UNIT COSTS||
+u-agent|2|1 model|50|
+u-troupe|1|YOUR UNIT COSTS||
+u-troupe|2|5 models|80|
+u-wall|1|YOUR UNIT COSTS||
+u-wall|2|1 model|40|
+u-beasts|1|YOUR UNIT COSTS||
+u-beasts|2|4 models|60|
+u-bunker|1|YOUR UNIT COSTS||
+u-bunker|2|1 model|100|
+u-medic|1|YOUR UNIT COSTS||
+u-medic|2|1 model|40|
+u-crew|1|YOUR UNIT COSTS||
+u-crew|2|2 models|65|
+u-crew|3|3 models|80|
+u-crew|4|4 models|150|
+u-drone|1|YOUR UNIT COSTS||
+u-drone|2|1 model|30|
+u-brutes|1|YOUR UNIT COSTS||
+u-brutes|2|3 models|90|
+u-captain|1|YOUR UNIT COSTS||
+u-captain|2|1 model|70|
+u-captain|3|YOUR UNIT COSTS||
+u-captain|4|1 model|70|
+u-herald|1|YOUR UNIT COSTS||
+u-herald|2|1 model|60|
+u-lord|1|YOUR UNIT COSTS||
+u-lord|2|1 model|120|
+u-walker|1|YOUR UNIT COSTS||
+u-walker|2|1 model|120|
+u-void|1|YOUR 1ST TO 2ND UNITS COST||
+u-void|2|5 models|80|
+u-void|3|10 models|160|
+u-void|4|YOUR 3RD+ UNIT COSTS||
+u-void|5|5 models|90|
+u-void|6|10 models|170|
+u-void|7|WARGEAR OPTIONS||
+u-void|8|per Heavy laser|5|
+u-marksmen|1|YOUR UNIT COSTS||
+u-marksmen|2|3 models|45|
+u-marksmen|3|6 models|90|
+u-spectre|1|YOUR UNIT COSTS||
+u-spectre|2|1 model|20|

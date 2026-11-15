@@ -1310,7 +1310,7 @@
                     `<td>${c.range}</td><td>${escapeHtml(c.attacks)}</td><td>${c.skill}</td><td>${escapeHtml(c.strength)}</td><td>${c.ap}</td><td>${escapeHtml(c.damage)}</td></tr>`;
             }).join('');
             const found = abilities[i];
-            const hidden = new Set(part.hidden_abilities || []);  // Shown by BSData only with other detachments
+            const hidden = new Set(part.hidden_abilities || []);  // Games frozen before 3.0: BSData's for other detachments
             const text = found === undefined ? '<p class="play-card-note">Loading abilities…</p>'
                 : !found.found ? `<p class="play-card-note">Its abilities aren't in this PC's data.</p>`
                 : found.abilities.filter(a => a.name !== 'Leader' && !hidden.has(a.name)).map(a => `<div class="play-card-ability">${a.name ? `<b>${escapeHtml(a.name)}:</b> ` : ''}${formatRuleText(a.text)}</div>`).join('') +

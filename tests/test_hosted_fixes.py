@@ -14,7 +14,7 @@ import pytest
 
 from combat_sim import accounts, data_store, mail, paths
 from combat_sim.play import session as play_session
-from conftest import BSDATA_FIXTURES, welcome
+from conftest import UNIT_FIXTURES, welcome
 
 ROOT = Path(__file__).resolve().parent.parent
 APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'ranged_weapons': [], 'melee_weapons': [],
@@ -29,7 +29,7 @@ def hosted(make_client, monkeypatch):
     accounts._failed.clear()
     mail._seen.clear()
     mail._sent.clear()
-    client, data_file = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)
+    client, data_file = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)
     return client, data_file
 
 
@@ -174,7 +174,7 @@ def test_a_failed_rebuild_leaves_the_reference_tables_as_they_were(host, monkeyp
     monkeypatch.setattr(reference, 'rebuild_reference_tables', broken)
     with pytest.raises(Exception):
         with host.application.app_context():
-            reference.load(host.application, bsdata=True)
+            reference.load(host.application, wahapedia_too=True)
     assert reference.current(host.application) is before  # the published snapshot didn't change either
     assert len(host.get('/api/data/factions').get_json()) == factions  # the drop was rolled back too
 

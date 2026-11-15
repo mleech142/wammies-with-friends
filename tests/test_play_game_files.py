@@ -10,7 +10,7 @@ import pytest
 from combat_sim import __version__
 from combat_sim.app import create_app
 from combat_sim.play import game_file
-from conftest import BSDATA_FIXTURES, WAHAPEDIA_FIXTURES
+from conftest import WAHAPEDIA_FIXTURES
 from test_play_api import APP_DATA, saved_army
 
 
@@ -24,7 +24,6 @@ def two_pcs(tmp_path, monkeypatch):
         (folder / 'data.json').write_text(json.dumps(APP_DATA), encoding='utf-8')
         monkeypatch.setenv('DATA_JSON', str(folder / 'data.json'))
         monkeypatch.setenv('DATABASE_URL', 'sqlite:///' + str(folder / 'test.db').replace('\\', '/'))
-        monkeypatch.setenv('BSDATA_DIR', str(BSDATA_FIXTURES))
         monkeypatch.setenv('WAHAPEDIA_DIR', str(WAHAPEDIA_FIXTURES))
         clients.append(create_app().test_client())
     return clients

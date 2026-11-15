@@ -5,39 +5,36 @@ every change (price_army) so the game rules stay in Python; Analytics takes a sa
 attackers or defenders (`roster`).
 
 An army is {'name', 'faction_id', 'detachment_keys', 'points_limit', 'warlord', 'disposition', 'units': [{'uid',
-'unit_id', 'models', 'attached_to', 'enhancement', 'wargear'}]}. `wargear` is the unit's chosen
-options ({k: count}, see wargear.py; None = BSData's defaults). `uid` names an entry within the list (the
-same datasheet can be taken more than once); a leader's or support unit's `attached_to` is the
-uid of the unit it joins; `enhancement` is an enhancement's BSData ID; `warlord` is an entry's uid.
+'unit_id', 'models', 'attached_to', 'enhancement', 'wargear'}]}. `wargear` is how many models carry each
+weapon (loadouts.py; None = the datasheet's loadout). `uid` names an entry within the list (the same datasheet
+can be taken more than once); a leader's or support unit's `attached_to` is the uid of the unit it joins;
+`enhancement` is an enhancement's Wahapedia ID; `warlord` is an entry's uid.
 
 What is checked (an army that breaks a rule can still be saved; the problems are listed):
 - the points limit (a battle size, or none), enhancements' points included;
 - detachments: their Detachment Points (DP) within the battle size's budget (Incursion 2, or a
-  single 3 DP detachment on its own; Strike Force 3; Onslaught 4, as BSData has it), each from
-  the army's faction, and no two sharing a Unique Tag (DP costs and tags come from BSData);
-- unit sizes: one the datasheet lists; copies of a datasheet: its own limit in BSData, else the
-  core rule (one Epic Hero, six Battleline or Dedicated Transport, three of anything else);
-  later copies cost what BSData adds for them (`Unit.copy_points`, in list order);
+  single 3 DP detachment on its own; Strike Force 3; Onslaught 4), each from the army's faction,
+  and no two sharing a Unique Tag (Wahapedia's export has none so far);
+- unit sizes: one the datasheet lists; copies of a datasheet: the core rule (one Epic Hero, six
+  Battleline or Dedicated Transport, three of anything else; `Unit.max_in_army` if a datasheet
+  gives its own); later copies cost what the datasheet adds for them (`Unit.copy_points`, in list order);
 - units from another faction, or no longer in the data;
 - leaders and support units: attached only to units their Leader / Support ability names, at
   most one leader and one support unit per unit;
 - a Warlord: one of the army's Characters;
 - the force disposition: one of its detachments' (the first, to be confirmed, when none is chosen);
-- enhancements: at most 2 at Incursion and 4 otherwise, each once, on Characters but not Epic
-  Heroes, with their detachment chosen and their bearer allowed (BSData's own conditions:
-  enhancement_hidden); Upgrades go on their own unit, up to three of the same, and don't count
-  towards the limit; those only non-Characters link to (Warptide's) go on those units, as many
-  as BSData allows, its copies counting once when BSData shares their cost.
-
-- wargear: each unit's chosen options, priced, sized and checked by BSData's own rules
-  (wargear.evaluate), its loadout passed to Analytics.
+- enhancements: at most 2 at Incursion and 4 otherwise, each once, never on Epic Heroes, with
+  their detachment chosen and on a datasheet Wahapedia lists for them (else on Characters);
+  Upgrades go on their own unit and don't count towards the limit;
+- wargear: how many models carry each weapon (loadouts.py: no limits or points), its loadout
+  passed to Analytics, Match view and Play.
 """
 
 from collections import Counter
 
-from . import wargear as wargear_engine
+from . import loadouts
 from .engagement import stat_changes
-from .models import db, Detachment, Enhancement, Faction, Unit, RangedWeapon, MeleeWeapon
+from .models import db, Detachment, Enhancement, Faction, Unit
 
 # (name, points limit, Detachment Points) as BSData's game system has them; Onslaught is provisional there
 BATTLE_SIZES = [('Incursion', 1000, 2), ('Strike Force', 2000, 3), ('Onslaught', 3000, 4)]
@@ -85,6 +82,8 @@ def clean_army(data):
         seen.add(uid)
         entries.append({'uid': uid, 'unit_id': unit_id, 'models': models, 'attached_to': _short(entry.get('attached_to')),
                         'enhancement': _short(entry.get('enhancement')), 'wargear': clean_wargear(entry.get('wargear'))})
+        if entry.get('missing'):  # A BSData unit with no Wahapedia datasheet, by its old name (carry_over.py)
+            entries[-1]['missing'] = str(entry['missing'])[:200]
     keys = data.get('detachment_keys')
     if keys is None:  # One detachment, as armies were first saved
         keys = [data['detachment_key']] if data.get('detachment_key') else []
@@ -96,30 +95,18 @@ def clean_army(data):
 
 
 def clean_wargear(value):
-    """A unit's chosen options from a request: {k: count} (None = BSData's defaults)."""
+    """A unit's chosen wargear from a request: how many models carry each weapon ({'ranged:<id>': count},
+    loadouts.py); None = the datasheet's, as are a pre-3.0 option tree's choices ({'3': 1})."""
     if not value:
         return None
     if not isinstance(value, dict) or len(value) > 500:
-        raise ArmyError('wargear must be an object of option numbers and counts.')
+        raise ArmyError('wargear must be an object of weapons and counts.')
+    if not loadouts.is_simple(value):
+        return None
     try:
-        return {str(int(k)): max(0, min(int(v), 100)) for k, v in value.items()}
+        return loadouts.clean(value)
     except (TypeError, ValueError):
-        raise ArmyError('wargear must be an object of option numbers and counts.')
-
-
-def unit_wargear(unit, choices, models, catalogue_id):
-    """wargear.evaluate for a Unit, with its loadout's weapon names ([{'weapon_id', 'weapon_type', 'name', 'qty', 'default_use'}])."""
-    result = wargear_engine.evaluate(unit.wargear, choices, models, catalogue_id)
-    names = {}
-    for kind, model in (('ranged', RangedWeapon), ('melee', MeleeWeapon)):
-        ids = [weapon_id for k, weapon_id, _ in result['loadout'] if k == kind]
-        names.update({(kind, w.id): w.name for w in model.query.filter(model.id.in_(ids))} if ids else {})
-    rows = [{'weapon_id': weapon_id, 'weapon_type': kind, 'name': names.get((kind, weapon_id), '?'), 'qty': qty}
-            for kind, weapon_id, qty in result['loadout']]
-    for row, used in zip(rows, wargear_engine.default_used([r['name'] for r in rows])):
-        row['default_use'] = used  # Later profiles of a "Weapon - Profile" family start unticked in Analytics
-    result['loadout'] = rows
-    return result
+        raise ArmyError('wargear must be an object of weapons and counts.')
 
 
 def sizes_of(unit):
@@ -147,90 +134,20 @@ def enhancement_limit(points_limit):
     return ENHANCEMENT_LIMITS.get(points_limit, DEFAULT_ENHANCEMENT_LIMIT)
 
 
-# ---------------------------------------------------------------------------
-# Enhancements: BSData's conditions for showing one, evaluated for a bearer
-# ---------------------------------------------------------------------------
-
-COMPARE = {'lessThan': lambda a, b: a < b, 'atMost': lambda a, b: a <= b, 'equalTo': lambda a, b: a == b,
-           'notEqualTo': lambda a, b: a != b, 'atLeast': lambda a, b: a >= b, 'greaterThan': lambda a, b: a > b}
-
-
-def _condition_holds(condition, context):
-    """
-    One BSData condition for a bearer in an army: roster/force counts are the chosen detachments
-    (anything else, such as a Crusade force, counts 0); "ancestor" instance tests check the
-    bearer (its BSData ID, name or keywords; faction keywords hold); "primary-catalogue" the
-    army's faction. Conditions it can't evaluate don't hold, so they never hide an enhancement.
-    """
-    test, scope, value = condition.get('test'), condition.get('scope'), condition.get('value') or 0
-    if test in ('instanceOf', 'notInstanceOf'):
-        if scope == 'primary-catalogue':
-            found = condition.get('id') == context['catalogue']
-        elif scope in ('ancestor', 'self', 'parent'):
-            name = (condition.get('name') or '').lower()
-            found = (condition.get('id') in context['bearer_ids'] or name in context['bearer_names']
-                     or name.startswith('faction:'))
-        else:
-            return False
-        return found if test == 'instanceOf' else not found
-    if scope in ('roster', 'force') and test in COMPARE:
-        count = 1 if condition.get('id') in context['detachments'] else 0
-        return COMPARE[test](count, value)
-    return False
-
-
-def _tree_holds(node, context):
-    if 'items' not in node:
-        return _condition_holds(node, context)
-    results = [_tree_holds(item, context) for item in node['items']]
-    if not results:
-        return False
-    return any(results) if node.get('op') == 'or' else all(results)
-
-
-def enhancement_hidden(enhancement, bearer, detachment_keys, catalogue_id, keywords=()):
-    """
-    True if BSData hides `enhancement` for this bearer (a Unit) with these detachments chosen;
-    `keywords`: those its chosen wargear adds (a Daemon Prince's allegiance).
-    """
-    return _hidden(enhancement.hidden_when, bearer, detachment_keys, catalogue_id, keywords)
-
-
-def hidden_abilities(unit, detachment_keys, catalogue_id, keywords=()):
-    """
-    Names of the unit's abilities BSData hides with these detachments chosen (Unit.ability_conditions): a Chaos
-    Daemons unit's Shadow Legion ability outside the Shadow Legion detachment (issue #27).
-    """
-    return {name for name, trees in (unit.ability_conditions or {}).items()
-            if _hidden(trees, unit, detachment_keys, catalogue_id, keywords)}
-
-
-def _hidden(trees, bearer, detachment_keys, catalogue_id, keywords=()):
-    context = {'detachments': set(detachment_keys), 'catalogue': catalogue_id, 'bearer_ids': {bearer.bsdata_id},
-               'bearer_names': {bearer.name.lower()} | {k.lower() for k in list(bearer.keywords or []) + list(keywords)}}
-    return any(_tree_holds(tree, context) for tree in trees or [])
-
-
-def enhancement_allowed(enhancement, bearer, detachment_keys, catalogue_id, keywords=()):
-    """
-    (allowed, reason) for giving `enhancement` to `bearer` (a Unit), core rules and BSData's
-    conditions; `keywords`: those the bearer's chosen wargear adds.
-    """
+def enhancement_allowed(enhancement, bearer, detachment_keys):
+    """(allowed, reason) for giving `enhancement` to `bearer` (a Unit) with these detachments chosen."""
+    if has_keyword(bearer, 'Epic Hero'):
+        return False, "Epic Heroes can't be given enhancements."
     if enhancement.unit_bsdata_id:  # An Upgrade: its own unit only
         if enhancement.unit_bsdata_id != bearer.bsdata_id:
             return False, f'{enhancement.name} is an Upgrade for another unit.'
-    elif enhancement.bearer_bsdata_ids:  # For given units, not Characters (Warptide's Battleline enhancements)
+    elif enhancement.bearer_bsdata_ids:  # The datasheets Wahapedia lists for it (Datasheets_enhancements)
         if bearer.bsdata_id not in enhancement.bearer_bsdata_ids:
             return False, f"{enhancement.name} isn't for {bearer.name}."
-    else:
-        if not has_keyword(bearer, 'Character'):
-            return False, 'Only Characters can be given enhancements.'
-        if has_keyword(bearer, 'Epic Hero'):
-            return False, "Epic Heroes can't be given enhancements."
+    elif not has_keyword(bearer, 'Character'):
+        return False, 'Only Characters can be given enhancements.'
     if enhancement.detachment_keys and not set(enhancement.detachment_keys) & set(detachment_keys):
         return False, f'{enhancement.name} needs its detachment.'
-    if enhancement_hidden(enhancement, bearer, detachment_keys, catalogue_id, keywords):
-        return False, f"{bearer.name} can't take {enhancement.name}."
     return True, None
 
 
@@ -254,7 +171,6 @@ def price_army(army):
     ids = {e['unit_id'] for e in army['units']}
     units = {u.id: u for u in Unit.query.filter(Unit.id.in_(ids))} if ids else {}
     faction = db.session.get(Faction, army['faction_id'])
-    catalogue = faction.bsdata_id if faction else None
     detachments, problems = check_detachments(army, faction)
     chosen_keys = [d['key'] for d in detachments]
     faction_enhancements = Enhancement.query.filter_by(faction_id=army['faction_id']).order_by(Enhancement.name).all()
@@ -283,18 +199,13 @@ def price_army(army):
             entry['problems'].append(f'{entry["models"]} models isn\'t a size this datasheet lists '
                                      f'({", ".join(map(str, entry["sizes"]))}).')
         entry['unit_points'] = _plus_points(unit.points_for(entry['models']), surcharge)
-        entry['has_wargear'] = unit.wargear is not None
-        if entry['wargear'] and unit.wargear is not None:  # Chosen options: BSData's rules price and size the unit
-            chosen = unit_wargear(unit, entry['wargear'], entry['models'], catalogue)
-            entry.update(models=chosen['models'], unit_points=_plus_points(chosen['points'], surcharge), wargear=chosen['choices'],
-                         wargear_summary=chosen['summary'], loadout=chosen['loadout'], wargear_effects=chosen['effects'])
-            entry['problems'] += chosen['problems']
-        elif entry['wargear']:
-            entry['wargear'] = None  # The unit has nothing to choose (any more)
-        if entry['wargear_effects'] is None and unit.wargear is not None and wargear_engine.has_keywords(unit.wargear):
-            # Keywords from BSData's default options (a Daemon Prince's first allegiance until one is chosen)
-            entry['wargear_effects'] = unit_wargear(unit, None, entry['models'], catalogue)['effects']
-        keywords = (entry['wargear_effects'] or {}).get('keywords', [])
+        entry['has_wargear'] = loadouts.has_choices(unit)
+        if entry['wargear'] and loadouts.is_simple(entry['wargear']):  # How many models carry each weapon
+            chosen = loadouts.evaluate(unit, entry['wargear'], entry['models'])
+            entry.update(wargear=chosen['choices'], wargear_summary=chosen['summary'],
+                         loadout=chosen['loadout'] if chosen['choices'] else None)
+        else:
+            entry['wargear'] = None  # The datasheet's (a pre-3.0 option tree's choices included)
         if entry['unit_points'] is None:
             entry['problems'].append('This unit has no points.')
         if faction and unit.faction_id != faction.id:
@@ -303,13 +214,13 @@ def price_army(army):
                      is_character=has_keyword(unit, 'Character'), is_epic_hero=has_keyword(unit, 'Epic Hero'))
         entry['enhancement_options'] = [
             {'key': x.bsdata_id, 'name': x.name, 'points': x.points, 'upgrade': bool(x.unit_bsdata_id)}
-            for x in faction_enhancements if enhancement_allowed(x, unit, chosen_keys, catalogue, keywords)[0]]
+            for x in faction_enhancements if enhancement_allowed(x, unit, chosen_keys)[0]]
         chosen = enhancements.get(entry['enhancement']) if entry['enhancement'] else None
         if entry['enhancement'] and chosen is None:
             entry['problems'].append('Its enhancement is no longer in the data.')
         elif chosen is not None:
             entry['enhancement_points'] = chosen.points
-            allowed, reason = enhancement_allowed(chosen, unit, chosen_keys, catalogue, keywords)
+            allowed, reason = enhancement_allowed(chosen, unit, chosen_keys)
             if not allowed:
                 entry['problems'].append(reason)
             if chosen.bsdata_id not in {o['key'] for o in entry['enhancement_options']}:

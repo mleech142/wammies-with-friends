@@ -1,19 +1,18 @@
 """
 Share codes: an army list as a short text code that another install of the app can import.
 
-A saved army refers to units by database ID and to wargear choices by `k` (bsdata.freeze's
-numbering of a unit's option tree); both are local to one install and one import of BSData.
-A code carries BSData IDs instead, so it means the same list on any install with the same
-BSData files:
+A saved army refers to units and weapons by database ID, which are local to one install. A code
+(version 2) carries Wahapedia's IDs instead, so it means the same list on any install with the
+game data downloaded:
 
-- the faction by catalogue ID, each unit by its entry ID (with its catalogue when that isn't
-  the army's), detachments and enhancements by their BSData IDs (as armies already store them);
-- each wargear choice by its option's BSData ID, or the path of IDs from the unit down to it
-  when the ID appears more than once in the unit's tree; only choices that differ from the
-  datasheet's defaults at the unit's size are written (null: a choice the defaults have and the
-  list doesn't), and import adds them back to this install's defaults;
+- the faction by its Wahapedia ID, each unit by its datasheet ID (with its faction when that isn't
+  the army's), detachments and enhancements by their Wahapedia IDs (as armies already store them);
+- a unit's weapon counts (loadouts.py) as `weapons`, {weapon's stable key: models carrying it};
 - attachments and the Warlord by position in the list (uids are rebuilt on import);
 - the force disposition by name, when one is chosen.
+
+Codes made before 3.0 (version 1) carry BSData's IDs; carry_over.share_payload translates them
+through the shipped ID map, leaving out their wargear choices.
 
 Lists with units from custom factions can't be shared: those units live in the sharer's own
 app data. A code is `PREFIX` + URL-safe base64 of zlib-compressed JSON. On import anything not
@@ -25,68 +24,42 @@ import base64
 import binascii
 import json
 import zlib
-from types import SimpleNamespace
 
-from . import wargear as wargear_engine
+from . import carry_over, loadouts
 from .armies import ArmyError, clean_army, price_army
-from .models import db, Detachment, Enhancement, Faction, Unit
+from .models import db, Detachment, Enhancement, Faction, StableId, Unit
 
 PREFIX = '40KCS1:'
-VERSION = 1
+VERSION = 2  # 2: Wahapedia's IDs; 1: BSData's (made before 3.0; translated by carry_over.share_payload)
+BSDATA_VERSION = 1
 MAX_CODE_LENGTH = 100_000
 MAX_JSON_BYTES = 1_000_000  # Decompressed: guards against a code that inflates without end
 
 
-# ---------------------------------------------------------------------------
-# Wargear choices: {k: count} <-> {option reference: count}
-# ---------------------------------------------------------------------------
-
-def _option_refs(tree):
-    """{k: reference} for every node in a unit's option tree: its BSData ID if unique in the tree, else its ID path."""
-    paths, counts = {}, {}
-
-    def walk(node, path):
-        for child in node.get('children', []):
-            child_path = path + [child['id']]
-            key = '/'.join(child_path)
-            while key in paths.values():  # The same entry twice under one parent: number the repeats
-                key += '#'
-            paths[child['k']] = key
-            counts[child['id']] = counts.get(child['id'], 0) + 1
-            walk(child, child_path)
-
-    walk(tree, [])
-    return {k: (path.rsplit('/', 1)[-1] if counts[path.rsplit('/', 1)[-1]] == 1 else path) for k, path in paths.items()}
+def _weapons_out(choices):
+    """Simple wargear (loadouts.py) by the weapons' stable keys, which mean the same weapon on every install."""
+    tables = {'ranged': 'ranged_weapons', 'melee': 'melee_weapons'}
+    wanted = {}
+    for k, count in choices.items():
+        kind, _, ident = k.partition(':')
+        wanted[(tables[kind], int(ident))] = count
+    rows = StableId.query.filter(StableId.id.in_({i for _, i in wanted}), StableId.table.in_(tables.values()))
+    return {r.key: wanted[(r.table, r.id)] for r in rows if (r.table, r.id) in wanted}
 
 
-def _defaults(tree, models, catalogue_id):
-    """The full state of a unit's choices with BSData's defaults at `models` models ({str k: count})."""
-    sel = wargear_engine.build(tree, None, models, SimpleNamespace(id=catalogue_id))
-    return {str(k): count for k, count in wargear_engine.choices_of(sel).items()}
-
-
-def _wargear_out(tree, choices, defaults=None):
-    """The choices by reference: those that differ from `defaults` (None for one the defaults have and the choices don't)."""
-    refs = _option_refs(tree)
-    choices = {str(k): count for k, count in choices.items()}
-    defaults = defaults or {}
-    changed = {k: count for k, count in choices.items() if defaults.get(k) != count}
-    changed.update({k: None for k in defaults if k not in choices})
-    return {refs[int(k)]: count for k, count in changed.items() if int(k) in refs}
-
-
-def _wargear_in(tree, choices, defaults=None):
-    """The choices by `k` (`defaults` with the code's changes), and how many references this tree doesn't have."""
-    by_ref = {ref: str(k) for k, ref in _option_refs(tree).items()}
-    found = dict(defaults or {})
-    missing = 0
-    for ref, count in choices.items():
-        if ref not in by_ref:
-            missing += 1
-        elif count is None:
-            found.pop(by_ref[ref], None)
+def _weapons_in(unit, weapons, models):
+    """A code's weapon counts as this install's (loadouts.py), and how many weapons it doesn't have."""
+    tables = {'ranged_weapons': 'ranged', 'melee_weapons': 'melee'}
+    rows = {r.key: r for r in StableId.query.filter(StableId.key.in_([str(k) for k in weapons]))}
+    carried = {loadouts.key(kind, w.id) for kind, w, _, _ in loadouts.weapons(unit, models)}
+    found, missing = {}, 0
+    for k, count in weapons.items():
+        row = rows.get(str(k))
+        key = row and loadouts.key(tables.get(row.table), row.id)
+        if key in carried and isinstance(count, int):
+            found[key] = count
         else:
-            found[by_ref[ref]] = count
+            missing += 1
     return found, missing
 
 
@@ -100,7 +73,7 @@ def encode(army):
     if faction is None:
         raise ArmyError('Choose a faction first.')
     if faction.source != 'bsdata' or not faction.bsdata_id:
-        raise ArmyError(f'{faction.name} is a custom faction: only lists of BSData units can be shared.')
+        raise ArmyError(f'{faction.name} is a custom faction: only lists of downloaded units can be shared.')
     priced = price_army(army)  # Sizes filled in, wargear in full, attachments to removed units dropped
     entries = priced['units']
     units = {u.id: u for u in Unit.query.filter(Unit.id.in_({e['unit_id'] for e in entries}))} if entries else {}
@@ -123,8 +96,8 @@ def encode(army):
             row['joins'] = position[e['attached_to']]
         if e.get('enhancement'):
             row['enh'] = e['enhancement']
-        if e.get('wargear') and unit.wargear is not None:
-            row['wargear'] = _wargear_out(unit.wargear, e['wargear'], _defaults(unit.wargear, e['models'], faction.bsdata_id))
+        if e.get('wargear'):
+            row['weapons'] = _weapons_out(e['wargear'])
         out_units.append(row)
     payload = {'v': VERSION, 'faction': faction.bsdata_id, 'faction_name': faction.name, 'name': army['name'],
                'limit': army['points_limit'], 'detachments': army['detachment_keys'],
@@ -156,7 +129,7 @@ def _payload(code):
         raise bad
     if not isinstance(payload, dict) or not isinstance(payload.get('units'), list):
         raise bad
-    if payload.get('v') != VERSION:
+    if payload.get('v') not in (BSDATA_VERSION, VERSION):
         raise ArmyError('This code was made by a newer version of the app: update the app to import it.')
     return payload
 
@@ -166,15 +139,17 @@ def decode(code):
     An army from a share code, in this install's IDs: {'army' (as clean_army gives it, not saved),
     'notes' (what wasn't found in this install's data)}. Raises ArmyError for codes it can't read.
     """
-    payload = _payload(code)
+    payload, notes = _payload(code), []
+    if payload.get('v') == BSDATA_VERSION:  # Made with BSData: its IDs in Wahapedia's
+        payload, notes = carry_over.share_payload(payload, carry_over.shipped_map())
     faction = Faction.query.filter_by(bsdata_id=str(payload.get('faction')), source='bsdata').first()
     if faction is None:
         name = payload.get('faction_name') or 'its faction'
-        raise ArmyError(f'This list is for {name}, which isn\'t in your BSData data. '
-                        'Download the latest BSData on the Setup page, then try again.')
+        raise ArmyError(f'This list is for {name}, which isn\'t in your data. '
+                        'Download the latest game data on the Setup page, then try again.')
     factions = {f.bsdata_id: f.id for f in Faction.query.filter_by(source='bsdata')}
     enhancements = {e.bsdata_id for e in Enhancement.query.filter_by(faction_id=faction.id)}
-    notes, units, kept = [], [], {}
+    units, kept = [], {}
     for i, row in enumerate(payload['units']):
         if not isinstance(row, dict):
             continue
@@ -187,12 +162,12 @@ def decode(code):
         uid = f'u{i + 1}'
         kept[i] = uid
         wargear = None
-        if isinstance(row.get('wargear'), dict) and unit.wargear is not None:
+        if isinstance(row.get('weapons'), dict):
             models = row.get('models') if isinstance(row.get('models'), int) else None
-            wargear, missing = _wargear_in(unit.wargear, row['wargear'], _defaults(unit.wargear, models, faction.bsdata_id))
+            wargear, missing = _weapons_in(unit, row['weapons'], models)
             if missing:
-                notes.append(f'{unit.name}: {missing} of its wargear choices {"isn" if missing == 1 else "aren"}\'t '
-                             'in your data; check its wargear.')
+                notes.append(f"{unit.name}: {missing} of its weapons {'isn' if missing == 1 else 'aren'}'t in your data; "
+                             'check its wargear.')
         enhancement = row.get('enh')
         if enhancement and str(enhancement) not in enhancements:
             notes.append(f'{unit.name}: its enhancement isn\'t in your data, so it was left out.')

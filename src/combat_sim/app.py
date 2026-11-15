@@ -16,12 +16,11 @@ from werkzeug.exceptions import HTTPException
 from . import __version__, access, reference, routes
 from .accounts import register_account_routes, secret_key
 from .models import Proposal, db, init_db
-from .paths import (BSDATA_CACHE_FILE, BSDATA_FOLDER, DATA_FILE, DATABASE_FILE, WAHAPEDIA_FOLDER, bundle_root, is_hosted,
-                    prepare_data_dir)
+from .paths import DATA_FILE, DATABASE_FILE, WAHAPEDIA_FOLDER, bundle_root, is_hosted, prepare_data_dir
 from .play.routes import register_play_routes
 from .proposals import register_proposal_routes
 from .settings import settings_path
-from .wargear import default_used  # noqa: F401  (tests import it from here)
+from .loadouts import default_used  # noqa: F401  (tests import it from here)
 
 mimetypes.add_type('application/manifest+json', '.webmanifest')  # The home-screen manifest (static/)
 
@@ -32,10 +31,9 @@ def create_app(config=None):
 
     # Configuration. The app data JSON (custom factions, rules, stratagems, references) and the
     # database default to the folder from paths.data_dir(): the repository's data/ from source,
-    # a per-user folder in the packaged exe. Settings, the import cache and "Download latest"
-    # sit next to the app data JSON. The BSData folder is the one chosen on the Setup page,
-    # else BSDATA_DIR, else the bsdata folder next to the app data JSON. Wahapedia's files
-    # (rules and stratagems) are in WAHAPEDIA_DIR, else the wahapedia folder next to it.
+    # a per-user folder in the packaged exe. Settings sit next to the app data JSON. Wahapedia's
+    # files (units, rules and stratagems: the Setup page's "Download latest") are in
+    # WAHAPEDIA_DIR, else the wahapedia folder next to it.
     data_json = os.environ.get('DATA_JSON')
     database_url = os.environ.get('DATABASE_URL')
     # The shipped app data, whose keyword glossary entries the user's copy lacks are added on every load (a
@@ -48,16 +46,15 @@ def create_app(config=None):
     app.config['DATA_JSON'] = data_json
     app.config['SHIPPED_DATA_JSON'] = shipped
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['DOWNLOAD_DIR'] = str(Path(data_json).parent / BSDATA_FOLDER)
-    app.config['DEFAULT_BSDATA_DIR'] = os.environ.get('BSDATA_DIR') or app.config['DOWNLOAD_DIR']
-    app.config['BSDATA_CACHE'] = str(Path(data_json).parent / BSDATA_CACHE_FILE)
+    # What carry_over.py moved from BSData's IDs to Wahapedia's, for the Setup page
+    app.config['CARRY_OVER_JSON'] = str(Path(data_json).parent / 'carry_over_report.json')
     app.config['WAHAPEDIA_DIR'] = os.environ.get('WAHAPEDIA_DIR') or str(Path(data_json).parent / WAHAPEDIA_FOLDER)
     app.config['SETTINGS_JSON'] = str(settings_path(data_json))
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['MAX_CONTENT_LENGTH'] = MAX_REQUEST_BYTES  # Bigger requests are refused (413) before they're read
     # Hosted mode (docs/self-hosting.md): other people's browsers reach this copy, so what only makes sense on
-    # your own computer is refused (the folder dialog, BSData folders by path, the relay's address)
+    # your own computer is refused (paths on the server, the relay's address)
     app.config['HOSTED'] = is_hosted()
     if app.config['HOSTED'] and not os.environ.get('SECRET_KEY'):
         app.config['SECRET_KEY'] = secret_key(Path(data_json).parent)  # logins survive restarts
@@ -106,7 +103,6 @@ def create_app(config=None):
     def inject_page_globals():
         who = access.principal()  # Pages ask who is acting, never whether the copy is self-hosted
         return {'boot_id': app.config['BOOT_ID'], 'app_version': __version__,
-                'bsdata_label': reference.label(app),
                 'who': who,
                 'user': who.user,
                 'can_setup': who.is_host,
@@ -114,15 +110,15 @@ def create_app(config=None):
                                       if who.shared and who.is_host else 0),
                 'show_play': bool(who.preferences().get('show_play')),
                 'layout_pref': who.preferences().get('layout') or 'auto',  # Core.layoutFor, set on <html> by base.html
-                'wahapedia_label': reference.wahapedia_label(app)}
+                'data_label': reference.label(app)}
 
     if config:
         app.config.update(config)
 
-    # Initialize database, then rebuild the reference tables from BSData, Wahapedia and the app data JSON
+    # Initialize database, then rebuild the reference tables from Wahapedia's export and the app data JSON
     init_db(app)
     with app.app_context():
-        reference.load(app, bsdata=True, wahapedia_too=True)
+        reference.load(app, wahapedia_too=True)
 
     # Register routes
     routes.register(app)

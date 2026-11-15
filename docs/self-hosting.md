@@ -19,8 +19,8 @@ docker run -d -p 127.0.0.1:5000:5000 -e COMBAT_SIM_SECURE_COOKIES=1 -v combat-si
 As shipped it listens on **this computer only** (`127.0.0.1`), with logins sent only over HTTPS: everyone else
 comes in through Tailscale's HTTPS (below) or another HTTPS proxy. Open `http://localhost:5000` on the computer
 itself. The first visit creates the host (see Players), then goes to the Setup page: **Download latest**
-fetches the BSData catalogues and **Download** fetches Wahapedia's rules and stratagems, onto the server, the same
-way each desktop user gets them. The image ships neither (see the scope, Data licences).
+fetches Wahapedia's export (units, rules and stratagems) onto the server, the same
+way each desktop user gets it. The image doesn't ship it (see the scope, Data licences).
 
 ## Players
 
@@ -68,7 +68,7 @@ own mail server (for example your email provider's SMTP, with an app password):
 ## Data and updates
 
 Everything the app writes is in the `/data` volume: the app data JSON, the database (armies, comparisons, games),
-`settings.json`, `secret_key` (signs logins: keep it private), and the BSData and Wahapedia downloads. Back up that
+`settings.json`, `secret_key` (signs logins: keep it private), and the Wahapedia download. Back up that
 volume.
 
 **Backups:** [`scripts/backup.sh`](../scripts/backup.sh) saves the database (a consistent copy, taken while the app
@@ -106,9 +106,8 @@ COMBAT_SIM_DATA=/srv/combat-sim python run.py --hosted --port 5000
 - It listens on every network address (`--host` to choose one) and on exactly the port given, and opens no
   browser.
 - `--debug` is refused: Flask's debugger would let anyone who reaches it run code on the server.
-- What only makes sense on your own computer is turned off: the folder dialog and choosing a BSData folder by path
-  (the Setup page hides them; the catalogues are always the downloaded ones), and changing the relay's address from
-  the page (set `RELAY_URL` when starting the copy instead).
+- What only makes sense on your own computer is turned off: paths on the server (the Setup page shows them to the
+  host only) and changing the relay's address from the page (set `RELAY_URL` when starting the copy instead).
 
 Settings:
 

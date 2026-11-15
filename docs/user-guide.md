@@ -10,14 +10,9 @@ How to set up Wammies With Friends, use each page, and read what it tells you, w
 
 1. Download the latest `WammiesWithFriends-…-windows.zip` from the [Releases page](https://github.com/mleech142/wammies-with-friends/releases) and unzip it anywhere.
 2. Double-click **`WammiesWithFriends.exe`**. Windows may say "Windows protected your PC" (the app isn't signed): click **More info → Run anyway**.
-3. Your browser opens the app on the **Setup** page. Press **both** Download buttons:
-
-![The Setup page: download the two data sets](images/setup.png)
-
-| Step | What it gets you |
-| --- | --- |
-| **1. Units, weapons and points** | Every faction's datasheets, weapons, wargear and points (from BSData) |
-| **2. Rules and stratagems** | Stratagems, detachment rules and army rules, word for word (from Wahapedia) |
+3. Your browser opens the app on the **Setup** page. Press **Download latest**: it gets every faction's datasheets,
+   weapons, wargear options and points, with stratagems, detachment rules and army rules word for word, from
+   Wahapedia's data export.
 
 That's it. Pick any page from the menu at the top. Close the black console window to stop the app.
 
@@ -88,7 +83,7 @@ Build an army once, then test it against anything.
 - **Copies:** the rule of three (six for Battleline, one for Epic Heroes).
 - **Characters:** one Warlord (a Character); enhancements on Characters only, never Epic Heroes, each once, up to the battle size's limit.
 - **Units:** legal unit sizes; leaders and support units joining units they're allowed to.
-- **Wargear:** BSData's own limits, such as "max 1 per 5 models".
+- **Wargear:** the **Wargear** button sets how many models carry each weapon, beside the datasheet's own option text. The app doesn't check those options or add their points: follow the datasheet.
 
 **Copy as text** gives you the list ready to paste into a message.
 

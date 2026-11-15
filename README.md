@@ -28,6 +28,6 @@ Work out what your Warhammer 40,000 (11th edition) units really do. Pick an atta
 
 ## Credits
 
-Unit data comes from [BSData](https://github.com/BSData/wh40k-11e) (community-maintained); rules and stratagems are powered by [Wahapedia](https://wahapedia.ru/). Neither is included with the app: each user downloads their own copy.
+Units, rules and stratagems are powered by [Wahapedia](https://wahapedia.ru/) (its [data export](https://wahapedia.ru/wh40k11ed/the-rules/data-export)). It isn't included with the app: each user downloads their own copy on the Setup page.
 
 MIT licensed. *A fan project, not affiliated with or endorsed by Games Workshop. Warhammer 40,000 is a trademark of Games Workshop Ltd.*

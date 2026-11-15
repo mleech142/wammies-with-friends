@@ -8,7 +8,7 @@ from ..app_data_edits import text_list
 from ..engagement import afflictions, attack_modifiers, clamp_models, enhancement_points, leader_target, load_enhancements, load_leader, selected_rules, sources_for, stat_changes, target_modifiers, unit_target, weapon_attack
 from ..models import Faction, TargetProfile, Unit, db
 from ..simulation import DefenderProfile, affordable_trials, simulate_analytical, simulate_attached_analytical, simulate_monte_carlo_attached, simulate_monte_carlo_combined
-from ..wargear import default_used
+from ..loadouts import default_used
 from .shared import conditions_from_request
 
 

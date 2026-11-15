@@ -10,7 +10,7 @@ services:
     ports:
       - "127.0.0.1:5000:5000"  # this computer only: Tailscale serve (or Caddy) brings everyone else in over HTTPS
     volumes:
-      - combat-sim-data:/data  # app data JSON, database, settings, BSData and Wahapedia downloads
+      - combat-sim-data:/data  # app data JSON, database, settings and the Wahapedia download
     environment:
       COMBAT_SIM_SECURE_COOKIES: "1"  # logins only over HTTPS (browsers also allow them on http://localhost)
       COMBAT_SIM_BEHIND_PROXY: "1"  # visitors come through that proxy: the login throttle counts the address it forwards

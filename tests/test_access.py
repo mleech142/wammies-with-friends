@@ -171,7 +171,7 @@ def test_preferences_are_each_players_own_falling_back_to_the_installs(copy):
         g.user = db.session.get(User, users['Sam'])
         assert access.principal().preferences()['show_play'] is True  # Pat's choice is Pat's
         with pytest.raises(ValueError):
-            access.principal().set_preferences(bsdata_dir='/elsewhere')  # The install's, not a player's
+            access.principal().set_preferences(relay_url='https://elsewhere')  # The install's, not a player's
 
 
 def test_a_desktop_installs_preferences_are_in_its_settings_file(make_client, monkeypatch):
@@ -227,5 +227,4 @@ def test_route_labels(copy):
     assert label('static') == access.OPEN and label('login_page') == access.OPEN
     assert label('setup_page') == access.HOST and label('api_data_import') == access.HOST
     assert label('api_data_create_faction') == access.PROPOSABLE
-    assert label('api_bsdata_browse') == access.DESKTOP
     assert label('api_list_armies') == access.PLAYER  # unlabelled: any logged-in player

@@ -149,7 +149,7 @@ def test_players_cant_do_the_hosts_jobs(host):
     assert player.get('/players').status_code == 403
     assert player.get('/api/players').status_code == 403
     assert player.post('/api/players', json={'name': 'Sneaky', 'email': 's@example.com'}).status_code == 403
-    assert player.post('/api/bsdata/reimport').status_code == 403
+    assert player.post('/api/setup/skip').status_code == 403
     assert player.post('/api/wahapedia/download').status_code == 403
     assert player.post('/api/play/relay', json={'name': 'x'}).status_code == 403
     assert player.post('/api/data/import', json=APP_DATA).status_code == 403

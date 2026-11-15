@@ -1,0 +1,18 @@
+﻿id|name|faction_id|source_id|legend|role|loadout|transport|virtual|is_support|leader_head|leader_footer|damaged_w|damaged_description|link|
+u-agent|Ally Agent|AL|500||Characters|<b>This model is equipped with:</b> laser pistol.||false|false||||||
+u-troupe|Wandering Troupe|AL|500||Other|||false|false||||||
+u-wall|Neutral Wall|NF|500||Fortification|||false|false||||||
+u-beasts|Beast Pack|SF|500||Other|<b>The Beastmaster is equipped with:</b> close combat weapon.<br><br><b>Every Beast is equipped with:</b> claws.||false|false||||||
+u-bunker|Field Bunker|SF|500||Fortification|||false|false||||||
+u-medic|Field Medic|SF|500||Characters|<b>This model is equipped with:</b> medic pistol.||false|true||||||
+u-crew|Gun Crew|SF|500||Other|<b>Every model is equipped with:</b> crew gun.||false|false||||||
+u-drone|Scout Drone|SF|500||Other|<b>This model is equipped with:</b> drone gun.||false|false||||||
+u-brutes|Shield Brutes|SF|500||Other|<b>Every model is equipped with:</b> brute club.||false|false||||||
+u-captain|Star Captain|SF|500||Characters|<b>This model is equipped with:</b> master blade.||false|false||||||
+u-herald|Star Herald|SF|500||Characters|<b>This model is equipped with:</b> herald staff.||false|false||||||
+u-lord|Star Lord|SF|500||Characters|<b>This model is equipped with:</b> star sword.||false|false||||||
+u-walker|Star Walker|SF|501||Vehicle|<b>This model is equipped with:</b> walker flamer; armoured feet.||false|false||||||
+u-void|Void Warriors|SF|500||Battleline|<b>The Void Sergeant is equipped with:</b> laser pistol; blade.<br><br><b>Every Void Warrior is equipped with:</b> laser rifle; close combat weapon.||false|false||||||
+u-marksmen|Void Marksmen|SF|500||Infantry|<b>Every model is equipped with:</b> marksman rifle; close combat weapon.||false|false||||||
+u-echo|Summoned Echo|SF|500||Other|||true|false||||||
+u-spectre|Spectre|GL|500||Infantry|<b>This model is equipped with:</b> spectral touch.||false|false||||||

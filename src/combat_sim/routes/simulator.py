@@ -18,7 +18,7 @@ def register(app):
 
     @app.route('/')
     def index():
-        """Main simulation page (the Setup page until BSData loads or the user skips it)."""
+        """Main simulation page (the Setup page until the units load or the host skips it)."""
         status = reference.current(app).bsdata_status
         if (not status.get('loaded') and not load_settings(app.config['SETTINGS_JSON']).get('setup_skipped')
                 and access.is_host()):

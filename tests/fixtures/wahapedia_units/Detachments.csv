@@ -1,0 +1,8 @@
+﻿id|faction_id|name|legend|type|dp|force_disposition|
+d-vanguard|SF|Void Vanguard|||2|Purge the Foe|
+d-bastion|SF|Star Bastion|||1|Take and Hold|
+d-citadel|SF|Star Citadel|||1|Take and Hold|
+d-armada|SF|Star Armada|||3|Priority Assets|
+d-lost|SF|Lost Fleet|||1||
+d-task-force|AL|Allied Task Force|||2|Disruption|
+d-breach|SF|Hull Breach||Boarding Actions|||

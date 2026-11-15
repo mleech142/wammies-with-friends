@@ -14,7 +14,7 @@ from combat_sim.play.battlefields import BUILTIN
 from combat_sim.play.game import new_game
 from combat_sim.play.mission_state import action_options
 from combat_sim.play.routes import pick_twist
-from conftest import BSDATA_FIXTURES
+from conftest import UNIT_FIXTURES
 from test_play_api import APP_DATA
 from test_play_mission_game import CENTRE, FAR, armies
 from test_play_missions_api import saved_army
@@ -92,7 +92,7 @@ def test_night_fighting_hides_units_beyond_18_inches():
 
 @pytest.fixture
 def client(make_client):
-    return make_client(APP_DATA, bsdata=BSDATA_FIXTURES)[0]
+    return make_client(APP_DATA, wahapedia=UNIT_FIXTURES)[0]
 
 
 def test_a_game_is_started_with_a_twist(client):

@@ -7,7 +7,7 @@ import copy
 
 import pytest
 
-from conftest import BSDATA_FIXTURES
+from conftest import UNIT_FIXTURES
 from test_play_api import APP_DATA, saved_army
 
 from combat_sim.play.battlefields import BUILTIN, MAPS
@@ -15,7 +15,7 @@ from combat_sim.play.battlefields import BUILTIN, MAPS
 
 @pytest.fixture
 def client(make_client):
-    return make_client(APP_DATA, bsdata=BSDATA_FIXTURES)[0]
+    return make_client(APP_DATA, wahapedia=UNIT_FIXTURES)[0]
 
 
 def ruin(id_='t1', x=27, y=20, category='dense', footprint='medium'):

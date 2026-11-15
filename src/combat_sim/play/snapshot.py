@@ -6,7 +6,6 @@ Needs an app context; everything else in the play package works on the plain dat
 
 from .. import armies, contagion
 from ..engagement import unit_stats
-from ..match_view import without_abilities
 from ..models import Detachment, Enhancement, Faction, FactionRule, MeleeWeapon, RangedWeapon, Stratagem, Unit, db
 from ..rules_text import (ability_buffs, afflicts_after_shooting, contagion_bonus, damaged_threshold, deadly_demise, firing_deck,
                           granted_ability, has_core_ability, parse_transport, plain_text, scouts_distance, units_contagion_bonus)
@@ -24,8 +23,6 @@ def freeze_army(army):
     """
     army = armies.clean_army(army)
     priced = armies.price_army(army)
-    faction = db.session.get(Faction, army['faction_id'])
-    catalogue = faction.bsdata_id if faction else None
     entries = [e for e in priced['units'] if e['problems'] != ['This unit is no longer in the data.']]
     by_uid = {e['uid']: e for e in entries}
     joined = {uid for e in entries for uid in e['led_by'] + e['supported_by']}
@@ -37,9 +34,8 @@ def freeze_army(army):
         attached = [(by_uid[uid], 'leader') for uid in entry['led_by']] + \
                    [(by_uid[uid], 'support') for uid in entry['supported_by']]
         role = 'bodyguard' if attached else 'unit'
-        keys = army['detachment_keys']
-        parts = [_part(entry, role, catalogue, priced['warlord'], army['faction_id'], keys)] + \
-                [_part(e, r, catalogue, priced['warlord'], army['faction_id'], keys) for e, r in attached]
+        parts = [_part(entry, role, priced['warlord'], army['faction_id'])] + \
+                [_part(e, r, priced['warlord'], army['faction_id']) for e, r in attached]
         units.append({'uid': entry['uid'], 'name': entry['name'], 'parts': parts})
     return {'name': army['name'], 'faction': priced['faction'], 'disposition': priced['disposition'], 'units': units,
             'points_limit': army.get('points_limit'),
@@ -127,13 +123,11 @@ def _rules(army):
     return [_entry(r, 'rule') for r in records if _offered(r, army)]
 
 
-def _part(entry, role, catalogue, warlord, faction_id=None, detachment_keys=()):
+def _part(entry, role, warlord, faction_id=None):
     unit = db.session.get(Unit, entry['unit_id'])
     enhancement = Enhancement.query.filter_by(bsdata_id=entry['enhancement']).first() if entry['enhancement'] else None
-    stats = unit_stats(unit, entry.get('wargear_effects'))
-    # Abilities BSData shows only with other detachments (a Shadow Legion ability) don't count, nor show on its card
-    hidden = armies.hidden_abilities(unit, detachment_keys, catalogue, (entry.get('wargear_effects') or {}).get('keywords', []))
-    abilities = without_abilities(unit.abilities, hidden)
+    stats = unit_stats(unit)
+    abilities = unit.abilities
     return {
         'uid': entry['uid'],
         'unit_id': unit.id,
@@ -142,14 +136,13 @@ def _part(entry, role, catalogue, warlord, faction_id=None, detachment_keys=()):
         'role': role,
         'models': entry['models'],
         'points': entry['points'] or 0,  # Including its enhancement
-        'stats': {name: stats[name] for name in STATS},  # With its chosen wargear's changes
+        'stats': {name: stats[name] for name in STATS},
         'keywords': unit.target_keywords,
         'base': unit.base,
-        'weapons': _weapons(unit, entry, catalogue),
+        'weapons': _weapons(unit, entry),
         'leader_buffs': unit.effective_leader_buffs if role == 'leader' else [],
         'enhancement': {'name': enhancement.name, 'buffs': enhancement.buffs or []} if enhancement else None,
         'warlord': entry['uid'] == warlord,
-        'hidden_abilities': sorted(hidden),
         'fights_first': has_core_ability(abilities, 'Fights First'),
         'deep_strike': has_core_ability(abilities, 'Deep Strike'),
         'infiltrators': has_core_ability(abilities, 'Infiltrators'),
@@ -166,10 +159,10 @@ def _part(entry, role, catalogue, warlord, faction_id=None, detachment_keys=()):
     }
 
 
-def _weapons(unit, entry, catalogue):
+def _weapons(unit, entry):
     """Each weapon the unit's models carry: its profile, how many models carry it, and whether it starts ticked."""
-    if unit.wargear is not None:
-        rows = armies.unit_wargear(unit, entry['wargear'], entry['models'], catalogue)['loadout']
+    if entry.get('loadout'):  # Chosen wargear (loadouts.py)
+        rows = entry['loadout']
         found = {}
         for kind, model in (('ranged', RangedWeapon), ('melee', MeleeWeapon)):
             ids = [r['weapon_id'] for r in rows if r['weapon_type'] == kind]

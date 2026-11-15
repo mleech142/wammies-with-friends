@@ -5,7 +5,7 @@ and Play.
 
 from flask import jsonify, render_template, request
 
-from .. import access, armies, army_share, match_view
+from .. import access, armies, army_share, loadouts, match_view
 from ..models import Faction, SavedArmy, Unit, db
 
 
@@ -61,20 +61,20 @@ def register(app):
     @app.route('/api/armies/wargear', methods=['POST'])
     def api_army_wargear():
         """
-        One unit's wargear for the Armies page's popup: {unit_id, faction_id, models, wargear} ->
-        {models, points, problems, wargear (the full choices), loadout, form, summary, sizes}.
+        One unit's wargear for the Armies page's popup (loadouts.py): {unit_id, models, wargear} ->
+        {models, problems, wargear (the counts, None = the datasheet's), loadout, form (each weapon: key, name,
+        kind, count, default, option), options_text (the datasheet's options), summary, sizes, name}.
         """
         data = request.get_json(silent=True) or {}
         unit = db.session.get(Unit, int(data.get('unit_id') or 0))
-        if unit is None or unit.wargear is None:
-            return jsonify({'error': 'This unit has no wargear to choose.'}), 404
+        if unit is None:
+            return jsonify({'error': 'This unit is no longer in the data.'}), 404
         try:
             choices = armies.clean_wargear(data.get('wargear'))
             models = int(data.get('models') or 0) or None
         except (armies.ArmyError, TypeError, ValueError) as err:
             return jsonify({'error': str(err)}), 400
-        faction = db.session.get(Faction, int(data.get('faction_id') or unit.faction_id))
-        result = armies.unit_wargear(unit, choices, models, faction.bsdata_id if faction else None)
+        result = loadouts.evaluate(unit, choices, models)
         return jsonify(dict(result, wargear=result.pop('choices'), sizes=armies.sizes_of(unit), name=unit.name))
 
     @app.route('/api/armies/text', methods=['POST'])

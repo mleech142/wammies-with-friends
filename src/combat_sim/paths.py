@@ -8,9 +8,9 @@ Run as the packaged exe (PyInstaller sets `sys.frozen`), the bundled files are r
 replaced on every update, so the app data JSON and database live in a per-user folder instead.
 The bundled app data JSON is copied there on first run and never overwritten afterwards.
 
-The BSData catalogues are never shipped: users put them in the `bsdata` folder inside the
-data folder (BSDATA_DIR overrides it). The cached import sits next to the app data JSON, and
-so does the `wahapedia` folder of rules and stratagems the user downloads (WAHAPEDIA_DIR overrides it).
+Wahapedia's export is never shipped: users download it into the `wahapedia` folder next to the app data
+JSON (WAHAPEDIA_DIR overrides it). Before 3.0 the app read BSData's catalogues from a `bsdata` folder there;
+it is left alone and no longer read.
 
 A self-hosted copy (Docker, `run.py --hosted`) keeps everything in the folder named by
 COMBAT_SIM_DATA instead, seeded the same way.
@@ -19,7 +19,7 @@ Version 1 kept everything in `40k_data.json`; on the first start of version 2 th
 the database (whose saved scenarios refer to its IDs) are moved into `archive-v1`.
 
 Before 2.9 the app was called 40K Combat Simulator and so was its per-user folder; the first start of
-2.9 renames that folder, and the paths into it saved in `settings.json` (the BSData folder).
+2.9 renames that folder, and the paths into it saved in `settings.json`.
 """
 
 import os
@@ -31,8 +31,6 @@ APP_FOLDER = 'Wammies With Friends'
 OLD_APP_FOLDER = '40K Combat Simulator'  # Before 2.9
 DATA_FILE = 'app_data.json'
 DATABASE_FILE = 'combat_sim.db'
-BSDATA_FOLDER = 'bsdata'
-BSDATA_CACHE_FILE = 'bsdata_cache.json'
 WAHAPEDIA_FOLDER = 'wahapedia'
 V1_DATA_FILE = '40k_data.json'
 V1_ARCHIVE_FOLDER = 'archive-v1'

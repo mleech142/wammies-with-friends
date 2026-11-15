@@ -51,13 +51,7 @@ def test_hosted_mode_is_read_from_the_environment(monkeypatch, value, hosted):
     assert paths.is_hosted() is hosted
 
 
-def test_hosted_mode_refuses_the_folder_dialog_and_folders_by_path(hosted_client, tmp_path):
-    assert hosted_client.post('/api/bsdata/browse').status_code == 403
-    resp = hosted_client.post('/api/bsdata/folder', json={'path': str(tmp_path)})
-    assert resp.status_code == 403
-    assert 'hosted mode' in resp.get_json()['error']
-    # Going back to the default (downloaded) folder is still allowed
-    assert hosted_client.post('/api/bsdata/folder', json={'path': None}).status_code != 403
+def test_hosted_mode_says_so_in_the_data_status(hosted_client):
     assert hosted_client.get('/api/data/status').get_json()['hosted'] is True
 
 
@@ -68,19 +62,9 @@ def test_hosted_mode_refuses_changing_the_relay(hosted_client):
     assert resp.get_json()['name'] == 'Hosty'  # on a self-hosted copy, the name you play under is your account's
 
 
-def test_the_setup_page_hides_what_hosted_mode_refuses(hosted_client, make_client, monkeypatch):
-    page = hosted_client.get('/setup').get_data(as_text=True)
-    assert 'id="folder-input"' not in page
-    monkeypatch.setenv(paths.HOSTED_ENV, '')
-    page = make_client(APP_DATA)[0].get('/setup').get_data(as_text=True)
-    assert 'id="folder-input"' in page
-
-
 def test_on_your_own_computer_nothing_is_refused(make_client, tmp_path):
     client, _ = make_client(APP_DATA)
     assert client.get('/api/data/status').get_json()['hosted'] is False
-    # Refused only because it isn't a folder of catalogues, not by hosted mode
-    assert client.post('/api/bsdata/folder', json={'path': str(tmp_path / 'missing')}).status_code == 400
     assert client.post('/api/play/relay', json={'url': 'https://elsewhere.example'}).status_code == 200
 
 

@@ -295,7 +295,7 @@ def _make(edit):
             return faction, lambda: {'id': faction.id, 'name': faction.name}
         faction = _record(edit)
         if not faction.editable:
-            raise EditError('BSData records are read-only.', 403)
+            raise EditError('Downloaded records are read-only.', 403)
         if action == 'change':
             faction.name = data.get('name', faction.name).strip()
             return faction, lambda: {'id': faction.id, 'name': faction.name}
@@ -342,7 +342,7 @@ def _make(edit):
         if action == 'change':
             if not unit.editable:  # A BSData unit only takes added modifiers and leader buffs, on every copy
                 if set(data) - {'added_modifiers', 'leader_buffs'}:
-                    raise EditError('BSData units are read-only apart from added modifiers and leader buffs.', 403)
+                    raise EditError('Downloaded units are read-only apart from added modifiers and leader buffs.', 403)
                 for same in Unit.query.filter_by(bsdata_id=unit.bsdata_id):
                     if 'added_modifiers' in data:
                         same.added_modifiers = text_list(data.get('added_modifiers'))
@@ -356,7 +356,7 @@ def _make(edit):
             _unit_loadout(unit, data)
             return unit, lambda: {'id': unit.id, 'message': 'Unit updated'}
         if not unit.editable:
-            raise EditError('BSData records are read-only.', 403)
+            raise EditError('Downloaded records are read-only.', 403)
         unit.set_loadout('ranged', [])
         unit.set_loadout('melee', [])
         db.session.delete(unit)
@@ -375,7 +375,7 @@ def _make(edit):
         weapon = _record(edit)
         if action == 'change':
             if not weapon.faction.editable or not editable_faction(data.get('faction_id', weapon.faction_id)):
-                raise EditError('BSData records are read-only.', 403)
+                raise EditError('Downloaded records are read-only.', 403)
             _weapon_fields(weapon, weapon_type, data)
             db.session.flush()
             other_units = [u.id for u in Unit.query.filter(Unit.faction_id != weapon.faction_id)]
@@ -383,7 +383,7 @@ def _make(edit):
                 db.session.execute(table.delete().where((table.c.weapon_id == weapon.id) & (table.c.unit_id.in_(other_units))))
             return weapon, lambda: {'id': weapon.id, 'message': 'Weapon updated'}
         if not weapon.faction.editable:
-            raise EditError('BSData records are read-only.', 403)
+            raise EditError('Downloaded records are read-only.', 403)
         db.session.execute(table.delete().where(table.c.weapon_id == weapon.id))
         db.session.delete(weapon)
         return None, lambda: {'message': 'Weapon deleted'}

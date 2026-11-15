@@ -1,0 +1,23 @@
+﻿datasheet_id|line|ability_id|model|name|description|type|parameter|
+u-bunker|1|402||||Core||
+u-bunker|2|403||||Core||
+u-drone|1|||Flicker Field|Each time an attack is allocated to this model, subtract 1 from the Damage characteristic of that attack.|Datasheet||
+u-brutes|1|||Brute Roar|This unit shouts.|Datasheet||
+u-brutes|2|||Bastion Drill|This unit is eligible to shoot in a turn in which it Fell Back.|Datasheet||
+u-captain|1|408||||Core||
+u-captain|2|409||||Faction||
+u-captain|3|||Iron Will|This model has the Feel No Pain 5+ ability.|Datasheet||
+u-captain|4|||Captain’s Command|While this model is leading a unit, ranged weapons equipped by models in that unit have the [LETHAL HITS] ability. In addition, each time an attack targets that unit, subtract 1 from the Hit roll. You can re-roll Charge rolls made for that unit.|Datasheet||
+u-lord|1|408||||Core||
+u-walker|1|406||||Core|6+|
+u-walker|2|403||||Core||
+u-walker|3|401||||Faction||
+u-walker|4|402||||Faction||
+u-walker|5|||Stride Protocol|This model can Advance 6".|Datasheet||
+u-void|1|407||||Core||
+u-void|2|409||||Faction||
+u-void|3|||Shield Wall|Models in this unit can do things.|Datasheet||
+u-void|4|||Void Shield|This model has a 5+ invulnerable save.|Wargear||
+u-spectre|1|404||||Faction||
+u-spectre|2|405||||Datasheet||
+u-spectre|3|||Ethereal|This model has the Feel No Pain 5+ ability.|Datasheet||

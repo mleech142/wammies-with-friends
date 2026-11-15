@@ -1,14 +1,14 @@
 """
 Army lists (armies.py and the /api/armies routes): pricing, the checks, leaders attached to the
 units they lead, the roster Analytics takes, saving, copying, deleting and the text export.
-Built on the made-up BSData factions in tests/fixtures/bsdata.
+Built on the made-up Wahapedia export in tests/fixtures/wahapedia_units.
 """
 
 import json
 
 import pytest
 
-from conftest import BSDATA_FIXTURES
+from conftest import UNIT_FIXTURES
 
 APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'ranged_weapons': [], 'melee_weapons': [],
             'faction_rules': [], 'stratagems': [], 'unit_modifiers': [], 'keywords': [], 'target_profiles': []}
@@ -16,7 +16,7 @@ APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'r
 
 @pytest.fixture
 def client(make_client):
-    return make_client(APP_DATA, bsdata=BSDATA_FIXTURES)[0]
+    return make_client(APP_DATA, wahapedia=UNIT_FIXTURES)[0]
 
 
 def ids(client):
@@ -41,29 +41,29 @@ def price(client, body):
 def test_pricing_and_sizes(client):
     factions, units = ids(client)
     priced = price(client, army(factions, {'uid': 'a', 'unit_id': units['Void Warriors']},
-                                {'uid': 'b', 'unit_id': units['Void Warriors'], 'models': 7},
+                                {'uid': 'b', 'unit_id': units['Void Warriors'], 'models': 10},
                                 {'uid': 'c', 'unit_id': units['Gun Crew'], 'models': 3}))
     entries = {e['uid']: e for e in priced['units']}
     assert (entries['a']['models'], entries['a']['points']) == (5, 80)  # The smallest size when none is given
-    assert entries['b']['points'] == 160 and entries['a']['sizes'] == [5, 6, 7, 8, 9, 10]
+    assert entries['b']['points'] == 160 and entries['a']['sizes'] == [5, 10]
     assert entries['a']['size_points'][:2] == [80, 160]
     assert entries['c']['points'] == 80
     assert priced['total'] == 320 and priced['problems'] == []
     assert priced['faction'] == 'Starfarers'
 
 
-def test_later_copies_of_a_datasheet_cost_what_bsdata_adds(client):
-    # Issue #15: BSData's "+10 pts with two copies before it" applies to the third Void Warriors in list order
+def test_later_copies_of_a_datasheet_cost_what_the_datasheet_adds(client):
+    # Issue #15: "Your 3rd+ unit costs" 10 more: the third Void Warriors in list order
     factions, units = ids(client)
     priced = price(client, army(factions, *[{'uid': u, 'unit_id': units['Void Warriors']} for u in 'abc'],
-                                {'uid': 'd', 'unit_id': units['Void Warriors'], 'models': 7}))
+                                {'uid': 'd', 'unit_id': units['Void Warriors'], 'models': 10}))
     entries = {e['uid']: e for e in priced['units']}
     assert [entries[u]['points'] for u in 'abcd'] == [80, 80, 90, 170]
     assert entries['c']['size_points'][:2] == [90, 170]
     assert priced['total'] == 420
-    # With wargear chosen too
-    choices = client.post('/api/armies/wargear', json={'unit_id': units['Void Warriors'], 'models': 5}).get_json()['wargear']
-    assert choices
+    # With wargear chosen too (options add no points)
+    form = client.post('/api/armies/wargear', json={'unit_id': units['Void Warriors'], 'models': 5}).get_json()['form']
+    choices = {w['key']: 1 for w in form if w['name'] == 'Heavy laser'}
     chosen = price(client, army(factions, *[{'uid': u, 'unit_id': units['Void Warriors'], 'wargear': choices} for u in 'abc']))
     assert [e['points'] for e in chosen['units']] == [80, 80, 90]
 
@@ -150,7 +150,7 @@ def test_save_open_copy_delete(client, make_client):
     assert [(a['name'], a['faction'], a['total'], a['unit_count']) for a in listed] == [
         ('Vanguard 2 (copy)', 'Starfarers', 150, 2), ('Vanguard 2', 'Starfarers', 150, 2)]
 
-    restarted, _ = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)  # Armies live in the database, kept on restart
+    restarted, _ = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)  # Armies live in the database, kept on restart
     again = restarted.get(f'/api/armies/{created["id"]}').get_json()
     assert again['units'][1]['attached_to'] == 'w' and again['roster'][0]['leader_id'] == units['Star Captain']
 
@@ -160,7 +160,7 @@ def test_save_open_copy_delete(client, make_client):
 
 
 def test_armies_are_not_written_to_the_app_data_json(make_client):
-    client, data_file = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)
+    client, data_file = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)
     factions, units = ids(client)
     client.post('/api/armies', json=army(factions, {'unit_id': units['Gun Crew']}))
     client.post('/api/data/factions', json={'name': 'Homebrew'})  # Any data write rewrites the file
@@ -200,7 +200,6 @@ def detachments(client, factions, keys, limit, units=()):
     (['d-armada', 'd-citadel'], 2000, ['The detachments cost 4 DP; Strike Force allows 3.']),
     (['d-armada', 'd-citadel'], 3000, []),  # Onslaught: 4 DP
     (['d-armada', 'd-vanguard'], None, []),  # No limit, no budget
-    (['d-bastion', 'd-citadel'], 2000, ['Star Bastion and Star Citadel share the Unique Tag "Fortress Detachment": choose one.']),
     (['d-task-force'], 2000, ["Allied Task Force isn't a Starfarers detachment."]),
     (['d-gone'], 2000, ['A detachment of this army is no longer in the data.']),
 ])
@@ -216,7 +215,7 @@ def test_detachments_are_priced_and_listed(client):
     assert (priced['dp_total'], priced['dp_limit']) == (3, 3)
     assert priced['detachment'] == 'Void Vanguard, Star Bastion'
     assert priced['detachments'][1] == {'key': 'd-bastion', 'name': 'Star Bastion', 'dp': 1,
-                                        'dispositions': ['Take and Hold'], 'tags': ['Fortress Detachment']}
+                                        'dispositions': ['Take and Hold'], 'tags': []}
     assert detachments(client, factions, [], 1500)['dp_limit'] is None
 
 
@@ -235,7 +234,7 @@ def test_armies_saved_with_one_detachment_still_open(client, make_client, tmp_pa
     connection.commit()
     connection.close()
 
-    restarted, _ = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)
+    restarted, _ = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)
     response = restarted.get('/api/armies')
     assert response.status_code == 200, response.get_data(as_text=True)[-1500:]
     old = response.get_json()[0]
@@ -302,7 +301,7 @@ def test_enhancements_offered_and_checked(client):
 
     no_detachment = price(client, dict(body, detachment_keys=['d-bastion']))
     assert no_detachment['problems'] == ['Star Captain: Void Blade needs its detachment.']
-    # Bastion Ward: Infantry or the Star Lord only (BSData: hidden unless the bearer is either)
+    # Bastion Ward: the datasheets Wahapedia lists for it (Datasheets_enhancements)
     bastion = dict(body, detachment_keys=['d-bastion'], units=[
         {'uid': 'c', 'unit_id': units['Star Captain'], 'enhancement': 'enh-bastion-ward'},
         {'uid': 'l', 'unit_id': units['Star Lord'], 'enhancement': 'enh-bastion-ward'}])
@@ -313,20 +312,17 @@ def test_enhancements_offered_and_checked(client):
 
 
 def test_enhancements_for_given_non_character_units(client):
-    # Issue #11: Warptide's enhancements go on its Battleline units (only theirs link to them), not on Characters,
-    # up to three in an army, counting as one enhancement
+    # Issue #11: an Upgrade that Wahapedia gives to several datasheets goes on those units, not on Characters
+    # (counted as an enhancement: the export doesn't say how many of it an army may take)
     factions, units = ids(client)
-    lines = [{'uid': f'v{i}', 'unit_id': units['Void Warriors'], 'enhancement': 'enh-line-banner'} for i in range(3)]
+    lines = [{'uid': f'v{i}', 'unit_id': units['Void Warriors'], 'enhancement': 'enh-line-banner'} for i in range(2)]
     priced = price(client, army(factions, *lines, {'uid': 'c', 'unit_id': units['Star Captain']},
                                 detachment_keys=['d-vanguard'], warlord='c'))
     entries = {e['uid']: e for e in priced['units']}
     assert [o['key'] for o in entries['v0']['enhancement_options']] == ['enh-line-banner']
     assert 'enh-line-banner' not in [o['key'] for o in entries['c']['enhancement_options']]
-    assert priced['problems'] == [] and priced['enhancement_count'] == 1
+    assert priced['problems'] == ['Line Banner is taken 2 times; at most 1.']
     assert entries['v0']['points'] == 90
-
-    four = price(client, army(factions, *lines, dict(lines[0], uid='v3'), detachment_keys=['d-vanguard']))
-    assert 'Line Banner is taken 4 times; at most 3.' in four['problems']
     captain = price(client, army(factions, {'uid': 'c', 'unit_id': units['Star Captain'], 'enhancement': 'enh-line-banner'},
                                  detachment_keys=['d-vanguard'], warlord='c'))
     assert captain['problems'] == ["Star Captain: Line Banner isn't for Star Captain."]

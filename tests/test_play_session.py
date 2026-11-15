@@ -10,7 +10,7 @@ import pytest
 from combat_sim.models import SavedGame, db
 from combat_sim.play import connections, session as sessions
 from combat_sim.play.session import DONE, MOVED_ON, NOT_YOURS, REFUSED, GameSession, Notifier
-from conftest import BSDATA_FIXTURES
+from conftest import UNIT_FIXTURES
 from test_play_api import APP_DATA, saved_army
 
 ROW = [(10 + 1.5 * i, 6) for i in range(5)]
@@ -18,7 +18,7 @@ ROW = [(10 + 1.5 * i, 6) for i in range(5)]
 
 @pytest.fixture
 def app(make_client):
-    client = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)[0]
+    client = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)[0]
     red = saved_army(client, 'Red', {'uid': 'w', 'unit': 'Void Warriors'}, {'uid': 'c', 'unit': 'Star Captain'})
     blue = saved_army(client, 'Blue', {'uid': 'g', 'unit': 'Gun Crew'})
     game = client.post('/api/play/games', json={'name': 'Practice', 'armies': [red, blue], 'setup': False}).get_json()

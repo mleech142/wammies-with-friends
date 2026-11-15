@@ -1,0 +1,19 @@
+﻿datasheet_id|line|description|
+u-agent|1|1 Ally Agent|
+u-troupe|1|5 Wanderers|
+u-wall|1|1 Neutral Wall|
+u-beasts|1|1 Beastmaster and 3 Beasts|
+u-bunker|1|1 Field Bunker|
+u-medic|1|1 Field Medic|
+u-crew|1|2-4 Gunners|
+u-drone|1|1 Scout Drone|
+u-brutes|1|3 Shield Brutes|
+u-captain|1|1 Star Captain|
+u-herald|1|1 Star Herald|
+u-lord|1|1 Star Lord – <span class="kwb">EPIC</span> <span class="kwb">HERO</span>|
+u-walker|1|1 Star Walker|
+u-void|1|1 Void Sergeant and 4 Void Warriors|
+u-void|2|OR|
+u-void|3|1 Void Sergeant and 9 Void Warriors|
+u-marksmen|1|3-6 Void Marksman models|
+u-spectre|1|1 Spectre|

@@ -38,6 +38,54 @@ from .rules_text import parse_effects, tidy_text
 FILES = ['Last_update.csv', 'Factions.csv', 'Detachments.csv', 'Stratagems.csv', 'Detachment_abilities.csv',
          'Abilities.csv', 'Datasheets_abilities.csv']
 
+
+# ---------------------------------------------------------------------------
+# Stable keys: the stable_ids key of each Wahapedia record (data_store.stable_ids)
+# ---------------------------------------------------------------------------
+#
+# Factions, units (datasheets), detachments and enhancements by Wahapedia's ID; a weapon by its
+# faction and name (name_key), since Wahapedia lists weapons per datasheet and a faction's weapons with
+# the same name are one record. When a faction has a name with different profiles, each gets its
+# profile (weapon_profile) after '@'. The 'wh-' prefix keeps them apart from BSData's keys, which
+# carry_over.py re-keys.
+
+KEY_PREFIX = 'wh-'
+KEY_TABLES = {'faction': 'factions', 'unit': 'units', 'ranged': 'ranged_weapons', 'melee': 'melee_weapons',
+              'detachment': 'detachments', 'enhancement': 'enhancements'}
+
+
+def stable_key(kind, wahapedia_id):
+    """The key of a faction, unit, detachment or enhancement: stable_key('unit', '000000165')."""
+    return f'{KEY_PREFIX}{kind}:{wahapedia_id}'
+
+
+def weapon_id(faction, name, profile=None):
+    """A weapon's ID (its record's bsdata_id): 'SM/boltrifle', with '@' and its profile when the name has several."""
+    return f'{faction}/{name_key(name)}' + (f'@{profile}' if profile else '')
+
+
+def weapon_key(kind, faction, name, profile=None):
+    """The key of a faction's weapon ('ranged' or 'melee'): see weapon_id."""
+    return f'{KEY_PREFIX}{kind}:{weapon_id(faction, name, profile)}'
+
+
+def _characteristic(value):
+    """One characteristic as both BSData and Wahapedia can write it: AP '-2' and '2' alike, '2+' as '2'."""
+    value = str(value if value is not None else '').strip().lstrip('-').rstrip('+"').lower().replace(' ', '')
+    return 'n/a' if value in ('n/a', 'none', '') else value
+
+
+def profile_text(attacks, skill, strength, ap, damage, range_=None):
+    """A weapon profile as one string (A|skill|S|AP|D, then range for ranged weapons), for weapon_key."""
+    values = [attacks, skill, strength, ap, damage] + ([range_] if range_ is not None else [])
+    return '|'.join(_characteristic(v) for v in values)
+
+
+def weapon_profile(row):
+    """profile_text of a Datasheets_wargear.csv row."""
+    ranged = row.get('type') != 'Melee'
+    return profile_text(row['A'], row['BS_WS'], row['S'], row['AP'], row['D'], row['range'] if ranged else None)
+
 # A stratagem's phase as the pages use it (others are outside the Shooting and Fight phases)
 STRATAGEM_PHASES = {'shooting phase': 'Shooting', 'fight phase': 'Fighting', 'shooting or fight phase': 'Both',
                     'any phase': 'Both'}
@@ -317,7 +365,7 @@ def link(data, bsdata_factions, bsdata_detachments):
             if not places:
                 if record['detachment_id'] and record['detachment_id'] not in unmatched:
                     unmatched.add(record['detachment_id'])
-                    note('wahapedia_detachment', record['faction_id'], f'Detachment "{record["detachment"]}" is not in BSData')
+                    note('wahapedia_detachment', record['faction_id'], f'Detachment "{record["detachment"]}" was not found')
                 elif not record['detachment_id'] and not members.get(record['faction_id']) \
                         and record['faction_id'] not in unmatched:
                     unmatched.add(record['faction_id'])

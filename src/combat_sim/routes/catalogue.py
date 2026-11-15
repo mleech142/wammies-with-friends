@@ -9,7 +9,7 @@ from ..engagement import MAX_MODELS
 from ..match_view import hint_for, keyword_hints
 from ..models import Detachment, Enhancement, Faction, FactionRule, Keyword, MeleeWeapon, RangedWeapon, Stratagem, Unit, db
 from ..simulation import check_keywords, keyword_name
-from ..wargear import default_used
+from ..loadouts import default_used
 from .shared import legends_filter
 
 

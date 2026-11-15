@@ -1,0 +1,38 @@
+﻿datasheet_id|keyword|model|is_faction_keyword|
+u-agent|Allies||true|
+u-agent|Infantry||false|
+u-troupe|Allies||true|
+u-troupe|Infantry||false|
+u-wall|Neutral Forces||true|
+u-wall|Vehicle||false|
+u-beasts|Starfarers||true|
+u-beasts|Infantry||false|
+u-bunker|Starfarers||true|
+u-bunker|Vehicle||false|
+u-medic|Starfarers||true|
+u-medic|Infantry||false|
+u-medic|Support||false|
+u-crew|Starfarers||true|
+u-crew|Infantry||false|
+u-drone|Starfarers||true|
+u-drone|Vehicle||false|
+u-brutes|Starfarers||true|
+u-brutes|Infantry||false|
+u-captain|Starfarers||true|
+u-captain|Infantry||false|
+u-captain|Character||false|
+u-herald|Starfarers||true|
+u-herald|Character||false|
+u-lord|Starfarers||true|
+u-lord|Character||false|
+u-lord|Epic Hero||false|
+u-walker|Starfarers||true|
+u-walker|Vehicle||false|
+u-void|Starfarers||true|
+u-void|Infantry||false|
+u-void|Battleline||false|
+u-marksmen|Starfarers||true|
+u-marksmen|Infantry||false|
+u-echo|Starfarers||true|
+u-spectre|Ghost Legion||true|
+u-spectre|Infantry||false|

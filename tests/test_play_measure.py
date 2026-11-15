@@ -49,8 +49,8 @@ def test_the_api(make_client):
 
 def test_a_parts_abilities_for_the_hover_card(make_client):
     """GET /api/play/abilities: a game part's abilities from this PC's data (games carry no rule text)."""
-    from conftest import BSDATA_FIXTURES
-    client = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)[0]
+    from conftest import UNIT_FIXTURES
+    client = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)[0]
     factions = {f['name']: f['id'] for f in client.get('/api/data/factions').get_json()}
     captain = next(u for u in client.get(f'/api/units?faction_id={factions["Starfarers"]}').get_json() if u['name'] == 'Star Captain')
     by_id = client.get(f'/api/play/abilities?unit={captain["id"]}').get_json()

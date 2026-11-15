@@ -1,0 +1,25 @@
+﻿datasheet_id|line|line_in_wargear|dice|name|description|range|type|A|BS_WS|S|AP|D|
+u-agent|1|1||Laser pistol|Pistol|12|Ranged|1|3|4|-1|1|
+u-beasts|1|1||Close combat weapon||Melee|Melee|1|4|4|0|1|
+u-beasts|2|1||Claws||Melee|Melee|3|4|5|-1|1|
+u-medic|1|1||Medic pistol|Pistol|12|Ranged|1|4|3|0|1|
+u-crew|1|1||Crew gun||36|Ranged|2|4|8|-2|3|
+u-drone|1|1||Drone gun|Assault|18|Ranged|3|4|4|0|1|
+u-brutes|1|1||Brute club||Melee|Melee|4|3|7|-1|2|
+u-captain|1|1||Master blade|Sustained Hits 1|Melee|Melee|5|2|6|-2|2|
+u-captain|2|1||Plasma pistol|Pistol|12|Ranged|1|3|7|-2|1|
+u-herald|1|1||Herald staff||Melee|Melee|3|3|5|-1|2|
+u-lord|1|1||Star sword||Melee|Melee|6|2|7|-3|2|
+u-walker|1|1||Walker flamer|Ignores Cover, Torrent, Twin-linked|12|Ranged|D6|N/A|5|-1|1|
+u-walker|2|1||Armoured feet||Melee|Melee|4|4|7|0|1|
+u-walker|3|1||Broken gun||24|Ranged|1|4|User|0|1|
+u-void|1|1||Laser pistol|Pistol|12|Ranged|1|3|4|-1|1|
+u-void|2|1||Laser rifle - standard|Rapid Fire 1|24|Ranged|2|3|4|0|1|
+u-void|3|1||Laser rifle - overcharge|Hazardous|24|Ranged|2|3|7|-2|2|
+u-void|4|1||Heavy laser|Heavy, Anti-vehicle 4+, Laser Burn|36|Ranged|1|4|9|-3|D6|
+u-void|5|1||Blade|Lethal Hits|Melee|Melee|3|3|5|-1|1|
+u-void|6|1||Close combat weapon||Melee|Melee|1|4|4|0|1|
+u-void|7|1||Power axe||Melee|Melee|3|3|6|-2|1|
+u-marksmen|1|1||Marksman rifle|Heavy, Precision|36|Ranged|1|3|5|-1|2|
+u-marksmen|2|1||Close combat weapon||Melee|Melee|1|4|4|0|1|
+u-spectre|1|1||Spectral touch||Melee|Melee|2|4|3|0|1|

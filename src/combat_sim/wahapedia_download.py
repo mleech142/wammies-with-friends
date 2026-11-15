@@ -1,8 +1,9 @@
 """
-"Download latest" for rules and stratagems: the Wahapedia 11th edition data export.
+"Download latest" for the Wahapedia 11th edition data export: units, weapons, points, detachments and
+enhancements (wahapedia_units.py) as well as rules and stratagems (wahapedia.py).
 
-download() fetches every file wahapedia.py reads (wahapedia.FILES) into a new folder, checks
-that it imports, and only then replaces the Wahapedia folder, so a failed download leaves
+download() fetches every file those read (DOWNLOAD_FILES) into a new folder, checks that it
+imports, and only then replaces the Wahapedia folder, so a failed download leaves
 the old data in place. Only those files are written, nothing outside the target folder. The
 app never redistributes the files: each user downloads their own copy, and the pages credit
 Wahapedia as its export page asks.
@@ -13,8 +14,10 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-from . import web
+from . import wahapedia_units, web
 from .wahapedia import FILES, WahapediaError, import_folder
+
+DOWNLOAD_FILES = list(dict.fromkeys(FILES + wahapedia_units.NEEDED))
 
 BASE_URL = 'https://wahapedia.ru/wh40k11ed/'
 TIMEOUT = 60  # seconds per request
@@ -47,10 +50,11 @@ def download(target):
     target.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix='wahapedia-new-', dir=target.parent))
     try:
-        for name in FILES:
+        for name in DOWNLOAD_FILES:
             (staging / name).write_bytes(fetch(name))
         try:
             result = import_folder(staging)
+            wahapedia_units.import_folder(staging)
         except WahapediaError as err:
             raise DownloadError(f'The downloaded files could not be read: {err}') from err
         old = target.with_name(target.name + '.old')
@@ -67,4 +71,4 @@ def download(target):
     except DownloadError:
         shutil.rmtree(staging, ignore_errors=True)
         raise
-    return {'files': len(FILES), 'last_update': result.source.get('last_update')}
+    return {'files': len(DOWNLOAD_FILES), 'last_update': result.source.get('last_update')}

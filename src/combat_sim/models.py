@@ -126,20 +126,17 @@ class Unit(db.Model):
     added_modifiers = db.Column(JSON, default=list)
     can_lead = db.Column(JSON, default=list)  # Names of units this unit can lead
     can_support = db.Column(JSON, default=list)  # Names of units this unit can join as a Support unit
-    max_in_army = db.Column(db.Integer, nullable=True)  # BSData's limit on copies in an army (None = not given)
-    # BSData's extra points for later copies in an army: [0, 0, 15] = the third and later cost 15 more
+    max_in_army = db.Column(db.Integer, nullable=True)  # A datasheet's own limit on copies (None: the core rule)
+    # Extra points for later copies in an army: [0, 0, 15] = the third and later cost 15 more
     copy_points = db.Column(JSON, nullable=True)
-    wargear = db.Column(JSON, nullable=True)  # BSData units: the option tree (bsdata.freeze; None = nothing to choose)
+    wargear_options = db.Column(JSON, nullable=True)  # Wahapedia units: the datasheet's wargear options, as text
     # What this unit grants the unit it leads, as rows like faction rules:
     # [{"applies_to": "Attacker"|"Target", "phase": "Shooting"|"Fighting"|"Both", "modifier": "Lethal Hits"}]
-    leader_buffs = db.Column(JSON, default=list)  # BSData: parsed from its Leader text; custom: edited
-    leader_buffs_override = db.Column(JSON, nullable=True)  # BSData units: edited in the app (null = parsed)
+    leader_buffs = db.Column(JSON, default=list)  # Downloaded: parsed from its abilities; custom: edited
+    leader_buffs_override = db.Column(JSON, nullable=True)  # Downloaded units: edited in the app (null = parsed)
     abilities = db.Column(db.Text, nullable=True)  # Free text from the datasheet
-    # BSData units: abilities BSData shows only with some detachments, {name: [condition tree, ...]} (hidden if
-    # any tree holds; bsdata._condition_tree, evaluated by armies.hidden_abilities). None = none of those.
-    ability_conditions = db.Column(JSON, nullable=True)
 
-    bsdata_id = db.Column(db.String(40), nullable=True)  # Selection entry ID (BSData units only)
+    bsdata_id = db.Column(db.String(40), nullable=True)  # Wahapedia's datasheet ID (downloaded units only)
     legends = db.Column(db.Boolean, default=False)
     # Wargear options not in the default loadout: weapon IDs of the unit's faction
     ranged_options = db.Column(JSON, default=list)
@@ -262,7 +259,7 @@ class Unit(db.Model):
             'can_lead': self.can_lead or [],
             'can_support': self.can_support or [],
             'max_in_army': self.max_in_army,
-            'has_wargear': self.wargear is not None,
+            'has_wargear': bool(self.ranged_options or self.melee_options or self.wargear_options),  # loadouts.has_choices
             'leader_buffs': self.effective_leader_buffs,
             'datasheet_leader_buffs': self.leader_buffs or [],
             'leader_buffs_edited': self.leader_buffs_override is not None,
@@ -542,11 +539,10 @@ class TargetProfile(db.Model):
 # Tables rebuilt from the data JSON on every start (everything except saved records and the BSData ID map)
 class Enhancement(db.Model):
     """
-    A BSData enhancement of a faction (read-only; see bsdata.enhancements): its points, text, the
-    effects the maths models (`buffs`, each for the bearer or its unit) and the conditions BSData
-    hides it under (`hidden_when`, evaluated by armies.enhancement_hidden). One defined in a unit's
-    own entry (`unit_bsdata_id`) is an Upgrade for that unit; one with `bearer_bsdata_ids` goes on
-    those units instead of Characters.
+    A downloaded enhancement of a faction (read-only; wahapedia_units.py): its points, text and the
+    effects the maths models (`buffs`, each for the bearer or its unit). An Upgrade for one datasheet
+    has it as `unit_bsdata_id`; `bearer_bsdata_ids` are the datasheets Wahapedia lists for it
+    (armies.enhancement_allowed).
     """
     __tablename__ = 'enhancements'
 
@@ -558,9 +554,8 @@ class Enhancement(db.Model):
     text = db.Column(db.Text, nullable=True)
     buffs = db.Column(JSON, default=list)  # [{"applies_to", "phase", "modifier", "scope": "bearer"|"unit"}]
     detachment_keys = db.Column(JSON, default=list)
-    hidden_when = db.Column(JSON, default=list)
     unit_bsdata_id = db.Column(db.String(40), nullable=True)
-    # Units it goes on instead of Characters (only non-Characters' options link to it), e.g. Warptide's Battleline
+    # The datasheets that can take it (Wahapedia's Datasheets_enhancements)
     bearer_bsdata_ids = db.Column(JSON, default=list)
     max_taken = db.Column(db.Integer, nullable=True)  # How many an army may take (None: once)
     counts_once = db.Column(db.Boolean, default=False)  # Its copies count as one enhancement towards the limit

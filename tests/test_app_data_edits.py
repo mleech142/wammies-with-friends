@@ -10,7 +10,7 @@ import pytest
 
 from combat_sim import accounts, app_data_edits as edits, paths
 from combat_sim.models import Faction, Proposal, RangedWeapon, db
-from conftest import BSDATA_FIXTURES, welcome
+from conftest import UNIT_FIXTURES, welcome
 
 APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'ranged_weapons': [], 'melee_weapons': [],
             'faction_rules': [], 'stratagems': [], 'unit_modifiers': [], 'keywords': [], 'target_profiles': []}
@@ -20,7 +20,7 @@ ZAPPER = {'type': 'ranged', 'name': 'Zapper', 'range': 24, 'attacks': '2', 'skil
 @pytest.fixture
 def app(make_client, monkeypatch):
     monkeypatch.setenv(paths.HOSTED_ENV, '')
-    client, data_file = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)
+    client, data_file = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)
     app = client.application
     app.config['DATA_FILE_PATH'] = data_file
     return app

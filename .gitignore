@@ -42,6 +42,7 @@ data/bsdata/
 data/bsdata.old/
 data/bsdata-new-*/
 data/bsdata_cache.json
+data/carry_over_report.json
 data/wahapedia/
 data/wahapedia.old/
 data/wahapedia-new-*/

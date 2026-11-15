@@ -70,8 +70,8 @@ def main(argv=None):
     from combat_sim import reference
     loaded = reference.current(app)
     status = loaded.bsdata_status
-    print(f"BSData:    {loaded.bsdata_dir}" +
-          ('' if status.get('loaded') else '  (not loaded yet: open Setup in the app)'))
+    print(f"Game data: {loaded.units_dir or app.config.get('WAHAPEDIA_DIR')}" +
+          ('' if status.get('loaded') else '  (not downloaded yet: open Setup in the app)'))
     if app.config.get('SETUP_CODE'):
         print(f"\nSetup code: {app.config['SETUP_CODE']}  (the Welcome page asks for it to create the host)")
     print(f'Open in browser: {url}' + ("  (hosted mode: other computers use this one's address)" if hosted else ''))

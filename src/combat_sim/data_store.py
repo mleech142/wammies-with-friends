@@ -1,12 +1,12 @@
 """
-The app's data: BSData catalogues (read-only) plus the app's own data JSON.
+The app's data: Wahapedia's export (read-only) plus the app's own data JSON.
 
-On every start the reference tables are rebuilt from both. The BSData folder is imported by
-bsdata.py, cached in a JSON file until the folder's contents change. The app data JSON holds
-everything the app owns, and every confirmed edit in the app is written straight back to it:
+On every start the reference tables are rebuilt from both. The export's datasheet files are imported by
+wahapedia_units.py, its rules and stratagems by wahapedia.py. The app data JSON holds everything the app
+owns, and every confirmed edit in the app is written straight back to it:
 
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "source": {...},
   "factions": [{"id", "name"}],                           # Custom factions only
   "units": [{"id", "faction_id", "name", "toughness", ..., "abilities",
@@ -17,7 +17,7 @@ everything the app owns, and every confirmed edit in the app is written straight
                      "detachment_key", "detachment_name"}],
   "stratagems": [{"id", "faction_id" | "faction_key" + "faction_name" (neither = core), "name", "cp", ...,
                   "detachment_key", "detachment_name"}],
-  "unit_modifiers": [{"bsdata_id", "name", "modifiers"}],  # Added to BSData units, by datasheet
+  "unit_modifiers": [{"bsdata_id", "name", "modifiers"}],  # Added to downloaded units, by Wahapedia datasheet ID
   "leader_buffs": [{"bsdata_id", "name", "buffs": [{"applies_to", "phase", "modifier"}]}],  # Edited, by datasheet
   "wahapedia_overrides": [{"kind" ("stratagem"/"rule"), "wahapedia_id", "name", "applies_to", "phase", "modifier"}],
   "keywords": [{"id", "name", "category", "applies_to", "format", "summary", "sim_step", "modelled", "rule_ref"}],
@@ -26,33 +26,35 @@ everything the app owns, and every confirmed edit in the app is written straight
 }
 
 Custom units also carry "points_by_size": [{"models", "points"}] (first entry = the datasheet
-size). A custom weapon with "linked_bsdata_id" takes its stats from that BSData weapon profile
-on every start. A rule or stratagem with a "detachment_key" (a BSData detachment's ID) is
-offered only with that detachment. Detachments themselves come from BSData only. Record keys are the database column names. Rules and stratagems of a BSData faction
-name it by catalogue ID (`faction_key`), since database IDs differ between installs; one whose
-faction isn't in the BSData folder keeps a placeholder faction so it can still be edited.
-Schema version 1 files (all-custom data) load unchanged.
+size). A custom weapon with "linked_bsdata_id" (a Wahapedia weapon's ID, wahapedia.weapon_id) takes its
+stats from that weapon on every start. A rule or stratagem with a "detachment_key" (a Wahapedia detachment's
+ID) is offered only with that detachment. Detachments themselves come from Wahapedia only. Record keys are the
+database column names (the `bsdata_*` names are kept from before 3.0 and hold Wahapedia's IDs). Rules and
+stratagems of a downloaded faction name it by its Wahapedia ID (`faction_key`), since database IDs differ
+between installs; one whose faction isn't in the export keeps a placeholder faction so it can still be edited.
+Schema version 1 files (all-custom data) load unchanged; version 2 files (BSData's IDs, before 3.0) are
+upgraded on the first start with the export (carry_over.upgrade_app_data, reference._carry_over).
 
-Stratagems and rules imported from Wahapedia (wahapedia.py) are added the same way as BSData
-records, with stable IDs, and are never saved in the data JSON: only edits to how the maths
+Stratagems and rules imported from Wahapedia (wahapedia.py) are added the same way as the units,
+with stable IDs, and are never saved in the data JSON: only edits to how the maths
 reads them are ("wahapedia_overrides", by Wahapedia ID). With Wahapedia loaded, the data
 JSON's rules and stratagems that Wahapedia has too (same faction, or core, and name) are
 superseded: hidden on the pages, but kept in the file.
 """
 
-import hashlib
 import json
 import os
 import tempfile
 import threading
 from pathlib import Path
 
-from . import bsdata, wahapedia as wahapedia_import
+from . import wahapedia as wahapedia_import, wahapedia_units
 from .models import (db, Faction, Detachment, Enhancement, Unit, RangedWeapon, MeleeWeapon, FactionRule, Stratagem, Keyword,
                      TargetProfile,
                      StableId, BSDATA_ID_BASE, unit_ranged_weapons, unit_melee_weapons, REFERENCE_TABLES)
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3  # 3: BSData's IDs replaced by Wahapedia's (carry_over.upgrade_app_data); same fields
+BSDATA_SCHEMA_VERSION = 2  # Before 3.0: BSData's IDs, upgraded on the first start with Wahapedia's export
 
 # JSON section -> model, in insert order
 SECTIONS = [
@@ -138,50 +140,21 @@ def check_data(data):
             raise DataFileError(f'"{name}" must be a list')
 
 
-# ---------------------------------------------------------------------------
-# BSData: import (cached) and merge with the app data
-# ---------------------------------------------------------------------------
-
-def load_bsdata(folder, cache_path, known_keywords=None):
+def load_wahapedia_units(folder, known_keywords=None):
     """
-    Import the BSData folder, or reuse the cached import if the folder's files haven't changed.
-
-    Returns (ImportResult or None, status). status: {'folder', 'loaded', 'error', 'from_cache',
-    'source', 'report'}. A missing or empty folder isn't an error: the app runs on its own data.
+    Import the units, weapons, detachments and enhancements from the Wahapedia folder (wahapedia_units.py; no
+    cache: it takes a second or two). Returns (Result or None, status): status {'folder', 'loaded', 'error', 'source',
+    'report', 'units_from'}; no datasheet files yet isn't an error.
     """
-    folder = Path(folder) if folder else None
-    status = {'folder': str(folder) if folder else None, 'loaded': False, 'error': None, 'from_cache': False,
-              'source': None, 'report': []}
-    files = sorted(folder.glob('*.json')) if folder and folder.is_dir() else []
-    if not files:
+    status = {'folder': str(folder) if folder else None, 'loaded': False, 'error': None,
+              'source': None, 'report': [], 'units_from': 'wahapedia'}
+    if not wahapedia_units.has_datasheets(folder):  # Not downloaded yet isn't an error
         return None, status
-
-    digest = hashlib.sha1(f'{bsdata.IMPORTER_VERSION}|{sorted(known_keywords or [])}'.encode())
-    for path in files:
-        digest.update(path.name.encode('utf-8'))
-        digest.update(path.read_bytes())
-    fingerprint = digest.hexdigest()
-
-    cache_path = Path(cache_path) if cache_path else None
-    result = None
-    if cache_path and cache_path.exists():
-        try:
-            cached = json.loads(cache_path.read_text(encoding='utf-8'))
-            if cached.get('fingerprint') == fingerprint:
-                result = bsdata.ImportResult(**cached['result'])
-                status['from_cache'] = True
-        except (OSError, ValueError, TypeError, KeyError):
-            result = None
-    if result is None:
-        try:
-            result = bsdata.import_folder(folder, known_keywords=known_keywords)
-        except bsdata.BSDataError as err:
-            status['error'] = str(err)
-            return None, status
-        if cache_path:
-            write_json(cache_path, {'fingerprint': fingerprint, 'result': {
-                'data': result.data, 'report': result.report, 'source': result.source}}, indent=None)
-
+    try:
+        result = wahapedia_units.import_folder(folder, known_keywords=known_keywords)
+    except wahapedia_import.WahapediaError as err:
+        status['error'] = str(err)
+        return None, status
     status.update(loaded=True, source=result.source, report=result.report)
     return result, status
 
@@ -237,16 +210,17 @@ def merge_data(app_data, imported, wahapedia=None, report=None):
             if not key:
                 continue
             if key not in by_key:
-                placeholder = {'name': unique_name(name or key, taken, 'not in BSData'),
+                placeholder = {'name': unique_name(name or key, taken, 'not in the game data'),
                                'source': 'missing', 'bsdata_id': key}
                 taken.add(placeholder['name'])
                 by_key[key] = placeholder
                 missing.append(placeholder)
             record['_faction'] = by_key[key]
     if missing:
-        ids = stable_ids([(f'faction:{f["bsdata_id"]}', 'factions') for f in missing])
+        keys = {f['bsdata_id']: wahapedia_import.stable_key('faction', f['bsdata_id']) for f in missing}
+        ids = stable_ids([(key, 'factions') for key in keys.values()])
         for f in missing:
-            f['id'] = ids[f'faction:{f["bsdata_id"]}']
+            f['id'] = ids[keys[f['bsdata_id']]]
         data['factions'].extend(missing)
     for section in ('faction_rules', 'stratagems'):
         for record in data[section]:
@@ -340,25 +314,26 @@ LINKED_FIELDS = {
 
 def _add_bsdata(data, imported, by_key):
     """
-    Append the imported factions, detachments, units and weapons to `data` with stable IDs.
-    Returns {(kind, profile bsdata_id): weapon record} for linking custom weapons.
+    Append the imported factions, detachments, units and weapons to `data` with stable IDs
+    (wahapedia_units.import_folder: each record carries its stable key, `_key`). Returns
+    {(kind, weapon bsdata_id): weapon record} for linking custom weapons.
     """
-    cat_of = {f['id']: f['bsdata_id'] for f in imported['factions']}
-    keys = [(f'faction:{f["bsdata_id"]}', 'factions') for f in imported['factions']]
-    keys += [(f'unit:{cat_of[u["faction_id"]]}/{u["bsdata_id"]}', 'units') for u in imported['units']]
-    keys += [(f'detachment:{cat_of[d["faction_id"]]}/{d["bsdata_id"]}', 'detachments')
-             for d in imported.get('detachments', [])]
-    keys += [(f'enhancement:{cat_of[e["faction_id"]]}/{e["bsdata_id"]}', 'enhancements')
-             for e in imported.get('enhancements', [])]
+    def key(kind, record):
+        return record['_key']
+
+    keys = [(key('faction', f), 'factions') for f in imported['factions']]
+    keys += [(key('unit', u), 'units') for u in imported['units']]
+    keys += [(key('detachment', d), 'detachments') for d in imported.get('detachments', [])]
+    keys += [(key('enhancement', e), 'enhancements') for e in imported.get('enhancements', [])]
     for kind, section in WEAPON_SECTIONS.items():
-        keys += [(f'{kind}:{cat_of[w["faction_id"]]}/{w["bsdata_id"]}', section) for w in imported[section]]
+        keys += [(key(kind, w), section) for w in imported[section]]
     ids = stable_ids(keys)
 
     taken = {f['name'] for f in data['factions']}
     faction_ids = {}
     for f in imported['factions']:
-        name = unique_name(f['name'], taken, 'BSData')
-        record = {'id': ids[f'faction:{f["bsdata_id"]}'], 'name': name, 'source': 'bsdata', 'bsdata_id': f['bsdata_id'],
+        name = unique_name(f['name'], taken, 'Wahapedia')
+        record = {'id': ids[key('faction', f)], 'name': name, 'source': 'bsdata', 'bsdata_id': f['bsdata_id'],
                   'army_rules': f.get('army_rules', [])}
         taken.add(name)
         faction_ids[f['id']] = record['id']
@@ -366,44 +341,31 @@ def _add_bsdata(data, imported, by_key):
         data['factions'].append(record)
 
     for d in imported.get('detachments', []):
-        data['detachments'].append(dict(d, id=ids[f'detachment:{cat_of[d["faction_id"]]}/{d["bsdata_id"]}'],
+        data['detachments'].append(dict(d, id=ids[key('detachment', d)],
                                         faction_id=faction_ids[d['faction_id']]))
     for e in imported.get('enhancements', []):
-        data['enhancements'].append(dict(e, id=ids[f'enhancement:{cat_of[e["faction_id"]]}/{e["bsdata_id"]}'],
+        data['enhancements'].append(dict(e, id=ids[key('enhancement', e)],
                                          faction_id=faction_ids[e['faction_id']]))
 
     weapon_ids, profiles = {}, {}
     for kind, section in WEAPON_SECTIONS.items():
         for w in imported[section]:
-            record = dict(w, id=ids[f'{kind}:{cat_of[w["faction_id"]]}/{w["bsdata_id"]}'],
+            record = dict(w, id=ids[key(kind, w)],
                           faction_id=faction_ids[w['faction_id']])
             weapon_ids[(kind, w['id'])] = record['id']
             profiles.setdefault((kind, w['bsdata_id']), record)
             data[section].append(record)
 
     for u in imported['units']:
-        record = dict(u, id=ids[f'unit:{cat_of[u["faction_id"]]}/{u["bsdata_id"]}'],
+        record = dict(u, id=ids[key('unit', u)],
                       faction_id=faction_ids[u['faction_id']])
         for kind in WEAPON_SECTIONS:
             record[f'{kind}_weapons'] = [dict(e, weapon_id=weapon_ids[(kind, e['weapon_id'])])
                                          for e in u.get(f'{kind}_weapons', [])]
             record[f'{kind}_options'] = [weapon_ids[(kind, i)] for i in u.get(f'{kind}_options', [])]
-        if u.get('wargear'):
-            record['wargear'] = _remap_tree_weapons(u['wargear'], weapon_ids)
         data['units'].append(record)
     return profiles
 
-
-def _remap_tree_weapons(tree, weapon_ids):
-    """A copy of a unit's option tree with its weapons' import IDs replaced by database IDs."""
-    node = dict(tree)
-    if 'weapons' in tree:
-        node['weapons'] = [[kind, weapon_ids[(kind, i)]] for kind, i in tree['weapons'] if (kind, i) in weapon_ids]
-    if 'weapon_swaps' in tree:  # An option changing the unit's weapons (bsdata.option_profile_effects)
-        node['weapon_swaps'] = [[kind, weapon_ids[(kind, a)], weapon_ids[(kind, b)]] for kind, a, b in tree['weapon_swaps']
-                                if (kind, a) in weapon_ids and (kind, b) in weapon_ids]
-    node['children'] = [_remap_tree_weapons(c, weapon_ids) for c in tree.get('children', [])]
-    return node
 
 
 # ---------------------------------------------------------------------------
@@ -450,9 +412,9 @@ def rebuild_reference_tables(data):
     db.session.commit()
 
 
-def export_data(source=None, unmatched=None):
-    """The app data JSON from the current tables, in a stable order (BSData records left out)."""
-    data = {'schema_version': SCHEMA_VERSION, 'source': source}
+def export_data(source=None, unmatched=None, schema_version=SCHEMA_VERSION):
+    """The app data JSON from the current tables, in a stable order (imported records left out)."""
+    data = {'schema_version': schema_version, 'source': source}
     custom = {f.id for f in Faction.query.filter_by(source='custom')}
 
     for name, model in SECTIONS:
@@ -517,9 +479,9 @@ def export_data(source=None, unmatched=None):
 # Rule and stratagem columns only Wahapedia records use (or set on load), left out of the data JSON
 WAHAPEDIA_COLUMNS = ('source', 'wahapedia_id', 'text', 'parse', 'edited', 'superseded', 'category', 'turn', 'timing')
 
-# Unit columns only BSData units use, left out of custom units in the data JSON
-BSDATA_COLUMNS = {'bsdata_id', 'legends', 'ranged_options', 'melee_options', 'added_modifiers', 'leader_buffs_override',
-                  'wargear', 'max_in_army', 'copy_points', 'base', 'ability_conditions'}
+# Unit columns only downloaded units use, left out of custom units in the data JSON
+BSDATA_COLUMNS = {'bsdata_id', 'legends', 'ranged_options', 'melee_options', 'wargear_options', 'added_modifiers',
+                  'leader_buffs_override', 'max_in_army', 'copy_points', 'base'}
 
 
 def write_json(path, data, indent=2):

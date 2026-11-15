@@ -4,10 +4,8 @@ Settings, in `settings.json` next to the app data JSON. Two kinds:
 The install's, which only its host changes (the Setup page):
 
 {
-  "bsdata_dir": "C:/...",               # BSData folder chosen on the Setup page (absent = default)
-  "download": {"sha", "date", "downloaded_at", "folder"},   # Last "Download latest"
-  "wahapedia_download": {...},          # Last Wahapedia download
-  "setup_skipped": true,                # "Continue without BSData" on first run
+  "wahapedia_download": {...},          # Last "Download latest" from Wahapedia
+  "setup_skipped": true,                # "Continue without the game data" on first run
   "relay_url": "https://..."            # Play's relay (desktop installs; a self-hosted copy uses RELAY_URL)
 }
 
@@ -17,7 +15,8 @@ under online). Read and change them only through access.principal(): on a deskto
 too; on a self-hosted copy each player's are in their account (users.preferences), a missing one falling back to
 this file's.
 
-Settings are per install and never shipped. A missing or unreadable file gives empty settings.
+Settings are per install and never shipped. A missing or unreadable file gives empty settings. Before 3.0 the file
+also held the BSData folder (`bsdata_dir`, `download`); those keys are ignored now.
 """
 
 import json

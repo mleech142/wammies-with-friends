@@ -5,13 +5,13 @@ the pairing's Event Companion layouts), games on a pairing's layout, and the Mis
 
 import pytest
 
-from conftest import BSDATA_FIXTURES
+from conftest import UNIT_FIXTURES
 from test_play_api import APP_DATA
 
 
 @pytest.fixture
 def client(make_client):
-    return make_client(APP_DATA, bsdata=BSDATA_FIXTURES)[0]
+    return make_client(APP_DATA, wahapedia=UNIT_FIXTURES)[0]
 
 
 def saved_army(client, name, detachments, disposition=None):

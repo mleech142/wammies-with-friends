@@ -1,0 +1,20 @@
+﻿datasheet_id|line|name|M|T|Sv|inv_sv|inv_sv_descr|W|Ld|OC|base_size|base_size_descr|
+u-agent|1|Ally Agent|6"|3|4+|||3|6+|1|||
+u-troupe|1|Wanderer|8"|3|6+|||1|7+|1|||
+u-wall|1|Neutral Wall|-|9|4+|||12|-|0|||
+u-beasts|1|Beastmaster|10"|5|6+|||2|8+|0|75 x 42mm||
+u-beasts|2|Beast|10"|5|6+|||2|8+|0|75 x 42mm||
+u-bunker|1|Field Bunker|-|10|3+|||15|-|0|||
+u-medic|1|Field Medic|6"|4|4+|4|* Against melee attacks only|3|6+|1|||
+u-crew|1|Gunner|5"|3|5+|||1|7+|1|||
+u-drone|1|Scout Drone|12"|4|4+|||3|8+|0|||
+u-brutes|1|Shield Brute|6"|6|3+|||4|7+|1|50mm||
+u-captain|1|Star Captain|6"|4|2+|4||5|6+|1|||
+u-herald|1|Star Herald|10"|5|4+|||5|6+|1|||
+u-lord|1|Star Lord|6"|5|2+|4||6|5+|2|||
+u-walker|1|Star Walker|8"|9|3+|||10|7+|3|Use model||
+u-void|1|Void Sergeant|6"|4|3+|||3|6+|2|32mm||
+u-void|2|Void Warrior|6"|4|3+|||2|6+|2|32mm||
+u-marksmen|1|Void Marksman|6"|3|5+|5|* Against ranged attacks only|1|7+|1|28.5mm||
+u-echo|1|Summoned Echo|-|1|7+|||1|-|0|||
+u-spectre|1|Spectre|8"|3|6+|4||1|7+|1|25mm||

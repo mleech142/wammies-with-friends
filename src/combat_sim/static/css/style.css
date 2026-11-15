@@ -3481,10 +3481,15 @@ h4 .fa-solid,
     color: var(--text-primary);
 }
 
-.wargear-range {
-    font-weight: 400;
+.wargear-options-text {
     font-size: var(--fs-sm);
-    color: var(--text-muted);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-3);
+}
+
+.wargear-options-text ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1.25rem;
 }
 
 .wargear-option {

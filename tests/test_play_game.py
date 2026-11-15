@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from conftest import BSDATA_FIXTURES
+from conftest import UNIT_FIXTURES
 from test_play_dice import FixedRolls
 from combat_sim.play.dice import Dice
 from combat_sim.play.game import apply_event, new_game, outline, replay, resolve_action, unit_by_id
@@ -19,7 +19,7 @@ APP_DATA = {'schema_version': 2, 'source': None, 'factions': [], 'units': [], 'r
 
 @pytest.fixture
 def client(make_client):
-    return make_client(APP_DATA, bsdata=BSDATA_FIXTURES)[0]
+    return make_client(APP_DATA, wahapedia=UNIT_FIXTURES)[0]
 
 
 def ids(client):
@@ -282,7 +282,7 @@ def test_outline_in_inches_with_estimates_marked():
 
 def test_frozen_army_carries_its_stratagems_and_rules(make_client):
     from conftest import WAHAPEDIA_FIXTURES
-    client = make_client(APP_DATA, bsdata=BSDATA_FIXTURES, wahapedia=WAHAPEDIA_FIXTURES)[0]
+    client = make_client(APP_DATA, wahapedia=WAHAPEDIA_FIXTURES)[0]
     army_ = dict(patrol(client), detachment_keys=['d-vanguard'])
     snapshot = frozen(client, army_)
     names = sorted(s['name'] for s in snapshot['stratagems'])

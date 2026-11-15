@@ -7,73 +7,29 @@
     <div class="page-header">
         <h2><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Setup</h2>
     </div>
-    <p class="data-note" data-read-more>The app doesn't include any game data: download your own copy of each of the two data sets
-        below. Neither is endorsed by Games Workshop. Download them again any time to update.</p>
+    <p class="data-note" data-read-more>The app doesn't include any game data: download your own copy below. It isn't
+        endorsed by Games Workshop. Download it again any time to update.</p>
 
     <section class="setup-card setup-downloads">
         <h3>Download the game data</h3>
-        <p>You need both: the first gives the units and points, the second the rules and stratagems that change the
-            calculations.</p>
-
-        <div class="setup-step">
-            <span class="setup-step-number">1</span>
-            <div class="setup-step-body">
-                <h4>Units, weapons and points</h4>
-                <p>Every faction's datasheets, weapons, wargear and points from the community-maintained
-                    <a href="https://github.com/BSData/wh40k-11e" target="_blank" rel="noopener">BSData wh40k-11e</a>
-                    catalogues. Fetches the newest version from GitHub into <code id="download-folder"></code> and uses
-                    it; if the download fails, the current data stays as it is.</p>
-                <div class="bsdata-status" id="setup-status">Checking…</div>
-                <div class="setup-row">
-                    <button class="btn btn-primary" id="download-btn" onclick="downloadLatest()"><i class="fa-solid fa-download" aria-hidden="true"></i> Download latest</button>
-                </div>
-                <div class="setup-message" id="download-message"></div>
-            </div>
+        <p>Every faction's datasheets, weapons, wargear options and points, with stratagems, detachment rules and army
+            rules word for word, from the
+            <a href="https://wahapedia.ru/wh40k11ed/the-rules/data-export" target="_blank" rel="noopener">Wahapedia
+            data export</a> (powered by Wahapedia). The app reads the effects it can model into modifiers; check or
+            change them on the Data tab. Downloaded into <code id="wahapedia-folder"></code>; if the download fails,
+            the current data stays as it is.</p>
+        <div class="bsdata-status" id="setup-status">Checking…</div>
+        <div class="bsdata-status" id="wahapedia-status"></div>
+        <div class="setup-row">
+            <button class="btn btn-primary" id="wahapedia-btn" data-command="Download the latest game data" onclick="downloadWahapedia()"><i class="fa-solid fa-download" aria-hidden="true"></i> Download latest</button>
         </div>
-
-        <div class="setup-step">
-            <span class="setup-step-number">2</span>
-            <div class="setup-step-body">
-                <h4>Rules and stratagems</h4>
-                <p>Stratagems, detachment rules and army rules, word for word, from the
-                    <a href="https://wahapedia.ru/wh40k11ed/the-rules/data-export" target="_blank" rel="noopener">Wahapedia
-                    data export</a> (powered by Wahapedia). The app reads the effects it can model into modifiers; check
-                    or change them on the Data tab. Downloaded into <code id="wahapedia-folder"></code>; they replace the
-                    app's own rules and stratagems of the same name.</p>
-                <div class="bsdata-status" id="wahapedia-status"></div>
-                <div class="setup-row">
-                    <button class="btn btn-primary" id="wahapedia-btn" onclick="downloadWahapedia()"><i class="fa-solid fa-download" aria-hidden="true"></i> Download latest</button>
-                </div>
-                <div class="setup-message" id="wahapedia-message"></div>
-            </div>
-        </div>
+        <div class="setup-message" id="wahapedia-message"></div>
     </section>
 
-    {% if who.local %}
-    <section class="setup-card">
-        <h3>Units: use a folder you already have</h3>
-        <p>The folder holding <code>Warhammer 40,000.json</code> and the faction catalogues (for example a
-            downloaded and unzipped copy of the GitHub repository).</p>
-        <div class="setup-row">
-            <input type="text" id="folder-input" class="filter-input" placeholder="C:\path\to\wh40k-11e">
-            <button class="btn btn-secondary" id="browse-btn" onclick="browseFolder()">Browse…</button>
-            <button class="btn btn-secondary" id="folder-btn" onclick="useFolder()">Use this folder</button>
-        </div>
-        <div class="setup-row" style="margin-top: 0.5rem">
-            <button class="btn-small" onclick="useFolder(null)">Use the default folder</button>
-            <span class="weapon-picker-hint" id="default-folder"></span>
-        </div>
-        <div class="setup-message" id="folder-message"></div>
-    </section>
-    {% endif %}
-
-    <section class="setup-card">
-        <h3>Units: re-import</h3>
-        <p>Changed the catalogue files in the folder yourself? Import them again (the app also notices on its next start).</p>
-        <div class="setup-row">
-            <button class="btn btn-secondary" id="reimport-btn" onclick="reimport()"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Re-import</button>
-        </div>
-        <div class="setup-message" id="reimport-message"></div>
+    <section class="setup-card" id="carry-over-card" style="display:none">
+        <h3>Moved to Wahapedia's data</h3>
+        <p id="carry-over-summary"></p>
+        <ul class="setup-carry-over" id="carry-over-notes"></ul>
     </section>
 
     <section class="setup-card">
@@ -125,7 +81,7 @@
     </section>
 
     <div class="setup-row">
-        <button class="btn btn-secondary" id="skip-btn" onclick="skipSetup()" style="display:none">Continue without BSData</button>
+        <button class="btn btn-secondary" id="skip-btn" onclick="skipSetup()" style="display:none">Continue without the game data</button>
     </div>
 </div>
 {% endblock %}
@@ -137,8 +93,10 @@ const esc = Core.escapeHtml;
 const REPORT_KINDS = {
     leader: 'Leader target not found', unknown_keyword: 'Unknown weapon keyword', mixed_profile: 'Mixed stat lines',
     weapon_stats: 'Unreadable weapon', points: 'Points not fully worked out', missing_link: 'Broken link',
-    skipped_unit: 'Unit skipped', skipped_faction: 'Faction skipped',
-    wahapedia_detachment: 'Wahapedia detachment not in BSData', wahapedia_faction: 'Wahapedia faction not in BSData',
+    skipped_unit: 'Unit skipped', skipped_faction: 'Faction skipped', loadout: 'Loadout not fully read',
+    base_size: 'Base size not read', duplicate_unit: 'Datasheet twice', enhancement: 'Enhancement not fully read',
+    leader_buff: 'Leader ability not read',
+    wahapedia_detachment: 'Detachment not found', wahapedia_faction: 'Faction not found',
 };
 
 document.addEventListener('DOMContentLoaded', () => loadStatus());
@@ -151,32 +109,42 @@ async function loadStatus(status = null) {
 
 function renderStatus(status) {
     const el = document.getElementById('setup-status');
-    const folder = `<code>${esc(status.folder || '')}</code>`;
     if (status.loaded) {
         el.className = 'bsdata-status bsdata-status-ok';
-        el.innerHTML = `<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Using ${folder}: ${status.factions} factions, ${status.units} units` +
+        el.innerHTML = `<i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${status.factions} factions, ${status.units} units` +
             (status.label ? ` <span class="muted">(${esc(status.label)})</span>` : '');
     } else if (status.error) {
         el.className = 'bsdata-status bsdata-status-error';
-        el.innerHTML = `${folder} could not be read: ${esc(status.error)}`;
+        el.textContent = `The units could not be read: ${status.error}`;
     } else {
         el.className = 'bsdata-status bsdata-status-missing';
-        el.innerHTML = `No BSData catalogues yet (looked in ${folder}). Download them${status.hosted ? '' : ' or choose a folder below'}.`;
-    }
-    document.getElementById('download-folder').textContent = status.download_folder || '';
-    const input = document.getElementById('folder-input');  // Not on a self-hosted copy
-    if (input) {
-        document.getElementById('default-folder').textContent = status.default_folder ? `(${status.default_folder})` : '';
-        if (!input.value) input.value = status.folder || '';
+        el.textContent = "No game data yet: download it to get every faction's units.";
     }
     document.getElementById('skip-btn').style.display = status.loaded ? 'none' : '';
     renderWahapediaStatus(status.wahapedia || {});
+    renderCarryOver(status.carry_over);
     renderReportSummary(status);
+}
+
+/** What the first start on Wahapedia's data changed in saved armies, comparisons and games (carry_over.py). */
+function renderCarryOver(report) {
+    const card = document.getElementById('carry-over-card');
+    card.style.display = report ? '' : 'none';
+    if (!report) return;
+    const counts = [['armies', 'army list', 'army lists'], ['comparisons', 'saved comparison', 'saved comparisons'],
+                    ['games', 'game', 'games'], ['proposals', 'proposal', 'proposals']]
+        .filter(([key]) => report[key]).map(([key, one, many]) => `${report[key]} ${report[key] === 1 ? one : many}`);
+    document.getElementById('carry-over-summary').textContent =
+        `The app moved from BSData's data to Wahapedia's${report.at ? ` on ${report.at.slice(0, 10)}` : ''}. ` +
+        (counts.length ? `It updated ${counts.join(', ')} to match. ` : 'Nothing saved needed changing. ') +
+        (report.notes?.length ? 'Worth checking:' : 'Everything was found.');
+    document.getElementById('carry-over-notes').innerHTML = (report.notes || []).map(n => `<li>${esc(n)}</li>`).join('');
 }
 
 function renderWahapediaStatus(w) {
     const el = document.getElementById('wahapedia-status');
     document.getElementById('wahapedia-folder').textContent = w.folder || '';
+    el.hidden = !w.loaded && !w.error;  // The units' line already says nothing is downloaded
     if (w.loaded) {
         const parsed = w.parsed || {};
         const modelled = (parsed.modelled || 0) + (parsed.partial || 0);
@@ -189,7 +157,7 @@ function renderWahapediaStatus(w) {
         el.textContent = `The Wahapedia files could not be read: ${w.error}`;
     } else {
         el.className = 'bsdata-status bsdata-status-missing';
-        el.textContent = 'Not downloaded yet: the app uses the core stratagems it ships with.';
+        el.textContent = 'No rules or stratagems yet: the app uses the core stratagems it ships with.';
     }
 }
 
@@ -296,37 +264,13 @@ async function waitForJob(job, message, working) {
     }
 }
 
-function downloadLatest() {
-    run(null, 'download-message', '/api/bsdata/download', {}, 'Downloading from GitHub and importing… (this can take a minute)');
-}
-
 function downloadWahapedia() {
-    run(null, 'wahapedia-message', '/api/wahapedia/download', {}, 'Downloading from Wahapedia and reading the rules…',
-        data => `Done: ${data.wahapedia.stratagems} stratagems and ${data.wahapedia.rules} rules.`);
-}
-
-async function browseFolder() {
-    const message = document.getElementById('folder-message');
-    message.className = 'setup-message';
-    message.textContent = 'A folder window has opened (it may be behind this browser window)…';
-    const resp = await fetch('/api/bsdata/browse', {method: 'POST'}).then(r => r.json()).catch(() => ({}));
-    message.textContent = '';
-    if (resp.path) document.getElementById('folder-input').value = resp.path;
-    else message.textContent = 'No folder chosen. You can also paste its path in the box.';
-}
-
-function useFolder(path = undefined) {
-    const value = path === undefined ? document.getElementById('folder-input').value.trim() : path;
-    if (path === null) document.getElementById('folder-input').value = '';
-    run(null, 'folder-message', '/api/bsdata/folder', {path: value || null}, 'Importing the folder…');
-}
-
-function reimport() {
-    run(null, 'reimport-message', '/api/bsdata/reimport', {}, 'Importing again…');
+    run(null, 'wahapedia-message', '/api/wahapedia/download', {}, 'Downloading from Wahapedia and reading it… (this can take a minute)',
+        data => `Done: ${data.factions} factions, ${data.units} units, ${data.wahapedia.stratagems} stratagems and ${data.wahapedia.rules} rules.`);
 }
 
 async function skipSetup() {
-    await fetch('/api/bsdata/skip-setup', {method: 'POST'});
+    await fetch('/api/setup/skip', {method: 'POST'});
     window.location.href = '/';
 }
 </script>

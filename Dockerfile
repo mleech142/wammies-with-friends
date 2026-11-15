@@ -1,4 +1,4 @@
-# A self-hosted copy of the app (docs/self-hosting.md). It ships no BSData or Wahapedia files:
+# A self-hosted copy of the app (docs/self-hosting.md). It ships no Wahapedia files:
 # the Setup page downloads them into the data volume, as each desktop user does.
 #   docker build -t combat-sim .
 #   docker run -p 5000:5000 -v combat-sim-data:/data combat-sim

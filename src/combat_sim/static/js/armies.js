@@ -357,7 +357,8 @@
     }
 
     // =========================
-    // Wargear popup: BSData's choices for one unit, checked and priced by the server as they change
+    // Wargear popup: how many of the unit's models carry each weapon, beside the datasheet's option text
+    // (loadouts.py: the player follows the options; they set no limits or points)
     // =========================
 
     async function openWargear(uid) {
@@ -375,7 +376,7 @@
         try {
             const resp = await fetch('/api/armies/wargear', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ unit_id: edit.unit_id, faction_id: state.army.faction_id, models: edit.models, wargear: edit.choices }),
+                body: JSON.stringify({ unit_id: edit.unit_id, models: edit.models, wargear: edit.choices }),
             });
             const result = await resp.json();
             if (!resp.ok) throw new Error(result.error);
@@ -394,56 +395,35 @@
         $('wargear-title').textContent = `Wargear: ${result.name}`;
         $('wargear-size').innerHTML = result.sizes.map(s => `<option value="${s}" ${s === models ? 'selected' : ''}>${s}</option>`).join('');
         $('wargear-size').disabled = result.sizes.length < 2;
-        $('wargear-points').textContent = `${result.points} pts`;
+        $('wargear-points').textContent = result.points != null ? `${result.points} pts` : '';
         $('wargear-problems').innerHTML = result.problems.map(p => `<li>${escapeHtml(p)}</li>`).join('');
-        $('wargear-sections').innerHTML = result.form.length
-            ? result.form.map(wargearSection).join('')
-            : '<p class="empty-message">Nothing to choose at this size.</p>';
+        const options = (result.options_text || []).length
+            ? `<div class="wargear-options-text"><strong>The datasheet's options</strong>
+                   <ul>${result.options_text.map(t => `<li>${Core.formatRuleText(t)}</li>`).join('')}</ul></div>` : '';
+        $('wargear-sections').innerHTML = options + (result.form.length
+            ? `<fieldset class="wargear-section"><legend>Models carrying each weapon</legend>
+                   ${result.form.map(wargearWeapon).join('')}</fieldset>`
+            : '<p class="empty-state">This datasheet lists no weapons.</p>');
         $('wargear-loadout').innerHTML = result.loadout.length
             ? `<strong>Loadout:</strong> ${result.loadout.map(w => escapeHtml(w.qty > 1 ? `${w.qty}× ${w.name}` : w.name)).join(', ')}` : '';
     }
 
-    /** One choice in the popup: radio buttons (pick one), number boxes (how many of each) or a tick box. */
-    function wargearSection(section) {
-        const range = section.kind === 'counts'
-            ? ` <span class="wargear-range">${section.total} chosen (${section.min ?? 0}–${section.max ?? 'any'})</span>` : '';
-        let body;
-        if (section.kind === 'one') {
-            const none = !(section.min > 0)
-                ? `<label class="wargear-option"><input type="radio" name="wg-${section.k}" data-section="${section.k}" value="" ${section.total ? '' : 'checked'}> None</label>`
-                : '';
-            body = none + section.members.map(m => `<label class="wargear-option">
-                <input type="radio" name="wg-${section.k}" data-section="${section.k}" value="${m.k}" ${m.count ? 'checked' : ''}>
-                ${escapeHtml(m.name)}${m.default ? ' <span class="muted">(default)</span>' : ''}</label>`).join('');
-        } else if (section.kind === 'optional') {
-            const m = section.members[0];
-            body = (m.max ?? 1) > 1
-                ? `<label class="wargear-option"><input type="number" class="filter-input wargear-count" data-k="${m.k}" min="0" max="${m.max}" value="${m.count}"> ${escapeHtml(m.name)}</label>`
-                : `<label class="wargear-option"><input type="checkbox" data-k="${m.k}" ${m.count ? 'checked' : ''}> ${escapeHtml(m.name)}</label>`;
-        } else {
-            body = section.members.map(m => `<label class="wargear-option">
-                <input type="number" class="filter-input wargear-count" data-k="${m.k}" min="0" max="${m.max ?? section.max ?? 99}" value="${m.count}">
-                ${escapeHtml(m.name)}${m.max != null ? ` <span class="muted">(max ${m.max})</span>` : ''}</label>`).join('');
-        }
-        return `<fieldset class="wargear-section"><legend>${escapeHtml(section.title)}${range}</legend>${body}</fieldset>`;
+    /** One weapon: how many models carry it (an option starts at 0). */
+    function wargearWeapon(w) {
+        const tag = w.option ? ' <span class="option-tag">option</span>'
+            : w.count !== w.default ? ` <span class="muted">(datasheet: ${w.default})</span>` : '';
+        return `<label class="wargear-option">
+            <input type="number" class="filter-input wargear-count" data-k="${escapeHtml(w.key)}" min="0" max="100" value="${w.count}" inputmode="numeric">
+            ${escapeHtml(w.name)} <span class="muted">(${w.kind})</span>${tag}</label>`;
     }
 
     function onWargearChange(e) {
         const edit = state.wargear;
-        if (!edit?.result) return;
-        const el = e.target;
-        const choices = { ...edit.choices };
-        if (el.type === 'radio') {
-            const section = edit.result.form.find(s => String(s.k) === el.dataset.section);
-            section.members.forEach(m => { choices[m.k] = 0; });
-            if (el.value) choices[el.value] = 1;
-        } else if (el.type === 'checkbox') {
-            choices[el.dataset.k] = el.checked ? 1 : 0;
-        } else if (el.dataset.k) {
-            const max = parseInt(el.max);
-            choices[el.dataset.k] = Math.max(0, Math.min(parseInt(el.value) || 0, isNaN(max) ? 99 : max));
-        }
-        edit.choices = choices;
+        if (!edit?.result || !e.target.dataset.k) return;
+        const counts = edit.choices ? { ...edit.choices }
+            : Object.fromEntries(edit.result.form.map(w => [w.key, w.count]));
+        counts[e.target.dataset.k] = Math.max(0, Math.min(parseInt(e.target.value) || 0, 100));
+        edit.choices = counts;
         loadWargear();
     }
 

@@ -29,12 +29,11 @@ The app is in `dist/WammiesWithFriends/` (about 66 MB). PyInstaller builds for t
 
 ## How the build works
 
-- `combat_sim.spec` bundles `run.py`, the `combat_sim` package, its `templates/` and `static/` folders, and `data/app_data.json` (never the BSData catalogues: users download those). Anything new the app reads from disk must be added to its `datas`.
+- `combat_sim.spec` bundles `run.py`, the `combat_sim` package, its `templates/` and `static/` folders, `data/app_data.json` and `data/bsdata_id_map.json` (BSData IDs to Wahapedia's, for data saved before 3.0; never Wahapedia's export: users download it). Anything new the app reads from disk must be added to its `datas`.
 - Pages must not load anything from the internet (Plotly and Font Awesome are in `static/vendor`), so the exe works offline.
 - The exe runs `run.py`: waitress on `127.0.0.1`, port 5000 or the next free port, browser opened automatically, console window shows the address and closing it stops the app.
 - `src/combat_sim/paths.py` keeps user data in `%APPDATA%\Wammies With Friends\`. The shipped app data JSON only seeds that folder on first run; a newer release's app data does **not** replace a user's existing copy, except that keyword glossary entries their copy lacks are added on every start (`data_store.with_shipped_keywords`). Users can pick up new shipped app data with **Data → Import JSON**, or by deleting their copy before starting the app.
-- The BSData catalogues are never in the build: each user downloads them on the Setup page (GitHub API and zipball, `bsdata_download.py`) into their data folder. The exe needs internet access only for that.
-- tkinter stays in the build for the Setup page's folder dialog.
+- Wahapedia's export is never in the build: each user downloads it on the Setup page (`wahapedia_download.py`) into their data folder. The exe needs internet access only for that.
 
 ## Known limits
 

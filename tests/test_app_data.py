@@ -1,7 +1,7 @@
 """
 BSData in the app: the import merged with the app data JSON, read-only BSData records,
 stable IDs, app data saved against BSData factions and units, the import cache and status.
-Uses the made-up catalogues in tests/fixtures/bsdata.
+Uses the made-up Wahapedia export in tests/fixtures/wahapedia_units.
 """
 
 import json
@@ -11,9 +11,9 @@ import pytest
 
 from combat_sim.app import create_app
 from combat_sim.models import BSDATA_ID_BASE
-from conftest import BSDATA_FIXTURES
+from conftest import UNIT_FIXTURES
 
-STARFARERS = 'cat-star'
+STARFARERS = 'SF'
 
 APP_DATA = {
     'schema_version': 2,
@@ -39,7 +39,7 @@ APP_DATA = {
 
 @pytest.fixture
 def app_client(make_client):
-    client, data_file = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)
+    client, data_file = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)
     return client, lambda: json.loads(data_file.read_text(encoding='utf-8'))
 
 
@@ -87,7 +87,7 @@ def test_bsdata_unit_detail(app_client):
         ('Laser pistol', True), ('Laser rifle - standard', True), ('Laser rifle - overcharge', False)]
     assert [w['name'] for w in detail['ranged_options']] == ['Heavy laser']
     assert [w['name'] for w in detail['melee_options']] == ['Power axe']
-    assert detail['points_by_model_count'][5:7] == [80, 160]
+    assert (detail['points_by_model_count'][5], detail['points_by_model_count'][10]) == (80, 160)
 
 
 def test_legends_units_only_on_request(app_client):
@@ -109,8 +109,8 @@ def test_status_reports_the_import(app_client):
     client, _ = app_client
     status = client.get('/api/data/status').get_json()
     assert status['loaded'] and status['error'] is None
-    assert status['source']['game_system']['name'] == 'Test System'
-    assert status['report_counts']['leader'] == 1
+    assert status['units_from'] == 'wahapedia' and status['source']['last_update'] == '2026-10-01 12:00:00'
+    assert status['report_counts']['mixed_profile'] == 1
     assert status['report'] is None
     assert client.get('/api/data/status?report=1').get_json()['report']
 
@@ -163,7 +163,7 @@ def test_saved_app_data_leaves_bsdata_out(app_client):
     client, saved = app_client
     client.post('/api/data/factions', json={'name': 'Another'})
     data = saved()
-    assert data['schema_version'] == 2
+    assert data['schema_version'] == 3
     assert [f['name'] for f in data['factions']] == ['Homebrew', 'Another']
     assert [u['name'] for u in data['units']] == ['Home Guard']
     assert [w['name'] for w in data['ranged_weapons']] == ['Home rifle']
@@ -244,28 +244,31 @@ def test_app_runs_without_bsdata_and_keeps_app_data(make_client, tmp_path):
 
 
 def test_faction_ids_survive_bsdata_coming_and_going(make_client, tmp_path, monkeypatch):
-    client, _ = make_client(APP_DATA, bsdata=BSDATA_FIXTURES)
+    client, _ = make_client(APP_DATA, wahapedia=UNIT_FIXTURES)
     star = factions(client)['Starfarers']['id']
     void = units(client)['Void Warriors']['id']
-    monkeypatch.setenv('BSDATA_DIR', str(tmp_path / 'nothing'))
+    monkeypatch.setenv('WAHAPEDIA_DIR', str(tmp_path / 'nothing'))
     assert factions(restart())['Starfarers']['id'] == star  # Placeholder keeps the ID
-    monkeypatch.setenv('BSDATA_DIR', str(BSDATA_FIXTURES))
+    monkeypatch.setenv('WAHAPEDIA_DIR', str(UNIT_FIXTURES))
     again = restart()
     assert factions(again)['Starfarers']['id'] == star
     assert units(again)['Void Warriors']['id'] == void
 
 
-def test_ids_stable_when_bsdata_changes(make_client, tmp_path, monkeypatch):
-    folder = tmp_path / 'bsdata'
-    shutil.copytree(BSDATA_FIXTURES, folder)
-    client, _ = make_client(APP_DATA, bsdata=folder)
+def rewrite(folder, name, change):
+    """Change one file of a copied export: `change(text) -> text`."""
+    path = folder / f'{name}.csv'
+    path.write_text(change(path.read_text(encoding='utf-8')), encoding='utf-8')
+
+
+def test_ids_stable_when_the_data_changes(make_client, tmp_path):
+    folder = tmp_path / 'wahapedia'
+    shutil.copytree(UNIT_FIXTURES, folder)
+    client, _ = make_client(APP_DATA, wahapedia=folder)
     before = {name: u['id'] for name, u in units(client).items()}
 
-    # A BSData update removes a unit: the others keep their IDs
-    path = folder / 'Xenos - Starfarers.json'
-    content = json.loads(path.read_text(encoding='utf-8'))
-    content['catalogue']['entryLinks'] = [e for e in content['catalogue']['entryLinks'] if e['name'] != 'Beast Pack']
-    path.write_text(json.dumps(content), encoding='utf-8')
+    # An update removes a datasheet: the others keep their IDs
+    rewrite(folder, 'Datasheets', lambda text: ''.join(l for l in text.splitlines(True) if not l.startswith('u-beasts|')))
     after = {name: u['id'] for name, u in units(restart()).items()}
     assert 'Beast Pack' not in after
     assert all(after[name] == before[name] for name in after)
@@ -273,38 +276,22 @@ def test_ids_stable_when_bsdata_changes(make_client, tmp_path, monkeypatch):
 
 def test_bsdata_faction_named_like_a_custom_one(make_client):
     data = dict(APP_DATA, factions=[{'id': 1, 'name': 'Starfarers'}])
-    client, _ = make_client(data, bsdata=BSDATA_FIXTURES)
+    client, _ = make_client(data, wahapedia=UNIT_FIXTURES)
     by_name = factions(client)
     assert by_name['Starfarers']['source'] == 'custom'
-    assert by_name['Starfarers (BSData)']['source'] == 'bsdata'
+    assert by_name['Starfarers (Wahapedia)']['source'] == 'bsdata'
 
 
 # --- Import cache and errors ---------------------------------------------------------------------
 
-def test_import_is_cached_until_the_folder_changes(make_client, tmp_path):
-    folder = tmp_path / 'bsdata'
-    shutil.copytree(BSDATA_FIXTURES, folder)
-    client, _ = make_client(APP_DATA, bsdata=folder)
-    assert client.get('/api/data/status').get_json()['from_cache'] is False
-    assert restart().get('/api/data/status').get_json()['from_cache'] is True
-
-    path = folder / 'Library - Neutral Forces.json'
-    content = json.loads(path.read_text(encoding='utf-8'))
-    content['catalogue']['revision'] = 99
-    path.write_text(json.dumps(content), encoding='utf-8')
-    status = restart().get('/api/data/status').get_json()
-    assert status['from_cache'] is False
-    assert status['source']['catalogues']['Library - Neutral Forces'] == 99
-
-
-def test_broken_bsdata_folder_is_reported_not_fatal(make_client, tmp_path):
-    folder = tmp_path / 'bsdata'
-    folder.mkdir()
-    (folder / 'Broken.json').write_text('{oops', encoding='utf-8')
-    client, _ = make_client(APP_DATA, bsdata=folder)
+def test_a_broken_export_is_reported_not_fatal(make_client, tmp_path):
+    folder = tmp_path / 'wahapedia'
+    shutil.copytree(UNIT_FIXTURES, folder)
+    (folder / 'Datasheets_models.csv').write_text('oops', encoding='utf-8')
+    client, _ = make_client(APP_DATA, wahapedia=folder)
     status = client.get('/api/data/status').get_json()
     assert status['loaded'] is False
-    assert 'Broken.json' in status['error']
+    assert 'Datasheets_models' in status['error']
     assert 'Homebrew' in factions(client)
 
 
@@ -321,13 +308,13 @@ def test_detachments_and_reference_text(app_client):
     star = factions(client)['Starfarers']['id']
     detachments = client.get(f'/api/detachments?faction_id={star}').get_json()
     assert [(d['name'], d['key'], d['dp']) for d in detachments] == [
-        ('Star Armada', 'd-armada', 3), ('Star Bastion', 'd-bastion', 1), ('Star Citadel', 'd-citadel', 1),
-        ('Void Vanguard', 'd-vanguard', 2)]
-    assert (detachments[1]['dispositions'], detachments[1]['tags']) == (['Take and Hold'], ['Fortress Detachment'])
+        ('Lost Fleet', 'd-lost', 1), ('Star Armada', 'd-armada', 3), ('Star Bastion', 'd-bastion', 1),
+        ('Star Citadel', 'd-citadel', 1), ('Void Vanguard', 'd-vanguard', 2)]  # Not Hull Breach: Boarding Actions
+    assert (detachments[2]['dispositions'], detachments[2]['tags']) == (['Take and Hold'], [])
     assert all(d['id'] >= BSDATA_ID_BASE for d in detachments)
     reference = client.get(f'/api/data/factions/{star}/reference').get_json()
-    assert reference['army_rules'][0]['name'] == 'Star Pact'
-    assert reference['detachments'][3]['rules'][0]['name'] == 'Swift Strike'
+    assert {r['name'] for r in reference['army_rules']} == {'Star Oath', 'Star Pact'}
+    assert reference['detachments'][4]['rules'][0]['name'] == 'Vanguard Doctrine'
     assert client.get('/api/detachments').get_json() == []
 
 
@@ -375,25 +362,22 @@ def test_bsdata_weapon_search(app_client):
     assert not client.get('/api/data/weapons/bsdata?q=home').get_json()  # Custom weapons aren't offered
 
 
-def test_linked_custom_weapon_follows_bsdata(make_client, tmp_path, monkeypatch):
-    folder = tmp_path / 'bsdata'
-    shutil.copytree(BSDATA_FIXTURES, folder)
-    client, saved_file = make_client(APP_DATA, bsdata=folder)
+def test_linked_custom_weapon_follows_the_data(make_client, tmp_path, monkeypatch):
+    folder = tmp_path / 'wahapedia'
+    shutil.copytree(UNIT_FIXTURES, folder)
+    client, saved_file = make_client(APP_DATA, wahapedia=folder)
     created = client.post('/api/data/weapons', json={
         'faction_id': 1, 'type': 'ranged', 'name': 'Borrowed laser', 'attacks': '9', 'strength': 1, 'ap': 0,
-        'damage': '1', 'linked_bsdata_id': 'p-heavy'}).get_json()
+        'damage': '1', 'linked_bsdata_id': 'SF/heavylaser'}).get_json()
     weapon = client.get(f'/api/data/weapons/ranged/{created["id"]}').get_json()
     assert (weapon['name'], weapon['attacks'], weapon['strength'], weapon['ap'], weapon['damage']) == (
-        'Borrowed laser', '1', 9, 3, 'D6')  # Stats from BSData, name its own
-    assert weapon['linked_bsdata_id'] == 'p-heavy' and weapon['editable']
+        'Borrowed laser', '1', 9, 3, 'D6')  # Stats from the downloaded weapon, name its own
+    assert weapon['linked_bsdata_id'] == 'SF/heavylaser' and weapon['editable']
     saved = json.loads(saved_file.read_text(encoding='utf-8'))
-    assert next(w for w in saved['ranged_weapons'] if w['name'] == 'Borrowed laser')['linked_bsdata_id'] == 'p-heavy'
+    assert next(w for w in saved['ranged_weapons'] if w['name'] == 'Borrowed laser')['linked_bsdata_id'] == 'SF/heavylaser'
 
-    # BSData changes the profile: the copy follows on the next start
-    path = folder / 'Xenos - Starfarers.json'
-    text = json.dumps(json.loads(path.read_text(encoding='utf-8')))
-    assert text.count('"name": "S", "$text": "9"') == 1  # The heavy laser's strength
-    path.write_text(text.replace('"name": "S", "$text": "9"', '"name": "S", "$text": "10"'), encoding='utf-8')
+    # An update changes the profile: the copy follows on the next start
+    rewrite(folder, 'Datasheets_wargear', lambda text: text.replace('|Ranged|1|4|9|-3|D6|', '|Ranged|1|4|10|-3|D6|'))
     again = restart().get(f'/api/data/weapons/ranged/{created["id"]}').get_json()
     assert again['strength'] == 10 and again['name'] == 'Borrowed laser'
 

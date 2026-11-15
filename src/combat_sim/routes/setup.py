@@ -1,15 +1,16 @@
 """
-The Setup page: choosing, downloading and re-importing BSData, downloading Wahapedia, and the import status the
-Setup and Data pages show. Downloads and re-imports run as jobs (jobs.py).
+The Setup page: downloading Wahapedia's export (units, rules and stratagems), the import status the Setup and Data
+pages show, and what was carried over from BSData's IDs (carry_over.py). Downloads run as jobs (jobs.py).
 """
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import jsonify, render_template, request
 
-from .. import access, bsdata_download, folder_dialog, jobs, reference, wahapedia_download
-from ..access import desktop_only, host_only
+from .. import access, jobs, reference, wahapedia_download
+from ..access import host_only
 from ..models import Faction, FactionRule, Stratagem, Unit, db
 from ..settings import load_settings, update_settings
 
@@ -19,31 +20,39 @@ def register(app):
 
     @app.route('/api/data/status')
     def api_data_status():
-        """The BSData folder and import: where, whether it loaded, revisions and report."""
-        status = reference.current(app).bsdata_status
+        """The game data: whether the units loaded (and from where), their import notes, the rules and stratagems
+        (`wahapedia`) and, for the host, what was carried over from BSData's IDs (`carry_over`)."""
+        now = reference.current(app)
+        status = now.bsdata_status
         report = status.get('report') or []
         counts = {}
         for item in report:
             counts[item['kind']] = counts.get(item['kind'], 0) + 1
         return jsonify(without_paths({
-            'folder': status.get('folder'),
+            'folder': status.get('folder') or app.config['WAHAPEDIA_DIR'],
             'loaded': bool(status.get('loaded')),
             'error': status.get('error'),
-            'from_cache': bool(status.get('from_cache')),
+            'units_from': now.units_source,
             'source': status.get('source'),
+            'from_cache': bool(status.get('from_cache')),
             'report_counts': counts,
             'report': report if request.args.get('report') else None,
             'factions': Faction.query.filter_by(source='bsdata').count(),
             'units': Unit.query.join(Faction).filter(Faction.source == 'bsdata').count(),
             'label': reference.label(app),
-            'download': load_settings(app.config['SETTINGS_JSON']).get('download'),
-            'download_folder': app.config['DOWNLOAD_DIR'],
-            'hosted': not access.principal().local,  # No folder dialog or paths
-            'default_folder': app.config['DEFAULT_BSDATA_DIR'],
+            'hosted': not access.principal().local,
             'wahapedia': wahapedia_status(bool(request.args.get('report'))),
+            'carry_over': carry_over_report() if access.is_host() else None,
         }))
 
-    PATH_KEYS = ('folder', 'download_folder', 'default_folder')
+    def carry_over_report():
+        """What the first start on Wahapedia changed in saved data (reference._carry_over), or None."""
+        try:
+            return json.loads(Path(app.config['CARRY_OVER_JSON']).read_text(encoding='utf-8'))
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+
+    PATH_KEYS = ('folder',)
 
     def without_paths(status):
         """A self-hosted copy shows where its files are on the server to the host alone."""
@@ -108,90 +117,24 @@ def register(app):
             raise jobs.JobError(str(err), 502) from err
         update_settings(app.config['SETTINGS_JSON'], wahapedia_download=dict(
             info, downloaded_at=datetime.now(timezone.utc).isoformat(timespec='seconds')))
-        job.step = 'Reading the rules and stratagems'
-        status = reference.load(app, wahapedia_too=True).wahapedia_status
-        if status.get('error'):
-            raise jobs.JobError(status['error'], 400)
+        job.step = 'Reading the units, rules and stratagems'
+        now = reference.load(app, wahapedia_too=True)
+        error = now.wahapedia_status.get('error') or now.bsdata_status.get('error')
+        if error:
+            raise jobs.JobError(error, 400)
 
     @app.route('/api/wahapedia/download', methods=['POST'])
     @host_only
     def api_wahapedia_download():
-        """Download the latest rules and stratagems from Wahapedia and use them (a job)."""
+        """Download Wahapedia's latest export (units, rules and stratagems) and use it (a job)."""
         return job_answer(jobs.of(app).submit('wahapedia', wahapedia_job))
 
-    # --- Setup: choosing, downloading and re-importing the BSData folder -------------
-
-    def hosted_refusal(what):
-        return jsonify({'error': f'{what} is turned off on a self-hosted copy (hosted mode).'}), 403
+    # --- Setup ---------------------------------------------------------------------
 
     @app.route('/setup')
     @host_only
     def setup_page():
         return render_template('setup.html')
-
-    @app.route('/api/bsdata/folder', methods=['POST'])
-    @host_only
-    def api_bsdata_folder():
-        """Use the BSData folder {'path'} (null = back to the default), if it loads."""
-        path = (request.get_json() or {}).get('path')
-        if path and not access.principal().local:
-            return hosted_refusal('Choosing a BSData folder by path')
-        settings_file = app.config['SETTINGS_JSON']
-        previous = load_settings(settings_file).get('bsdata_dir')
-        if path:
-            folder = Path(str(path).strip()).expanduser()
-            if not folder.is_dir():
-                return jsonify({'error': f'{folder} is not a folder.'}), 400
-            if not any(folder.glob('*.json')):
-                return jsonify({'error': f'{folder} holds no .json files. Choose the folder with the BSData '
-                                         'catalogues (e.g. "Warhammer 40,000.json").'}), 400
-            update_settings(settings_file, bsdata_dir=str(folder.resolve()))
-        else:
-            update_settings(settings_file, bsdata_dir=None)
-        status = reference.load(app, bsdata=True).bsdata_status
-        if status.get('error'):  # Keep the folder that worked
-            update_settings(settings_file, bsdata_dir=previous)
-            reference.load(app, bsdata=True)
-            return jsonify({'error': status['error']}), 400
-        return api_data_status()
-
-    @app.route('/api/bsdata/browse', methods=['POST'])
-    @desktop_only
-    def api_bsdata_browse():
-        """Open the computer's folder dialog; {'path'} or {'path': null} if cancelled or unavailable."""
-        return jsonify({'path': folder_dialog.choose_folder(initial=reference.current(app).bsdata_dir)})
-
-    def bsdata_download_job(job):
-        job.step = 'Finding the latest catalogues on GitHub'
-        try:
-            commit = bsdata_download.latest_commit()
-            job.step = 'Downloading the catalogues'
-            count = bsdata_download.install_zip(bsdata_download.download_zip(commit['sha']), app.config['DOWNLOAD_DIR'])
-        except bsdata_download.DownloadError as err:
-            raise jobs.JobError(str(err), 502) from err
-        update_settings(app.config['SETTINGS_JSON'], bsdata_dir=app.config['DOWNLOAD_DIR'], download={
-            'sha': commit['sha'], 'date': commit['date'], 'files': count, 'folder': app.config['DOWNLOAD_DIR'],
-            'downloaded_at': datetime.now(timezone.utc).isoformat(timespec='seconds')})
-        job.step = 'Importing the catalogues'
-        status = reference.load(app, bsdata='fresh').bsdata_status
-        if status.get('error'):
-            raise jobs.JobError(status['error'], 400)
-
-    def bsdata_reimport_job(job):
-        job.step = 'Importing the catalogues'
-        reference.load(app, bsdata='fresh')
-
-    @app.route('/api/bsdata/download', methods=['POST'])
-    @host_only
-    def api_bsdata_download():
-        """Download the latest catalogues from GitHub into the download folder and use it (a job)."""
-        return job_answer(jobs.of(app).submit('bsdata', bsdata_download_job))
-
-    @app.route('/api/bsdata/reimport', methods=['POST'])
-    @host_only
-    def api_bsdata_reimport():
-        """Import the BSData folder again (after changing its files), ignoring the cache (a job)."""
-        return job_answer(jobs.of(app).submit('bsdata', bsdata_reimport_job))
 
     @app.route('/api/preferences/layout', methods=['POST'])
     def api_layout_preference():
@@ -203,9 +146,9 @@ def register(app):
         access.principal().set_preferences(layout=None if layout == 'auto' else layout)
         return jsonify({'layout': layout})
 
-    @app.route('/api/bsdata/skip-setup', methods=['POST'])
+    @app.route('/api/setup/skip', methods=['POST'])
     @host_only
-    def api_bsdata_skip_setup():
-        """Use the app without BSData for now: the Simulator stops redirecting to Setup."""
+    def api_skip_setup():
+        """Use the app without the game data for now: the Simulator stops redirecting to Setup."""
         update_settings(app.config['SETTINGS_JSON'], setup_skipped=True)
         return jsonify({'message': 'Setup skipped'})

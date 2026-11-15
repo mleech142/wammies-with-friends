@@ -7,9 +7,10 @@ a = Analysis(
     datas=[
         ('src/combat_sim/templates', 'combat_sim/templates'),
         ('src/combat_sim/static', 'combat_sim/static'),
-        ('data/app_data.json', 'data'),  # copied to the user's data folder on first run (BSData and Wahapedia never bundled)
+        ('data/app_data.json', 'data'),  # copied to the user's data folder on first run (Wahapedia's export never bundled)
+        ('data/bsdata_id_map.json', 'data'),  # BSData IDs -> Wahapedia's, for data saved before 3.0 (carry_over.py)
     ],
-    excludes=['openpyxl', 'pytest', 'IPython', 'matplotlib'],  # tkinter stays: the Setup page's folder dialog
+    excludes=['openpyxl', 'pytest', 'IPython', 'matplotlib', 'tkinter'],
 )
 pyz = PYZ(a.pure)
 exe = EXE(

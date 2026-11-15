@@ -65,22 +65,23 @@ def background(make_client):
     return client
 
 
-def test_a_setup_reimport_answers_with_a_job_to_poll(background, monkeypatch):
-    from combat_sim import reference
+def test_a_setup_download_answers_with_a_job_to_poll(background, monkeypatch):
+    from combat_sim import reference, wahapedia_download
     release, real_load = threading.Event(), reference.load
+    monkeypatch.setattr(wahapedia_download, 'download', lambda target: {'last_update': None})
 
     def held_load(*args, **kwargs):
         release.wait(5)  # The import is still going when the answer comes back
         return real_load(*args, **kwargs)
 
     monkeypatch.setattr(reference, 'load', held_load)
-    started = background.post('/api/bsdata/reimport')
+    started = background.post('/api/wahapedia/download')
     assert started.status_code == 202
     job = started.get_json()['job']
-    assert job['state'] == 'running' and job['step'] == 'Importing the catalogues'
-    assert background.post('/api/bsdata/download').get_json()['job']['id'] == job['id']  # Never two at once
+    assert job['state'] == 'running'
+    assert background.post('/api/wahapedia/download').get_json()['job']['id'] == job['id']  # Never two at once
     release.set()
     jobs.of(background.application)._pool.shutdown(wait=True)
     polled = background.get(f'/api/jobs/{job["id"]}').get_json()
-    assert polled['state'] == 'done' and polled['kind'] == 'bsdata'
+    assert polled['state'] == 'done' and polled['kind'] == 'wahapedia'
     assert background.get('/api/jobs/9999').status_code == 404
