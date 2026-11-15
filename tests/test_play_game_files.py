@@ -128,13 +128,15 @@ def test_files_that_are_not_games_are_refused(two_pcs, broken, message):
 
 
 def test_a_game_played_on_a_newer_version_asks_to_update(two_pcs):
+    from combat_sim import __version__
+    newer = f'{int(__version__.split(".")[0]) + 1}.0.0'  # The next major version: newer, and still plausible
     mine, theirs = two_pcs
     game = new_game(mine, 0)
-    sent = dict(game_file_of(mine, game), app_version='3.0.0')
+    sent = dict(game_file_of(mine, game), app_version=newer)
     their_game = theirs.post('/api/play/games/import', json={'file': sent}).get_json()
-    assert their_game['needs_update'] and their_game['app_version'] == '3.0.0'
+    assert their_game['needs_update'] and their_game['app_version'] == newer
     refused = place(theirs, their_game, 'p2-g', 10, 38)
-    assert refused.status_code == 409 and '3.0.0' in refused.get_json()['error']
+    assert refused.status_code == 409 and newer in refused.get_json()['error']
 
 
 @pytest.mark.parametrize('version', ['99.0.0', '2.2', 'latest', None])
