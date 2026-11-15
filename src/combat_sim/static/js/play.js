@@ -3949,6 +3949,26 @@
         if (await sendMove(unit, pending.action)) Haptics.tap();
     }
 
+    /**
+     * A button that acts on a finger's tap as soon as it lifts (pointerup), and on a click otherwise. Right after a
+     * touch drag, Chrome can leave out the click that should follow the next tap (seen on Windows, Chrome 159), so a
+     * finger's Confirm doesn't wait for one. The click a tap still makes is then ignored.
+     */
+    function onTap(button, act) {
+        let tapped = 0;
+        button.addEventListener('pointerup', e => {
+            if (e.pointerType !== 'touch' || button.disabled) return;
+            const r = button.getBoundingClientRect();
+            if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;  // Slid off
+            tapped = Date.now();
+            act();
+        });
+        button.addEventListener('click', () => {
+            if (Date.now() - tapped < 800) return;  // That tap's own click: done already
+            act();
+        });
+    }
+
     /** The bar over the board while a dropped move waits: Confirm or Reset, and whether the server would take it. */
     function renderPendingMove() {
         const bar = $('place-bar');
@@ -3964,8 +3984,8 @@
                 <span class="play-pending-actions">
                     <button class="btn btn-primary" id="move-ok"><i class="fa-solid fa-check" aria-hidden="true"></i> Confirm</button>
                     <button class="btn-small" id="move-reset"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reset</button></span>`;
-            $('move-ok').addEventListener('click', confirmPendingMove);
-            $('move-reset').addEventListener('click', cancelPendingMove);
+            onTap($('move-ok'), confirmPendingMove);
+            onTap($('move-reset'), cancelPendingMove);
         }
         $('move-text').innerHTML = check && !check.ok ? `<strong class="play-check-bad">Not allowed:</strong> ${escapeHtml(check.error)}`
             : `Move <strong>${escapeHtml(unit.name)}</strong> here?${check ? ' <span class="play-check-ok">Allowed</span>' : ''}`;
