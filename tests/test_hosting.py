@@ -95,7 +95,7 @@ def test_the_docker_image_holds_no_game_data():
     rules = [line for line in ignore if line and not line.startswith('#')]
     assert rules[0] == '*'  # everything is left out but what's named
     allowed = {line[1:] for line in ignore if line.startswith('!')}
-    assert allowed == {'run.py', 'requirements.txt', 'src/', 'data/app_data.json'}
+    assert allowed == {'run.py', 'requirements.txt', 'src/', 'data/app_data.json', 'data/bsdata_id_map.json'}
     dockerfile = (ROOT / 'Dockerfile').read_text(encoding='utf-8')
     assert 'COMBAT_SIM_HOSTED=1' in dockerfile and 'COMBAT_SIM_DATA=/data' in dockerfile
     assert 'USER app' in dockerfile
