@@ -1,8 +1,9 @@
-# Only run.py, requirements.txt, src/ and data/app_data.json go into the image (Dockerfile)
+# Only run.py, requirements.txt, src/, data/app_data.json and data/bsdata_id_map.json go into the image (Dockerfile)
 *
 !run.py
 !requirements.txt
 !src/
 !data/app_data.json
+!data/bsdata_id_map.json
 **/__pycache__
 **/*.py[cod]

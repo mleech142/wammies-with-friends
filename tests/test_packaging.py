@@ -164,7 +164,9 @@ def test_the_docker_image_has_the_data_files_the_build_bundles():
     import re
     spec = (ROOT / 'combat_sim.spec').read_text(encoding='utf-8')
     dockerfile = (ROOT / 'Dockerfile').read_text(encoding='utf-8')
+    ignored = (ROOT / '.dockerignore').read_text(encoding='utf-8').splitlines()
     bundled = re.findall(r"\('(data/[^']+)',\s*'data'\)", spec)
     assert bundled and 'data/bsdata_id_map.json' in bundled
     for path in bundled:
         assert re.search(rf'^COPY {re.escape(path)} ', dockerfile, re.M), f'{path} is in the build but not the image'
+        assert f'!{path}' in ignored, f'.dockerignore keeps {path} out of the image'
