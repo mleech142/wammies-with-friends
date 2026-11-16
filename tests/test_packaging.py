@@ -157,3 +157,14 @@ def test_every_icon_used_is_in_the_bundled_font_awesome():
     assert missing == []
     assert (static / 'vendor' / 'fontawesome-free-7.3.1' / 'webfonts' / 'fa-solid-900.woff2').exists()
     assert 'fontawesome-free-7.3.1/css/solid.min.css' in (ROOT / 'src' / 'combat_sim' / 'templates' / 'base.html').read_text(encoding='utf-8')
+
+
+def test_the_docker_image_has_the_data_files_the_build_bundles():
+    """Issue found on 3.1.0: the Windows/Linux build shipped data/bsdata_id_map.json but the image didn't."""
+    import re
+    spec = (ROOT / 'combat_sim.spec').read_text(encoding='utf-8')
+    dockerfile = (ROOT / 'Dockerfile').read_text(encoding='utf-8')
+    bundled = re.findall(r"\('(data/[^']+)',\s*'data'\)", spec)
+    assert bundled and 'data/bsdata_id_map.json' in bundled
+    for path in bundled:
+        assert re.search(rf'^COPY {re.escape(path)} ', dockerfile, re.M), f'{path} is in the build but not the image'

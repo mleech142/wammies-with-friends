@@ -261,3 +261,12 @@ def test_wargear_is_priced_by_the_datasheets_costs(wahapedia_client):
     assert imported['notes'] == [] and imported['army']['units'][0]['wargear']['wargear:bruteshield'] == 3
     assert client.post('/api/armies/price', json=dict(army, units=[{'uid': 'b', 'unit_id': ids['Shield Brutes'],
                                                                     'wargear': {'wargear:no such': 1}}])).status_code == 400
+
+
+def test_without_the_id_map_the_app_still_starts(make_client, monkeypatch):
+    # 3.1.0's Docker image lacked data/bsdata_id_map.json and stopped on start: now nothing is carried over instead
+    def missing():
+        raise FileNotFoundError('bsdata_id_map.json')
+    monkeypatch.setattr(carry_over, 'shipped_map', missing)
+    client, _ = make_client(dict(APP_DATA, schema_version=2), wahapedia=WAHAPEDIA_FIXTURES)
+    assert client.get('/api/data/status').get_json()['loaded']

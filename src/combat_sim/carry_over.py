@@ -180,7 +180,7 @@ def _army(army, id_map, remap, unmatched_units, names, notes):
     army.units = units
     if dropped:
         notes.append(f'{army.name}: wargear choices on {dropped} unit{"s" if dropped != 1 else ""} were reset '
-                     'to the datasheet\'s (Wahapedia\'s options are ticked weapons).')
+                     'to the datasheet\'s: set them again in the Wargear popup.')
     flag_modified(army, 'units')
     flag_modified(army, 'detachment_keys')
     return json.dumps([army.faction_id, army.detachment_key, army.detachment_keys, army.units], sort_keys=True) != before

@@ -99,7 +99,11 @@ def _carry_over(app, data):
     Answers (app data, whether it was upgraded). What was carried over is written to CARRY_OVER_JSON for the
     Setup page; doing it again changes nothing.
     """
-    id_map = carry_over.shipped_map()
+    try:
+        id_map = carry_over.shipped_map()
+    except (OSError, ValueError) as err:  # Not in this build: start all the same, carrying nothing over
+        logging.getLogger(__name__).warning('No BSData ID map (%s): saved data is not carried over', err)
+        return data, False
     found = carry_over.carry_over_database(id_map)
     if found is not None:
         logging.getLogger(__name__).info('Carried saved data over from BSData to Wahapedia: %s',

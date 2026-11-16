@@ -17,6 +17,8 @@ COPY run.py .
 COPY src ./src
 # Seeds the data volume on first start; never overwritten afterwards
 COPY data/app_data.json ./data/app_data.json
+# BSData IDs -> Wahapedia's, for data saved before 3.0 (carry_over.py)
+COPY data/bsdata_id_map.json ./data/bsdata_id_map.json
 
 RUN useradd --create-home --uid 10001 app \
     && mkdir -p /data && chown app:app /data
